@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Simulador de Custos do Veículo</title>
+</head>
+<body>
+  <main id="app">
+    <!-- Tela 1: Formulário -->
+    <section id="form-screen" class="screen active">
+      <header class="app-header">
+        <h1>Simulador de Custos</h1>
+        <p class="subtitle">Descubra quanto seu carro ou moto realmente custa por mês</p>
+      </header>
+
+      <form id="cost-form" novalidate>
+
+        <fieldset>
+          <legend>1. Veículo</legend>
+
+          <label class="field">
+            <span>Nome do veículo</span>
+            <input type="text" name="nome" placeholder="Ex: Honda CG 160" required />
+          </label>
+
+          <div class="field">
+            <span>Tipo</span>
+            <div class="radio-row">
+              <label class="radio-chip">
+                <input type="radio" name="tipo" value="carro" required />
+                <span>Carro</span>
+              </label>
+              <label class="radio-chip">
+                <input type="radio" name="tipo" value="moto" required checked />
+                <span>Moto</span>
+              </label>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Final da placa</span>
+            <select name="finalPlaca" required>
+              <option value="">Selecione</option>
+              <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
+              <option>5</option><option>6</option><option>7</option><option>8</option><option>9</option>
+            </select>
+            <small class="hint">Usado para sugerir os meses de IPVA e licenciamento (SP).</small>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Financiamento do veículo</legend>
+          <label class="field">
+            <span>Valor da parcela (R$)</span>
+            <input type="number" name="parcelaVeiculo" min="0" step="0.01" placeholder="0,00" />
+          </label>
+          <label class="field">
+            <span>Parcelas restantes</span>
+            <input type="number" name="parcelasVeiculoRestantes" min="0" step="1" placeholder="0" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Seguro</legend>
+          <label class="field">
+            <span>Valor da parcela (R$)</span>
+            <input type="number" name="parcelaSeguro" min="0" step="0.01" placeholder="0,00" />
+          </label>
+          <label class="field">
+            <span>Parcelas restantes</span>
+            <input type="number" name="parcelasSeguroRestantes" min="0" step="1" placeholder="0" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>4. Uso e combustível</legend>
+
+          <label class="field">
+            <span>Quilometragem média</span>
+            <input type="number" name="kmMedia" min="0" step="0.1" placeholder="Ex: 40" required />
+          </label>
+
+          <div class="field">
+            <span>Frequência</span>
+            <div class="radio-row">
+              <label class="radio-chip">
+                <input type="radio" name="frequenciaKm" value="dia" checked />
+                <span>por dia</span>
+              </label>
+              <label class="radio-chip">
+                <input type="radio" name="frequenciaKm" value="semana" />
+                <span>por semana</span>
+              </label>
+              <label class="radio-chip">
+                <input type="radio" name="frequenciaKm" value="mes" />
+                <span>por mês</span>
+              </label>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Preço da gasolina (R$/L)</span>
+            <input type="number" name="precoGasolina" min="0" step="0.01" placeholder="Ex: 5,89" required />
+          </label>
+
+          <label class="field">
+            <span>Consumo (km por litro)</span>
+            <input type="number" name="consumo" min="0" step="0.1" placeholder="Ex: 35" required />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>5. Revisão</legend>
+          <label class="field">
+            <span>KM atual do veículo</span>
+            <input type="number" name="kmAtual" min="0" step="1" placeholder="Ex: 12500" />
+          </label>
+          <label class="field">
+            <span>KM da próxima revisão</span>
+            <input type="number" name="kmProxRevisao" min="0" step="1" placeholder="Ex: 15000" />
+          </label>
+          <label class="field">
+            <span>Mês limite para levar</span>
+            <select name="mesRevisao">
+              <option value="">Selecione</option>
+              <option value="1">Janeiro</option>
+              <option value="2">Fevereiro</option>
+              <option value="3">Março</option>
+              <option value="4">Abril</option>
+              <option value="5">Maio</option>
+              <option value="6">Junho</option>
+              <option value="7">Julho</option>
+              <option value="8">Agosto</option>
+              <option value="9">Setembro</option>
+              <option value="10">Outubro</option>
+              <option value="11">Novembro</option>
+              <option value="12">Dezembro</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Custo da revisão (R$)</span>
+            <input type="number" name="custoRevisao" min="0" step="0.01" placeholder="0,00" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>6. IPVA e Licenciamento</legend>
+
+          <div class="field">
+            <span>Como informar o IPVA?</span>
+            <div class="radio-row">
+              <label class="radio-chip">
+                <input type="radio" name="modoIpva" value="valor" checked />
+                <span>Já sei o valor</span>
+              </label>
+              <label class="radio-chip">
+                <input type="radio" name="modoIpva" value="calcular" />
+                <span>Calcular pelo valor do veículo</span>
+              </label>
+            </div>
+          </div>
+
+          <label class="field" id="campo-ipva-valor">
+            <span>Valor do IPVA (R$)</span>
+            <input type="number" name="ipvaValor" min="0" step="0.01" placeholder="0,00" />
+          </label>
+
+          <label class="field hidden" id="campo-veiculo-valor">
+            <span>Valor do veículo (R$)</span>
+            <input type="number" name="veiculoValor" min="0" step="0.01" placeholder="0,00" />
+            <small class="hint">Alíquota SP: 4% carro, 2% moto.</small>
+          </label>
+
+          <label class="field">
+            <span>Valor do licenciamento (R$)</span>
+            <input type="number" name="licenciamento" min="0" step="0.01" placeholder="0,00" />
+          </label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="btn-primary">Calcular</button>
+          <button type="button" class="btn-ghost" id="btn-limpar">Limpar dados</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Tela 2: Resultados -->
+    <section id="result-screen" class="screen">
+      <header class="app-header">
+        <button type="button" class="btn-back" id="btn-voltar" aria-label="Voltar">←</button>
+        <h1 id="result-title">Resultado</h1>
+      </header>
+
+      <div class="cards">
+        <div class="card highlight">
+          <span class="card-label">Custo médio mensal</span>
+          <span class="card-value" id="r-mensal">R$ 0,00</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Custo anual</span>
+          <span class="card-value" id="r-anual">R$ 0,00</span>
+        </div>
+        <div class="card">
+          <span class="card-label">Custo por km</span>
+          <span class="card-value" id="r-por-km">R$ 0,00</span>
+        </div>
+      </div>
+
+      <section class="block">
+        <h2>Mês mais caro</h2>
+        <div id="r-mais-caro" class="month-card"></div>
+      </section>
+
+      <section class="block">
+        <h2>Mês mais barato</h2>
+        <div id="r-mais-barato" class="month-card"></div>
+      </section>
+
+      <section class="block">
+        <h2>Insights e recomendações</h2>
+        <div id="r-insights" class="insights"></div>
+      </section>
+
+      <section class="block">
+        <h2>Custo mês a mês</h2>
+        <div id="r-timeline" class="timeline"></div>
+      </section>
+
+      <section class="block">
+        <h2>Composição do custo mensal médio</h2>
+        <ul id="r-breakdown" class="breakdown"></ul>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="btn-primary" id="btn-editar">Editar dados</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

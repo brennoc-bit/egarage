@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0F0E0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Kickpush</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛹</text></svg>">
+<style>
+/* ============================================================
+   KICKPUSH — tokens
+   ============================================================ */
+:root{
+  --ground:#F1EADB; --paper:#FBF6EA; --paper-2:#EAE1CC; --paper-3:#DFD4BC;
+  --ink:#0F0E0D; --ink-2:#3A362E; --muted:#7A7368;
+  --line:#D9CFBB; --line-2:#A89E86;
+  --accent:#FF3B1F; --accent-ink:#FFF3EE;
+  --lime:#B7EC2E; --lime-ink:#14180A;
+  --sky:#4EA0E8;
+  --shadow:rgba(15,14,13,.18);
+  --grain:.045;
+  --overlay:rgba(15,14,13,.55);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B0A09; --paper:#151310; --paper-2:#201C18; --paper-3:#2B2621;
+    --ink:#F1EADB; --ink-2:#C7BFA9; --muted:#8A8172;
+    --line:#282320; --line-2:#443C33;
+    --accent:#FF4222; --accent-ink:#12070A;
+    --lime:#C7F53F; --lime-ink:#12160A;
+    --sky:#6BB5F0;
+    --shadow:rgba(0,0,0,.6);
+    --grain:.07;
+    --overlay:rgba(0,0,0,.68);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B0A09; --paper:#151310; --paper-2:#201C18; --paper-3:#2B2621;
+  --ink:#F1EADB; --ink-2:#C7BFA9; --muted:#8A8172;
+  --line:#282320; --line-2:#443C33;
+  --accent:#FF4222; --accent-ink:#12070A;
+  --lime:#C7F53F; --lime-ink:#12160A;
+  --sky:#6BB5F0; --shadow:rgba(0,0,0,.6); --grain:.07;
+  --overlay:rgba(0,0,0,.68);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overscroll-behavior:none}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:'Archivo',system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button,input,textarea,select{font-family:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---------- Shell: full-bleed on phones, framed on desktop ---------- */
+#app{
+  position:relative;
+  width:100%; height:100vh; height:100dvh;
+  background:var(--paper);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+#frame-note{display:none}
+@media (min-width:820px) and (min-height:700px){
+  body{display:grid; place-items:center; padding:24px; background:var(--ground)}
+  #shell{display:flex; align-items:center; gap:48px}
+  #app{
+    width:392px; height:min(844px,calc(100vh - 60px));
+    border-radius:42px;
+    box-shadow:0 0 0 10px var(--ink),0 0 0 12px var(--line-2),18px 26px 0 var(--shadow);
+    overflow:hidden;
+  }
+  #frame-note{display:block; max-width:340px}
+}
+#shell{width:100%;height:100%}
+@media (max-width:819px){ #shell{display:block} }
+
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+  opacity:var(--grain);mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+:root:not([data-theme="light"]) body::after,:root[data-theme="dark"] body::after{mix-blend-mode:screen}
+
+/* ---------- Type helpers ---------- */
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.anton{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:uppercase}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  flex:0 0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--line);
+  background:var(--paper);
+  position:relative;z-index:20;
+}
+.topbar h1{font-family:'Anton',sans-serif;font-size:24px;margin:0;letter-spacing:.02em;text-transform:uppercase;flex:1;line-height:1.1}
+.topbar h1 .sl{color:var(--accent)}
+.topbar .tb-btn{
+  background:none;border:none;padding:6px;border-radius:50%;
+  display:grid;place-items:center;color:var(--ink);flex:0 0 auto;position:relative;
+}
+.topbar .tb-btn:active{background:var(--paper-2)}
+.topbar .tb-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.dot-badge{
+  position:absolute;top:3px;right:3px;width:8px;height:8px;
+  background:var(--accent);border-radius:50%;border:1.5px solid var(--paper);
+}
+.back-btn{background:none;border:none;padding:6px 8px 6px 0;color:var(--ink);display:grid;place-items:center}
+.back-btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ---------- Scroll area ---------- */
+.scroll{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:2px}
+.end-note{
+  text-align:center;padding:28px 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+}
+
+/* ---------- Segment control ---------- */
+.segments{
+  display:flex;gap:0;border-bottom:1px solid var(--line);background:var(--paper);
+  position:sticky;top:0;z-index:10;
+}
+.segments button{
+  flex:1;background:none;border:none;padding:12px 6px;
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  border-bottom:2px solid transparent;
+}
+.segments button.on{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---------- Chips row ---------- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:11px 14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;background:var(--paper-2);color:var(--ink);
+  border:1.5px solid var(--ink);padding:7px 13px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;
+}
+.chip.on{background:var(--ink);color:var(--paper)}
+.chip.on-lime{background:var(--lime);color:var(--lime-ink)}
+
+/* ============================================================
+   FEED
+   ============================================================ */
+.post{padding:14px 16px;border-bottom:1px solid var(--line)}
+.post-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.av{
+  width:38px;height:38px;border-radius:50%;flex:0 0 auto;
+  border:1.5px solid var(--ink);display:grid;place-items:center;
+  font-family:'Anton',sans-serif;font-size:15px;color:var(--ink);
+  background:linear-gradient(135deg,var(--accent),var(--lime));
+}
+.av.sm{width:30px;height:30px;font-size:12px}
+.av.lg{width:76px;height:76px;font-size:30px}
+.av.g2{background:linear-gradient(135deg,var(--lime),var(--sky))}
+.av.g3{background:linear-gradient(135deg,var(--sky),var(--accent))}
+.av.g4{background:linear-gradient(135deg,#F0A63C,var(--accent))}
+.av.g5{background:linear-gradient(135deg,#9B6BF0,var(--sky))}
+.av.shop{border-radius:10px;background:var(--ink);color:var(--lime);font-size:13px}
+.post-who{flex:1;min-width:0;line-height:1.2}
+.post-who strong{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:4px}
+.post-who small{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-top:1px}
+.verif{width:13px;height:13px;background:var(--lime);border:1px solid var(--ink);border-radius:50%;display:inline-grid;place-items:center;flex:0 0 auto}
+.verif svg{width:8px;height:8px;stroke:var(--lime-ink);fill:none;stroke-width:3.5}
+.follow-btn{
+  background:var(--accent);color:var(--accent-ink);border:1.5px solid var(--ink);
+  padding:4px 11px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;flex:0 0 auto;
+}
+.follow-btn.on{background:var(--paper-2);color:var(--muted)}
+.kebab{background:none;border:none;color:var(--muted);font-size:19px;line-height:1;padding:2px 4px;flex:0 0 auto}
+
+/* video */
+.vid{
+  position:relative;aspect-ratio:9/12;border-radius:12px;overflow:hidden;
+  border:1.5px solid var(--ink);
+}
+.vid::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 32% 68%,rgba(255,255,255,.09) 0%,transparent 62%),
+             repeating-linear-gradient(90deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px);
+}
+.vid .skater{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);width:58%;color:rgba(0,0,0,.75)}
+.vid-play{position:absolute;inset:0;display:grid;place-items:center;transition:opacity .2s}
+.vid-play svg{width:58px;height:58px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+.vid.playing .vid-play{opacity:0}
+.vid-bar{
+  position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(241,234,219,.25);
+}
+.vid-bar i{display:block;height:100%;width:0;background:var(--accent)}
+.vid.playing .vid-bar i{animation:prog 5s linear forwards}
+@keyframes prog{to{width:100%}}
+.vid-meta{
+  position:absolute;left:8px;right:8px;bottom:10px;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:6px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+}
+.tag-spot{background:rgba(15,14,13,.72);color:#F1EADB;padding:4px 7px;border-radius:4px;display:inline-flex;gap:4px;align-items:center;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag-trick{background:var(--accent);color:var(--accent-ink);padding:4px 7px;font-weight:700;border:1px solid #0F0E0D;border-radius:4px;white-space:nowrap}
+.vid-live{
+  position:absolute;top:8px;left:8px;background:var(--accent);color:var(--accent-ink);
+  font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.08em;
+  padding:3px 7px;border-radius:3px;border:1px solid var(--ink);
+}
+
+/* gradients for videos */
+.g-a{background:linear-gradient(160deg,#2A2521,#504438 60%,#7A6650)}
+.g-b{background:linear-gradient(160deg,#1E2A33,#3B5A6B 60%,#6E93A5)}
+.g-c{background:linear-gradient(160deg,#33231E,#6B4436 60%,#A57A5E)}
+.g-d{background:linear-gradient(160deg,#232A1E,#455A36 60%,#7D9A5E)}
+.g-e{background:linear-gradient(160deg,#2A1E33,#553B6B 60%,#8A6EA5)}
+.g-f{background:linear-gradient(160deg,#332A1E,#6B5A36 60%,#A5915E)}
+
+.acts{display:flex;gap:6px;padding:10px 0 5px;align-items:center}
+.act{
+  background:none;border:none;padding:5px 6px;color:var(--ink);
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;
+  border-radius:8px;transition:transform .12s;
+}
+.act:active{transform:scale(.9)}
+.act svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}
+.act.on{color:var(--accent)}
+.act.on svg{fill:var(--accent);stroke:var(--accent)}
+.act.save{margin-left:auto}
+.act.save.on svg{fill:var(--ink);stroke:var(--ink)}
+.cap{font-size:12.5px;line-height:1.45;padding-top:3px;color:var(--ink-2)}
+.cap b{color:var(--ink);font-weight:700}
+.cap .mention{color:var(--accent);font-weight:700}
+.cap-more{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10.5px;padding-top:6px;display:block;background:none;border:none;letter-spacing:.04em;text-transform:uppercase}
+
+/* listing card */
+.listing{
+  display:flex;gap:11px;padding:11px;border:1.5px solid var(--ink);
+  background:var(--paper-2);border-radius:12px;align-items:center;
+}
+.thumb-sq{
+  width:70px;height:70px;border:1.5px solid var(--ink);border-radius:7px;
+  position:relative;flex:0 0 auto;overflow:hidden;
+}
+.p-shape{background:linear-gradient(135deg,#C48054,#6D4327)}
+.p-shape::before{content:"";position:absolute;left:18%;right:18%;top:8%;bottom:8%;border:2px solid #4C2E15;border-radius:44%;background:repeating-linear-gradient(90deg,rgba(0,0,0,.16) 0 3px,transparent 3px 6px)}
+.p-truck{background:linear-gradient(135deg,#B8B8C0,#4A4A55)}
+.p-truck::before{content:"";position:absolute;left:12%;right:12%;top:40%;height:14%;background:#6A6A75;border:1.5px solid #2A2A32;border-radius:3px}
+.p-truck::after{content:"";position:absolute;left:30%;right:30%;top:22%;height:20%;background:#8F8F9A;border:1.5px solid #2A2A32;transform:skewX(-12deg)}
+.p-wheel{background:linear-gradient(135deg,#F1EADB,#C7BFA9)}
+.p-wheel::before{content:"";position:absolute;inset:18%;border:2px solid #4A4238;border-radius:50%}
+.p-wheel::after{content:"";position:absolute;inset:38%;background:#2A2521;border-radius:50%}
+.p-tenis{background:linear-gradient(135deg,#2A2521,#4A4238)}
+.p-tenis::before{content:"";position:absolute;left:12%;right:12%;bottom:22%;height:28%;background:#D8D0C0;border:1.5px solid #14100C;border-radius:4px 12px 4px 4px}
+.p-bearing{background:linear-gradient(135deg,#D8D8E0,#6A6A78)}
+.p-bearing::before{content:"";position:absolute;inset:22%;border:3px solid #3A3A45;border-radius:50%;background:radial-gradient(circle,#EFEFF5 40%,#8A8A98 70%)}
+.p-lixa{background:linear-gradient(135deg,#2A2521,#151310)}
+.p-lixa::before{content:"";position:absolute;inset:14%;background:repeating-linear-gradient(45deg,rgba(255,255,255,.06) 0 2px,transparent 2px 4px);border:1px solid #0A0908}
+.p-parts{background:linear-gradient(135deg,#8A6A4A,#3A2A1A)}
+.p-parts::before{content:"";position:absolute;inset:26%;background:#C0B090;border-radius:50%;box-shadow:0 0 0 3px #5A4A32}
+
+.listing-info{flex:1;min-width:0;line-height:1.3}
+.listing-info strong{display:block;font-size:13px;font-weight:700}
+.listing-info small{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.price{font-family:'Anton',sans-serif;font-size:22px;color:var(--accent);line-height:1;text-align:right;flex:0 0 auto}
+.price small{display:block;font-size:8.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.05em;margin-top:3px;font-weight:400}
+.badge{
+  display:inline-block;font-family:'JetBrains Mono',monospace;
+  font-size:8.5px;font-weight:700;padding:2px 6px;letter-spacing:.08em;
+  border-radius:3px;margin-top:4px;
+}
+.badge.used{background:var(--lime);color:var(--lime-ink)}
+.badge.new{background:var(--accent);color:var(--accent-ink)}
+
+/* spot mini card in feed */
+.spot-mini{
+  display:flex;gap:10px;align-items:center;padding:11px;
+  border:1.5px solid var(--ink);border-radius:12px;background:var(--paper-2);
+}
+.spot-mini .pinbox{
+  width:44px;height:44px;border-radius:10px;flex:0 0 auto;
+  background:var(--accent);color:var(--accent-ink);border:1.5px solid var(--ink);
+  display:grid;place-items:center;
+}
+.spot-mini .pinbox.lime{background:var(--lime);color:var(--lime-ink)}
+.spot-mini .pinbox svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.spot-mini .info{flex:1;min-width:0;line-height:1.25}
+.spot-mini .info strong{display:block;font-size:13.5px}
+.spot-mini .info small{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+/* ============================================================
+   MAP
+   ============================================================ */
+.map-wrap{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.map-canvas{
+  flex:1;position:relative;overflow:hidden;
+  background:radial-gradient(circle at 62% 28%,rgba(183,236,46,.16) 0,transparent 44%),
+             radial-gradient(circle at 24% 72%,rgba(255,59,31,.13) 0,transparent 40%),
+             linear-gradient(180deg,#E8DFC8,#D3C6A8);
+}
+:root:not([data-theme="light"]) .map-canvas,:root[data-theme="dark"] .map-canvas{
+  background:radial-gradient(circle at 62% 28%,rgba(199,245,63,.10) 0,transparent 48%),
+             radial-gradient(circle at 24% 72%,rgba(255,66,34,.10) 0,transparent 44%),
+             linear-gradient(180deg,#191613,#0D0C0B);
+}
+.map-svg{position:absolute;inset:0;width:100%;height:100%;color:var(--ink)}
+.pin{
+  position:absolute;transform:translate(-50%,-100%);
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;
+  filter:drop-shadow(2px 3px 0 var(--shadow));
+  z-index:4;background:none;border:none;padding:0;
+}
+.pin:active{transform:translate(-50%,-104%) scale(.96)}
+.pin .body{
+  background:var(--accent);color:var(--accent-ink);
+  padding:5px 9px;border:1.5px solid var(--ink);border-radius:999px;
+  display:flex;align-items:center;gap:5px;max-width:130px;
+}
+.pin .body svg{width:11px;height:11px;flex:0 0 auto}
+.pin.pista .body{background:var(--lime);color:var(--lime-ink)}
+.pin.me .body{background:var(--ink);color:var(--paper)}
+.pin.sel{z-index:6}
+.pin.sel .body{outline:3px solid var(--ink);outline-offset:2px}
+.pin::after{
+  content:"";border-left:5px solid transparent;border-right:5px solid transparent;
+  border-top:8px solid var(--ink);margin-top:-1px;
+}
+.pin .live-badge{
+  position:absolute;top:-7px;right:-7px;background:var(--ink);color:var(--paper);
+  border:1.5px solid var(--paper);border-radius:999px;font-size:8px;padding:1px 5px;
+}
+.map-ctl{
+  position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;z-index:8;
+}
+.map-ctl button{
+  width:42px;height:42px;border-radius:12px;background:var(--paper);
+  border:1.5px solid var(--ink);display:grid;place-items:center;color:var(--ink);
+  box-shadow:2px 3px 0 var(--shadow);
+}
+.map-ctl button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+.spot-card{
+  position:absolute;left:10px;right:10px;bottom:10px;z-index:10;
+  background:var(--paper);border:1.5px solid var(--ink);border-radius:18px;padding:14px;
+  box-shadow:3px 5px 0 var(--shadow);
+  animation:slideUp .22s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.spot-card .x{position:absolute;top:8px;right:10px;background:none;border:none;font-size:19px;color:var(--muted);line-height:1;padding:2px}
+.spot-card h3{font-family:'Anton',sans-serif;font-size:21px;margin:0 0 4px;text-transform:uppercase;line-height:1;padding-right:22px}
+.spot-card .sub{font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.rate-box{
+  background:var(--lime);color:var(--lime-ink);border:1.5px solid var(--ink);
+  font-family:'Anton',sans-serif;font-size:20px;padding:4px 9px;line-height:1;text-align:center;flex:0 0 auto;border-radius:6px;
+}
+.rate-box small{display:block;font-size:7.5px;font-family:'JetBrains Mono',monospace;margin-top:2px;letter-spacing:.06em}
+.tagrow{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.tagrow span{
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 7px;
+  background:var(--paper-2);border:1px solid var(--line-2);border-radius:4px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.live-row{
+  margin-top:11px;padding-top:10px;border-top:1px dashed var(--line-2);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;
+}
+.ldot{display:inline-block;width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.6s ease-in-out infinite;margin-right:5px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.ldot{animation:none}.vid.playing .vid-bar i{animation:none;width:100%}}
+.btn-pill{
+  background:var(--accent);color:var(--accent-ink);border:1.5px solid var(--ink);
+  padding:7px 13px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:10px;
+  text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;
+}
+.btn-pill.ghost{background:var(--paper);color:var(--ink)}
+.btn-pill.lime{background:var(--lime);color:var(--lime-ink)}
+.btn-pill.dark{background:var(--ink);color:var(--paper)}
+
+/* spot detail */
+.spot-hero{position:relative;height:210px;overflow:hidden;background:linear-gradient(150deg,#6D6152,#302923)}
+.spot-hero.pista{background:linear-gradient(150deg,#4E6B7A,#1E2A33)}
+.spot-hero::before{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 22px),
+             repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 1px,transparent 1px 42px);
+}
+.spot-hero .rail{position:absolute;left:8%;right:-6%;top:58%;height:9px;background:linear-gradient(180deg,#C9BFA6,#7D735E);transform:rotate(-6deg);box-shadow:0 5px 0 rgba(0,0,0,.32)}
+.spot-hero .stairs{position:absolute;right:-8%;bottom:-4%;width:58%;height:56%;background:repeating-linear-gradient(90deg,#3D362D 0 20px,#4E4638 20px 40px);clip-path:polygon(0 100%,100% 0,100% 100%)}
+.spot-hero .bowl{position:absolute;left:50%;bottom:-40%;transform:translateX(-50%);width:130%;height:90%;border-radius:50%;border:14px solid rgba(200,190,170,.35);border-bottom:none}
+.hero-back{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;z-index:5;
+  width:36px;height:36px;border-radius:50%;background:var(--paper);border:1.5px solid var(--ink);
+  display:grid;place-items:center;color:var(--ink);
+}
+.hero-back svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2}
+.hero-chip{
+  position:absolute;left:12px;bottom:12px;
+  background:var(--paper);color:var(--ink);border:1.5px solid var(--ink);
+  padding:4px 9px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.hero-count{
+  position:absolute;right:12px;bottom:12px;
+  background:rgba(15,14,13,.7);color:#F1EADB;padding:4px 9px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;
+}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:12px 16px}
+.stat{background:var(--paper-2);border:1.5px solid var(--ink);padding:10px 6px;text-align:center;border-radius:8px}
+.stat .n{font-family:'Anton',sans-serif;font-size:22px;line-height:1}
+.stat .l{font-family:'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;color:var(--muted);letter-spacing:.06em;margin-top:3px}
+.stat.hot{background:var(--accent);color:var(--accent-ink);border-color:var(--ink)}
+.stat.hot .l{color:var(--accent-ink);opacity:.82}
+.alert{
+  margin:0 16px 14px;padding:11px 12px;background:var(--accent);color:var(--accent-ink);
+  border:1.5px solid var(--ink);border-radius:10px;font-size:11.5px;line-height:1.35;display:flex;gap:9px;
+}
+.alert svg{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2.2}
+.alert b{display:block;font-family:'JetBrains Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.sec-head{
+  padding:6px 16px 8px;display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+}
+.sec-head .link{background:none;border:none;color:var(--accent);font:inherit;text-transform:uppercase}
+.hscroll{display:flex;gap:8px;overflow-x:auto;padding:0 16px 14px;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.hclip{
+  flex:0 0 auto;width:104px;aspect-ratio:9/13;border-radius:9px;
+  border:1.5px solid var(--ink);position:relative;overflow:hidden;
+}
+.hclip .pl{position:absolute;top:5px;right:6px;color:#F1EADB;font-size:11px}
+.hclip .tk{
+  position:absolute;left:4px;right:4px;bottom:4px;
+  font-family:'JetBrains Mono',monospace;font-size:7.5px;font-weight:700;
+  background:rgba(15,14,13,.72);color:#F1EADB;padding:2px 4px;border-radius:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;
+}
+.who-row{display:flex;gap:-6px;padding:0 16px 14px;align-items:center}
+.who-row .av{margin-right:-10px;border-width:2px;border-color:var(--paper)}
+.who-row .more{
+  margin-left:16px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.cta-row{display:flex;gap:8px;padding:0 16px 16px}
+.cta-row button{flex:1;padding:13px 10px;border-radius:12px;border:1.5px solid var(--ink);font-family:'Anton',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.03em}
+.cta-main{background:var(--accent);color:var(--accent-ink)}
+.cta-alt{background:var(--paper-2);color:var(--ink)}
+
+/* ============================================================
+   SHOP
+   ============================================================ */
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px}
+.card{
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:12px;
+  overflow:hidden;position:relative;text-align:left;padding:0;
+}
+.card:active{transform:scale(.98)}
+.card .img{aspect-ratio:1;position:relative;overflow:hidden}
+.card .body{padding:9px 11px 11px}
+.card .brand{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.card .nm{font-size:11.5px;font-weight:700;line-height:1.25;margin:3px 0 7px;min-height:29px}
+.card .ft{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.card .pr{font-family:'Anton',sans-serif;font-size:18px;color:var(--accent);line-height:1}
+.card .sh{font-family:'JetBrains Mono',monospace;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%}
+.tag-tl{
+  position:absolute;top:6px;left:6px;background:var(--paper);color:var(--ink);
+  border:1px solid var(--ink);font-family:'JetBrains Mono',monospace;
+  font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase;
+}
+.tag-tl.lime{background:var(--lime);color:var(--lime-ink)}
+.ver-tr{
+  position:absolute;top:6px;right:6px;width:21px;height:21px;border-radius:50%;
+  background:var(--lime);color:var(--lime-ink);border:1px solid var(--ink);display:grid;place-items:center;
+}
+.ver-tr svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:3.2}
+.fav-tr{
+  position:absolute;bottom:6px;right:6px;width:26px;height:26px;border-radius:50%;
+  background:var(--paper);border:1.5px solid var(--ink);display:grid;place-items:center;color:var(--ink);
+}
+.fav-tr svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.fav-tr.on svg{fill:var(--accent);stroke:var(--accent)}
+
+/* shop banner */
+.shop-banner{
+  margin:12px 14px 4px;padding:13px;border:1.5px solid var(--ink);border-radius:14px;
+  background:var(--ink);color:var(--paper);display:flex;gap:12px;align-items:center;
+}
+.shop-banner .logo{
+  width:46px;height:46px;border-radius:11px;background:var(--lime);color:var(--lime-ink);
+  display:grid;place-items:center;font-family:'Anton',sans-serif;font-size:18px;flex:0 0 auto;
+}
+.shop-banner .t{flex:1;line-height:1.3;min-width:0}
+.shop-banner .t strong{display:block;font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;letter-spacing:.02em}
+.shop-banner .t small{font-family:'JetBrains Mono',monospace;font-size:9.5px;opacity:.75;text-transform:uppercase;letter-spacing:.05em}
+
+/* product detail */
+.pd-img{aspect-ratio:1;position:relative;border-bottom:1.5px solid var(--ink)}
+.pd-body{padding:16px}
+.pd-brand{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.pd-name{font-family:'Anton',sans-serif;font-size:26px;margin:5px 0 10px;text-transform:uppercase;line-height:1.02;letter-spacing:.02em}
+.pd-price{font-family:'Anton',sans-serif;font-size:36px;color:var(--accent);line-height:1}
+.pd-price small{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);display:block;letter-spacing:.05em;margin-top:4px;text-transform:uppercase}
+.pd-seller{
+  display:flex;gap:11px;align-items:center;margin:16px 0;padding:12px;
+  border:1.5px solid var(--ink);border-radius:12px;background:var(--paper-2);
+}
+.pd-specs{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.pd-specs .r{display:flex;justify-content:space-between;padding:11px 13px;background:var(--paper);font-size:12.5px}
+.pd-specs .r span:first-child{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;align-self:center}
+.pd-specs .r span:last-child{font-weight:700}
+.pd-desc{font-size:13.5px;line-height:1.55;color:var(--ink-2);margin-bottom:18px}
+.sticky-buy{
+  flex:0 0 auto;padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 14px);
+  border-top:1.5px solid var(--ink);background:var(--paper);display:flex;gap:9px;
+}
+.sticky-buy button{flex:1;padding:14px;border-radius:14px;border:1.5px solid var(--ink);font-family:'Anton',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.03em}
+.sticky-buy .b1{background:var(--paper-2);color:var(--ink);flex:0 0 auto;padding:14px 18px}
+.sticky-buy .b2{background:var(--accent);color:var(--accent-ink)}
+
+/* ============================================================
+   PROFILE
+   ============================================================ */
+.cover{
+  height:132px;position:relative;
+  background:radial-gradient(circle at 28% 42%,var(--lime) 0,transparent 42%),
+             radial-gradient(circle at 72% 58%,var(--accent) 0,transparent 42%),var(--ink);
+}
+.cover .av{position:absolute;left:18px;bottom:-32px;border:3px solid var(--paper)}
+.cover .edit{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:14px;
+  background:var(--paper);color:var(--ink);border:1.5px solid var(--ink);
+  padding:6px 12px;border-radius:999px;
+  font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.prof-body{padding:42px 18px 10px}
+.prof-body h2{font-family:'Anton',sans-serif;font-size:23px;margin:0;text-transform:uppercase;letter-spacing:.02em;line-height:1.05}
+.prof-body .h{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);letter-spacing:.05em;margin-top:2px}
+.prof-body .bio{font-size:12.5px;margin-top:7px;color:var(--ink-2);line-height:1.45}
+.badges{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
+.badges span{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:3px 7px;
+  background:var(--paper-2);border:1px solid var(--line-2);border-radius:4px;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.badges .crew{background:var(--lime);color:var(--lime-ink);border-color:var(--ink)}
+.badges .lvl{background:var(--accent);color:var(--accent-ink);border-color:var(--ink)}
+.stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:10px 18px 14px}
+.stat4 div{text-align:center}
+.stat4 .n{font-family:'Anton',sans-serif;font-size:19px;line-height:1}
+.stat4 .l{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 6px 8px}
+.grid3 .t{aspect-ratio:1;position:relative;overflow:hidden;border:none;padding:0}
+.grid3 .t .pl{position:absolute;top:4px;right:5px;color:#F1EADB;font-size:10px}
+.grid3 .t .lk{
+  position:absolute;left:4px;bottom:4px;color:#F1EADB;
+  font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
+  text-shadow:0 1px 3px rgba(0,0,0,.7);
+}
+.rowlist{padding:12px 16px;display:flex;flex-direction:column;gap:9px}
+.rowitem{
+  display:flex;align-items:center;gap:11px;padding:11px;
+  border:1.5px solid var(--ink);border-radius:10px;background:var(--paper-2);text-align:left;width:100%;
+}
+.rowitem .ic{
+  width:38px;height:38px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--accent);color:var(--accent-ink);border:1.5px solid var(--ink);
+  font-family:'Anton',sans-serif;font-size:16px;
+}
+.rowitem .ic.lime{background:var(--lime);color:var(--lime-ink)}
+.rowitem .ic.dark{background:var(--ink);color:var(--paper)}
+.rowitem .ic svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2}
+.rowitem .tx{flex:1;min-width:0;line-height:1.25}
+.rowitem .tx strong{display:block;font-size:13px}
+.rowitem .tx small{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.rowitem .rt{font-family:'Anton',sans-serif;font-size:18px;color:var(--accent);flex:0 0 auto}
+.rowitem .ch{color:var(--muted);font-size:20px;flex:0 0 auto}
+
+/* ============================================================
+   SEARCH / NOTIFICATIONS / MESSAGES
+   ============================================================ */
+.searchbar{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}
+.searchbar .box{
+  flex:1;display:flex;gap:8px;align-items:center;background:var(--paper-2);
+  border:1.5px solid var(--ink);border-radius:999px;padding:9px 14px;
+}
+.searchbar .box svg{width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:2;flex:0 0 auto}
+.searchbar input{background:none;border:none;outline:none;flex:1;font-size:14px;min-width:0}
+.searchbar input::placeholder{color:var(--muted)}
+.searchbar .cancel{background:none;border:none;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.notif{display:flex;gap:11px;padding:13px 16px;border-bottom:1px solid var(--line);align-items:flex-start;text-align:left;width:100%;background:none;border-left:none;border-right:none;border-top:none}
+.notif.unread{background:var(--paper-2)}
+.notif .tx{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink-2)}
+.notif .tx b{color:var(--ink)}
+.notif .tm{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;display:block}
+.notif .mini{width:40px;height:48px;border-radius:5px;border:1.5px solid var(--ink);flex:0 0 auto;position:relative;overflow:hidden}
+.chatrow{display:flex;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center;text-align:left;width:100%;background:none;border-left:none;border-right:none;border-top:none}
+.chatrow .tx{flex:1;min-width:0}
+.chatrow .tx strong{display:block;font-size:13.5px}
+.chatrow .tx small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.chatrow .meta{text-align:right;flex:0 0 auto}
+.chatrow .meta .t{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)}
+.chatrow .meta .u{background:var(--accent);color:var(--accent-ink);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:1px 6px;margin-top:4px;display:inline-block}
+.bubbles{padding:14px 14px 6px;display:flex;flex-direction:column;gap:9px}
+.bub{max-width:76%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.4;border:1.5px solid var(--ink)}
+.bub.them{align-self:flex-start;background:var(--paper-2);border-bottom-left-radius:5px}
+.bub.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:5px}
+.bub .t{display:block;font-family:'JetBrains Mono',monospace;font-size:8.5px;opacity:.6;margin-top:4px}
+.composer{
+  flex:0 0 auto;display:flex;gap:9px;padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 12px);
+  border-top:1.5px solid var(--line);background:var(--paper);align-items:flex-end;
+}
+.composer .fld{
+  flex:1;background:var(--paper-2);border:1.5px solid var(--ink);border-radius:22px;
+  padding:10px 15px;font-size:14px;outline:none;resize:none;max-height:88px;line-height:1.4;
+}
+.composer .send{
+  width:42px;height:42px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+  border:1.5px solid var(--ink);display:grid;place-items:center;flex:0 0 auto;
+}
+.composer .send svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2}
+
+/* ============================================================
+   TAB BAR
+   ============================================================ */
+.tabbar{
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+  padding:7px 6px calc(env(safe-area-inset-bottom,0px) + 10px);
+  border-top:1px solid var(--line);background:var(--paper);
+  position:relative;z-index:25;
+}
+.tabbar button{
+  background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:7px 2px;border-radius:12px;color:var(--muted);
+  font-family:'JetBrains Mono',monospace;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;
+}
+.tabbar button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8}
+.tabbar button.on{color:var(--ink)}
+.tabbar button.on svg{stroke:var(--accent)}
+.tabbar .plus{
+  background:var(--accent);color:var(--accent-ink);margin-top:-20px;
+  border-radius:999px;padding:11px 2px;border:3px solid var(--paper);
+  box-shadow:0 5px 16px rgba(255,59,31,.4);
+}
+.tabbar .plus svg{stroke:var(--accent-ink);width:26px;height:26px}
+.tabbar .plus span{display:none}
+.tabbar button .nbadge{
+  position:absolute;top:4px;margin-left:16px;width:7px;height:7px;background:var(--accent);
+  border-radius:50%;border:1.5px solid var(--paper);
+}
+
+/* ============================================================
+   SHEETS / OVERLAY / TOAST
+   ============================================================ */
+.ovl{position:absolute;inset:0;background:var(--overlay);z-index:60;opacity:0;pointer-events:none;transition:opacity .22s}
+.ovl.on{opacity:1;pointer-events:auto}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:70;
+  background:var(--paper);border-radius:26px 26px 0 0;
+  display:flex;flex-direction:column;max-height:90%;
+  transform:translateY(101%);transition:transform .28s cubic-bezier(.25,.9,.3,1);
+  box-shadow:0 -12px 34px rgba(0,0,0,.28);
+}
+.sheet.on{transform:translateY(0)}
+.sheet .grab{width:40px;height:4px;background:var(--line-2);border-radius:99px;margin:9px auto 6px;flex:0 0 auto}
+.sheet .shead{
+  padding:6px 18px 13px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  border-bottom:1px solid var(--line);flex:0 0 auto;
+}
+.sheet .shead h3{font-family:'Anton',sans-serif;font-size:20px;margin:0;text-transform:uppercase;letter-spacing:.02em}
+.sheet .shead .step{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sheet .sx{background:none;border:none;font-size:22px;color:var(--muted);line-height:1;padding:0 2px}
+.sheet .sbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.sheet .sfoot{
+  flex:0 0 auto;padding:11px 18px calc(env(safe-area-inset-bottom,0px) + 16px);
+  border-top:1px solid var(--line);display:flex;gap:9px;
+}
+.sheet .sfoot button{
+  flex:1;padding:13px;border-radius:999px;border:1.5px solid var(--ink);
+  font-family:'Anton',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.03em;
+}
+.b-back{background:var(--paper-2);color:var(--ink);flex:0 0 auto;padding:13px 20px}
+.b-next{background:var(--accent);color:var(--accent-ink)}
+.b-pub{background:var(--ink);color:var(--paper);box-shadow:0 4px 0 var(--accent)}
+
+/* comments */
+.cmt{display:flex;gap:10px;padding:11px 16px}
+.cmt .tx{flex:1;min-width:0}
+.cmt .tx .hd{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.cmt .tx strong{font-size:12.5px}
+.cmt .tx .tm{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.04em}
+.cmt .tx p{margin:3px 0 0;font-size:13px;line-height:1.42;color:var(--ink-2);word-wrap:break-word}
+.cmt .tx .rp{background:none;border:none;padding:5px 0 0;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.cmt .hb{background:none;border:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px;flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:9px}
+.cmt .hb svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+.cmt .hb.on{color:var(--accent)}
+.cmt .hb.on svg{fill:var(--accent);stroke:var(--accent)}
+
+/* option list sheet */
+.optlist{display:flex;flex-direction:column;padding:6px 0}
+.optlist button{
+  display:flex;align-items:center;gap:13px;padding:15px 20px;background:none;border:none;
+  text-align:left;font-size:14.5px;color:var(--ink);width:100%;
+}
+.optlist button:active{background:var(--paper-2)}
+.optlist button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;flex:0 0 auto}
+.optlist button.danger{color:var(--accent)}
+
+/* post wizard */
+.typepick{display:flex;flex-direction:column;gap:11px;padding:18px}
+.typepick button{
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:14px;
+  padding:17px 15px;display:flex;gap:13px;align-items:center;text-align:left;
+}
+.typepick button:active{transform:scale(.98)}
+.typepick .ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;background:var(--ink);color:var(--paper)}
+.typepick .ic svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2}
+.typepick .t1 .ic{background:var(--accent);color:var(--accent-ink)}
+.typepick .t2 .ic{background:var(--lime);color:var(--lime-ink)}
+.typepick .t3 .ic{background:var(--ink);color:var(--paper)}
+.typepick .inf{flex:1;min-width:0}
+.typepick .inf strong{display:block;font-family:'Anton',sans-serif;font-size:19px;text-transform:uppercase;letter-spacing:.02em;line-height:1;color:var(--ink)}
+.typepick .inf small{display:block;font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.35}
+.typepick .ar{color:var(--muted);font-size:21px}
+
+.wiz{padding:18px}
+.mediabox{
+  aspect-ratio:9/12;max-height:250px;margin:0 auto 14px;
+  border:1.5px solid var(--ink);border-radius:14px;display:grid;place-items:center;
+  position:relative;overflow:hidden;color:#F1EADB;
+}
+.mediabox::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(0,0,0,.12) 0 2px,transparent 2px 4px)}
+.mediabox .ic{position:relative;z-index:2;opacity:.92}
+.mediabox .ic svg{width:42px;height:42px}
+.mediabox .rec{
+  position:absolute;top:9px;left:9px;z-index:3;background:var(--accent);color:var(--accent-ink);
+  font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;padding:3px 7px;border-radius:3px;letter-spacing:.08em;
+}
+.src2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
+.src2 button{
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:11px;padding:13px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);
+}
+.src2 button.on{background:var(--ink);color:var(--paper)}
+.src2 button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9}
+.tgl-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border:1.5px solid var(--ink);background:var(--paper-2);border-radius:11px;
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px;
+}
+.tgl{width:42px;height:23px;background:var(--line-2);border-radius:999px;position:relative;flex:0 0 auto;border:none;padding:0;transition:background .18s}
+.tgl::before{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;background:var(--paper);border-radius:50%;transition:left .18s}
+.tgl.on{background:var(--accent)}
+.tgl.on::before{left:21px}
+
+.fld-g{display:flex;flex-direction:column;gap:6px;margin-bottom:15px}
+.fld-g label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.fld-g input,.fld-g textarea,.fld-g select{
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:9px;
+  padding:11px 13px;font-size:13.5px;width:100%;outline:none;
+}
+.fld-g textarea{resize:none;min-height:66px;line-height:1.45}
+.fld-g input:focus,.fld-g textarea:focus,.fld-g select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.fld-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.hint{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;line-height:1.5}
+.hint b{color:var(--ink)}
+.hint-box{background:var(--paper-2);padding:11px;border-radius:9px;border:1px dashed var(--line-2)}
+.pickrow{display:flex;gap:6px;flex-wrap:wrap}
+.pk{
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:999px;
+  padding:7px 11px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);
+}
+.pk.on{background:var(--accent);color:var(--accent-ink)}
+.pk.sq{border-radius:5px}
+.pk.sq.on{background:var(--lime);color:var(--lime-ink)}
+.gpsrow{
+  display:flex;gap:11px;align-items:center;padding:11px 13px;
+  background:var(--paper-2);border:1.5px solid var(--ink);border-radius:10px;text-align:left;width:100%;
+}
+.gpsrow svg{width:20px;height:20px;color:var(--accent);stroke:currentColor;fill:none;stroke-width:2;flex:0 0 auto}
+.gpsrow .i{flex:1;min-width:0;line-height:1.25}
+.gpsrow .i strong{display:block;font-size:13px}
+.gpsrow .i small{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stars{display:flex;gap:5px}
+.stars button{background:none;border:none;font-size:30px;color:var(--line-2);padding:0;line-height:1}
+.stars button.on{color:var(--accent)}
+
+/* toast */
+.toast{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 60px);left:18px;right:18px;z-index:200;
+  background:var(--lime);color:var(--lime-ink);border:1.5px solid var(--ink);
+  border-radius:13px;padding:12px 15px;display:flex;align-items:center;gap:9px;
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;line-height:1.35;
+  box-shadow:3px 4px 0 var(--shadow);
+  transform:translateY(-140px);transition:transform .3s cubic-bezier(.25,.9,.3,1);pointer-events:none;
+}
+.toast.on{transform:translateY(0)}
+.toast svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:3;flex:0 0 auto}
+.toast.red{background:var(--accent);color:var(--accent-ink)}
+
+/* empty state */
+.empty{padding:56px 30px;text-align:center;color:var(--muted)}
+.empty .big{font-size:38px;margin-bottom:12px;opacity:.5}
+.empty h4{font-family:'Anton',sans-serif;font-size:19px;color:var(--ink);margin:0 0 7px;text-transform:uppercase;letter-spacing:.02em}
+.empty p{font-size:13px;margin:0;line-height:1.5}
+
+/* desktop side note */
+#frame-note h2{font-family:'Anton',sans-serif;font-size:34px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+#frame-note h2 .sl{color:var(--accent)}
+#frame-note p{font-size:14px;color:var(--ink-2);line-height:1.55;margin:0 0 16px}
+#frame-note ul{list-style:none;padding:0;margin:0 0 18px;display:flex;flex-direction:column;gap:9px}
+#frame-note li{display:flex;gap:10px;font-size:13px;color:var(--ink-2);line-height:1.4}
+#frame-note li::before{content:"→";color:var(--accent);font-weight:700;flex:0 0 auto}
+#frame-note li b{color:var(--ink)}
+#frame-note .themebtn{
+  background:none;border:1.5px solid var(--line-2);color:var(--ink);
+  padding:9px 15px;border-radius:999px;font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;
+}
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <div id="app">
+    <div id="root"></div>
+
+    <!-- toast -->
+    <div class="toast" id="toast">
+      <svg viewBox="0 0 20 20"><path d="M3 10l4 4 10-10"/></svg>
+      <span id="toast-msg"></span>
+    </div>
+
+    <!-- overlay + sheet -->
+    <div class="ovl" id="ovl"></div>
+    <div class="sheet" id="sheet">
+      <div class="grab"></div>
+      <div class="shead">
+        <h3 id="sh-title">—</h3>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="step" id="sh-step"></span>
+          <button class="sx" id="sh-x">✕</button>
+        </div>
+      </div>
+      <div class="sbody" id="sh-body"></div>
+      <div class="sfoot" id="sh-foot" style="display:none"></div>
+    </div>
+
+    <!-- tab bar -->
+    <nav class="tabbar" id="tabbar">
+      <button data-tab="feed" class="on">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg><span>Feed</span>
+      </button>
+      <button data-tab="mapa">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span>Mapa</span>
+      </button>
+      <button data-tab="post" class="plus">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>+</span>
+      </button>
+      <button data-tab="loja">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16l-2 12H6z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg><span>Loja</span>
+      </button>
+      <button data-tab="perfil">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Eu</span>
+      </button>
+    </nav>
+  </div>
+
+  <aside id="frame-note">
+    <h2>KICK<span class="sl">/</span>PUSH</h2>
+    <p>Protótipo navegável. Tudo o que dá pra tocar, responde.</p>
+    <ul>
+      <li><b>Feed</b> — curta, salve, siga, abra os comentários e escreva o seu.</li>
+      <li><b>Mapa</b> — toque nos pins, abra a ficha completa do spot, faça check-in.</li>
+      <li><b>Loja</b> — filtre categorias, abra o produto, favorite, adicione à sacola.</li>
+      <li><b>Eu</b> — vídeos, spots, setup e salvos.</li>
+      <li><b>Botão +</b> — poste manobra, spot ou peça. O item aparece de verdade.</li>
+    </ul>
+    <button class="themebtn" id="themebtn">Trocar tema</button>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rid = (()=>{ let n=1000; return ()=>++n; })();
+
+const ICON = {
+  heart:'<svg viewBox="0 0 20 20"><path d="M10 17.5s-6.4-4.3-6.4-9.2A3.9 3.9 0 0 1 10 5.2a3.9 3.9 0 0 1 6.4 3.1c0 4.9-6.4 9.2-6.4 9.2z"/></svg>',
+  chat:'<svg viewBox="0 0 20 20"><path d="M3 4.5h14v9.5H8l-4 3.2z"/></svg>',
+  send:'<svg viewBox="0 0 20 20"><path d="M17.5 2.5 2.5 9.2l5.6 2.7 2.7 5.6z"/></svg>',
+  bookmark:'<svg viewBox="0 0 20 20"><path d="M5 2.5h10v15l-5-3.2-5 3.2z"/></svg>',
+  search:'<svg viewBox="0 0 20 20"><circle cx="9" cy="9" r="6"/><path d="m17 17-3.4-3.4"/></svg>',
+  bell:'<svg viewBox="0 0 20 20"><path d="M10 2.5a5 5 0 0 0-5 5v3l-1.5 2.5h13L15 10.5v-3a5 5 0 0 0-5-5z"/><path d="M8 15.5a2 2 0 0 0 4 0"/></svg>',
+  dm:'<svg viewBox="0 0 20 20"><path d="M2.5 4.5h15v11h-15z"/><path d="m2.5 5.5 7.5 5 7.5-5"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  ramp:'<svg viewBox="0 0 20 20"><path d="M2 15q8-12 16 0"/></svg>',
+  tri:'<svg viewBox="0 0 20 20" fill="currentColor" stroke="none"><path d="M10 3 18 17H2z"/></svg>',
+  back:'<svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg>',
+  check:'<svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6"/></svg>',
+  alert:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/><path d="M10 5.5v5M10 14h.01"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="13.5" rx="2.5"/><circle cx="12" cy="13" r="4"/><path d="M14.5 6.5 13 3.8h-2L9.5 6.5"/></svg>',
+  gallery:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m3 15.5 5-5 4 4 3-3 6 6"/><circle cx="8.5" cy="9" r="1.6"/></svg>',
+  play:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.5 7.5 17 12l-7.5 4.5z" fill="currentColor" stroke="none"/></svg>',
+  bag:'<svg viewBox="0 0 24 24"><path d="M4 7h16l-2 12H6z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>',
+  locate:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  layers:'<svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 14 9 5 9-5"/></svg>',
+  share:'<svg viewBox="0 0 20 20"><path d="M14 6.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM14 17.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="m6.8 9.2 5.4-2.9M6.8 10.8l5.4 2.9"/></svg>',
+  flag:'<svg viewBox="0 0 20 20"><path d="M4 2.5v15M4 3.5h11l-2 3.5 2 3.5H4"/></svg>',
+  link:'<svg viewBox="0 0 20 20"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 1 0-5-5L9.7 5.3"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 1 0 5 5l1.3-1.3"/></svg>',
+  block:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="m5 5 10 10"/></svg>',
+  copy:'<svg viewBox="0 0 20 20"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/></svg>',
+  wrench:'<svg viewBox="0 0 20 20"><path d="M14.5 2.5a4.5 4.5 0 0 0-4 6.6L2.5 17l1 1 7.9-8a4.5 4.5 0 0 0 5.6-6l-2.6 2.6-2-2 2.1-2.1z"/></svg>',
+  star:'<svg viewBox="0 0 20 20"><path d="m10 2.5 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4L2.2 8.2l5.4-.8z"/></svg>',
+  users:'<svg viewBox="0 0 20 20"><circle cx="7.5" cy="6.5" r="3"/><path d="M2 17a5.5 5.5 0 0 1 11 0"/><path d="M14 4.2a3 3 0 0 1 0 5.6M15.5 17a5.5 5.5 0 0 0-2-4.2"/></svg>',
+  gear:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3"/><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/></svg>',
+  filter:'<svg viewBox="0 0 20 20"><path d="M3 5h14M6 10h8M9 15h2"/></svg>',
+};
+
+/* ============================================================
+   DATA
+   ============================================================ */
+const ME = { user:'brenn0', name:'Bruno Capobianco', av:'B', avc:'', city:'Pinheiros / SP' };
+
+let POSTS = [
+  { id:101, type:'trick', user:'rafa_melao', avc:'', when:'agora', trick:'Kickflip B/S 50-50',
+    spot:'Roosevelt · Handrail 8', spotId:'roosevelt', grad:'g-a', likes:418, cmts:3, live:true,
+    cap:'primeira tentativa do dia. valeu @duda_sk pela filmagem 🤘' },
+  { id:102, type:'sale', user:'lu_grinds', avc:'g2', when:'12 min',
+    item:'Shape Element Section 8.0"', cond:'Usado · 3 semanas', price:'R$180', local:'ret. Pinheiros',
+    img:'p-shape', likes:24, cmts:2,
+    cap:'shape em ótimo estado, vendo pq mudei pra 8.25. só retirada em Pinheiros.' },
+  { id:103, type:'trick', user:'duda_sk', avc:'g3', when:'1 h', trick:'Frontside Air',
+    spot:'Bowl SESC Pompeia', spotId:'pompeia', grad:'g-b', likes:217, cmts:2,
+    cap:'transição é vida 🌊 quem vai amanhã?' },
+  { id:104, type:'spot', user:'bia_flip', avc:'g4', when:'2 h',
+    spotName:'Ledge nova · Faria Lima', spotSub:'Pinheiros · granito · 1,9 km', spotId:'farialima',
+    likes:96, cmts:1, cap:'acharam essa ledge nova aqui, piso limpo demais. marquei no mapa.' },
+  { id:105, type:'trick', user:'ze_pescoco', avc:'g5', when:'4 h', trick:'Nollie Heelflip',
+    spot:'Praça da Mooca', spotId:'mooca', grad:'g-c', likes:89, cmts:1,
+    cap:'demorou umas 40 tentativas mas rolou' },
+  { id:106, type:'shopad', user:'7ply Skateshop', avc:'shop', when:'5 h', verified:true,
+    item:'Truck Independent Stage 11', cond:'Novo · 3 tamanhos', price:'R$389', local:'Vila Madalena',
+    img:'p-truck', likes:41, cmts:1,
+    cap:'chegou lote novo de Indy. 139, 144 e 149. quem é da comunidade tem 10% off, é só falar no balcão.' },
+  { id:107, type:'trick', user:'marcao_vert', avc:'g2', when:'8 h', trick:'Rock to Fakie',
+    spot:'Pista do Ibirapuera', spotId:'ibirapuera', grad:'g-d', likes:302, cmts:2,
+    cap:'vert nunca morreu, só tirou férias' },
+  { id:108, type:'trick', user:'nay_sk8', avc:'g5', when:'11 h', trick:'Tre Flip',
+    spot:'Bau · MASP', spotId:'masp', grad:'g-e', likes:511, cmts:2,
+    cap:'finalmente saiu limpo no bau 😤' },
+];
+
+let COMMENTS = {
+  101:[
+    {id:1,u:'duda_sk',avc:'g3',t:'brabo demais mano, tava sujo esse corrimão',w:'8 min',l:12},
+    {id:2,u:'bia_flip',avc:'g4',t:'mandou bem! qual shape tu tá usando?',w:'5 min',l:3},
+    {id:3,u:'ze_pescoco',avc:'g5',t:'esse spot fecha que horas?',w:'2 min',l:0},
+  ],
+  102:[
+    {id:4,u:'nay_sk8',avc:'g5',t:'ainda tá disponível?',w:'6 min',l:1},
+    {id:5,u:'lu_grinds',avc:'g2',t:'tá sim! chama no direct',w:'4 min',l:0},
+  ],
+  103:[
+    {id:6,u:'marcao_vert',avc:'g2',t:'bowl tá liberado no fim de semana?',w:'40 min',l:4},
+    {id:7,u:'rafa_melao',avc:'',t:'tô dentro amanhã 🤘',w:'22 min',l:2},
+  ],
+  104:[{id:8,u:'rafa_melao',avc:'',t:'boa! vou dar um pulo lá hoje',w:'1 h',l:5}],
+  105:[{id:9,u:'duda_sk',avc:'g3',t:'40 tentativas é dedicação',w:'3 h',l:7}],
+  106:[{id:10,u:'ze_pescoco',avc:'g5',t:'tem 144 em estoque ainda?',w:'2 h',l:0}],
+  107:[
+    {id:11,u:'nay_sk8',avc:'g5',t:'lenda 🙌',w:'7 h',l:9},
+    {id:12,u:'bia_flip',avc:'g4',t:'vert é outro nível',w:'6 h',l:4},
+  ],
+  108:[
+    {id:13,u:'rafa_melao',avc:'',t:'limpíssimo!!',w:'10 h',l:15},
+    {id:14,u:'marcao_vert',avc:'g2',t:'esse bau é traiçoeiro, parabéns',w:'9 h',l:6},
+  ],
+};
+
+let SPOTS = [
+  { id:'roosevelt', x:31, y:20, name:'Praça Roosevelt', type:'street', rate:4.7, live:12,
+    sub:'Consolação · 0,8 km', hours:'Aberto 24h', floor:'Granito',
+    tags:['Granito','Corrimão 8','Bau','Escada 5','Ledge'], sessions:284, videos:112,
+    alert:{t:'Mancada reportada',d:'Segurança pede pra sair depois das 22h. 3 relatos hoje.'} },
+  { id:'ibirapuera', x:70, y:29, name:'Pista Ibirapuera', type:'pista', rate:4.9, live:38,
+    sub:'Pista pública · 3,2 km', hours:'06h – 22h', floor:'Concreto liso',
+    tags:['Bowl','Street course','Mini ramp','Quarter'], sessions:1420, videos:508, alert:null },
+  { id:'masp', x:20, y:47, name:'Bau do MASP', type:'street', rate:4.6, live:6,
+    sub:'Av. Paulista · 1,2 km', hours:'Aberto 24h', floor:'Granito',
+    tags:['Granito','Bau','Escada 4','Manual pad'], sessions:184, videos:27, alert:null },
+  { id:'pompeia', x:56, y:60, name:'Bowl Pompeia', type:'pista', rate:4.5, live:4,
+    sub:'SESC Pompeia · 5,1 km', hours:'09h – 21h · fecha seg', floor:'Concreto liso',
+    tags:['Bowl grande','Concreto liso','Corrimão'], sessions:612, videos:203, alert:null },
+  { id:'mooca', x:78, y:70, name:'Praça da Mooca', type:'street', rate:4.1, live:0,
+    sub:'Mooca · 8,4 km', hours:'Aberto 24h', floor:'Cimento queimado',
+    tags:['Cimento','Curb','Gap','Escada 3'], sessions:97, videos:19,
+    alert:{t:'Piso quebrado',d:'Parte do cimento perto do gap tá lascada. Cuidado.'} },
+  { id:'farialima', x:38, y:76, name:'Ledge Faria Lima', type:'street', rate:4.4, live:2,
+    sub:'Pinheiros · 1,9 km', hours:'Aberto 24h', floor:'Granito',
+    tags:['Granito','Ledge','Manual pad'], sessions:12, videos:4, alert:null },
+];
+const ME_PIN = { id:'me', x:47, y:41, name:'Você', type:'me' };
+
+let PRODUCTS = [
+  {id:1,brand:'Baker',name:'Shape Team OG 8.25"',price:'R$249',shop:'7ply Skateshop',dist:'0,4 km',img:'p-shape',ver:true,cat:'shape',cond:'Novo',
+   desc:'Shape 7 lâminas de maple canadense, concave médio. Modelo Team OG da Baker, o mais pedido da loja. Vem com lixa cortada grátis.',stock:'6 em estoque'},
+  {id:2,brand:'Independent',name:'Truck Stage 11 149mm',price:'R$389',shop:'Manobra Skate',dist:'1,1 km',img:'p-truck',ver:true,cat:'truck',cond:'Novo',
+   desc:'Par de trucks Independent Stage 11, altura padrão. Base forjada, pivot cup reforçado. Serve shapes de 8.25" a 8.5".',stock:'3 pares'},
+  {id:3,brand:'Spitfire',name:'Rodas F4 54mm 99A',price:'R$120',shop:'@lu_grinds',dist:null,img:'p-wheel',ver:false,cat:'usado',cond:'Usado',
+   desc:'Jogo de 4 rodas Spitfire Formula Four 54mm dureza 99A. Uso de aproximadamente 2 meses, sem flat spot. Retirada em Pinheiros.',stock:'1 jogo'},
+  {id:4,brand:'Vans',name:'Skate Half Cab \'92',price:'R$549',shop:'Piso Skate',dist:'2,3 km',img:'p-tenis',ver:true,cat:'tenis',cond:'Novo',
+   desc:'Vans Skate Half Cab \'92, linha Pro com DURACAP e SickStick. Tamanhos 38 ao 44 disponíveis.',stock:'Vários tamanhos'},
+  {id:5,brand:'Element',name:'Shape Section 8.0"',price:'R$180',shop:'@lu_grinds',dist:null,img:'p-shape',ver:false,cat:'usado',cond:'Usado',
+   desc:'Shape Element Section 8.0", 3 semanas de uso. Sem trincas, nose e tail preservados. Vendo porque migrei pra 8.25".',stock:'1 unidade'},
+  {id:6,brand:'Bones',name:'Rodas STF 52mm 103A',price:'R$195',shop:'Boardgame',dist:'3,4 km',img:'p-wheel',ver:true,cat:'wheel',cond:'Novo',
+   desc:'Bones Street Tech Formula 52mm 103A. A fórmula que não achata e mantém velocidade em piso liso.',stock:'8 jogos'},
+  {id:7,brand:'Bones',name:'Rolamento Reds Bearings',price:'R$139',shop:'7ply Skateshop',dist:'0,4 km',img:'p-bearing',ver:true,cat:'parts',cond:'Novo',
+   desc:'Jogo com 8 rolamentos Bones Reds. Clássico custo-benefício, vem com espaçadores.',stock:'12 jogos'},
+  {id:8,brand:'Jessup',name:'Lixa Ultragrip',price:'R$49',shop:'Manobra Skate',dist:'1,1 km',img:'p-lixa',ver:true,cat:'parts',cond:'Novo',
+   desc:'Folha de lixa Jessup Ultragrip 9" x 33". A original, com furos de ar pra não bolhar na aplicação.',stock:'20 folhas'},
+  {id:9,brand:'Thunder',name:'Truck Hollow Lights 148',price:'R$210',shop:'@ze_pescoco',dist:null,img:'p-truck',ver:false,cat:'usado',cond:'Usado',
+   desc:'Par de Thunder Hollow Lights 148mm. Uso moderado, base com riscos normais de grind. Amortecedores novos.',stock:'1 par'},
+  {id:10,brand:'Kit',name:'Parafusos + Rolamento',price:'R$85',shop:'Boardgame',dist:'3,4 km',img:'p-parts',ver:true,cat:'parts',cond:'Novo',
+   desc:'Kit de montagem: 8 parafusos allen 1", 8 rolamentos ABEC 7 e 4 espaçadores.',stock:'15 kits'},
+];
+
+let NOTIFS = [
+  {id:1,u:'duda_sk',avc:'g3',txt:'<b>duda_sk</b> curtiu sua manobra <b>Kickflip B/S 50-50</b>',w:'5 min',unread:true,grad:'g-a'},
+  {id:2,u:'bia_flip',avc:'g4',txt:'<b>bia_flip</b> comentou: "mandou bem! qual shape tu tá usando?"',w:'12 min',unread:true,grad:'g-a'},
+  {id:3,u:'',avc:'g2',txt:'<b>3 skatistas</b> confirmaram o spot <b>Ledge Faria Lima</b>. Já está no mapa!',w:'1 h',unread:true,grad:null},
+  {id:4,u:'marcao_vert',avc:'g2',txt:'<b>marcao_vert</b> começou a te seguir',w:'3 h',unread:false,grad:null},
+  {id:5,u:'',avc:'shop',txt:'<b>7ply Skateshop</b> anunciou uma peça que combina com seu setup: <b>Truck Indy 139</b>',w:'5 h',unread:false,grad:null},
+  {id:6,u:'',avc:'g3',txt:'Sessão rolando agora na <b>Praça Roosevelt</b> — 12 skatistas fizeram check-in',w:'6 h',unread:false,grad:null},
+];
+
+let CHATS = [
+  {id:1,u:'lu_grinds',avc:'g2',last:'tá sim! chama que a gente combina',w:'4 min',unread:2,
+   msgs:[
+     {me:false,t:'e aí, o shape Element ainda tá disponível?',w:'10 min'},
+     {me:true,t:'opa! tá sim',w:'8 min'},
+     {me:false,t:'consigo ver hoje à tarde?',w:'6 min'},
+     {me:false,t:'tá sim! chama que a gente combina',w:'4 min'},
+   ]},
+  {id:2,u:'duda_sk',avc:'g3',last:'bora Roosevelt amanhã 17h?',w:'1 h',unread:1,
+   msgs:[
+     {me:false,t:'vi teu clipe, ficou brabo',w:'2 h'},
+     {me:true,t:'valeu mano 🤘',w:'1 h'},
+     {me:false,t:'bora Roosevelt amanhã 17h?',w:'1 h'},
+   ]},
+  {id:3,u:'7ply Skateshop',avc:'shop',last:'Chegou o Indy 139 que você queria',w:'1 d',unread:0,
+   msgs:[
+     {me:false,t:'Fala Bruno! Chegou o Indy 139 que você queria',w:'1 d'},
+     {me:true,t:'boa, seguro pra mim?',w:'1 d'},
+     {me:false,t:'Separado aqui, pode buscar até sexta',w:'1 d'},
+   ]},
+];
+
+const TRICKS = ['Ollie','Kickflip','Heelflip','Tre Flip','Varial','Manual','Nose Manual','50-50','Boardslide','Nollie','5-0','Crooked','Nose Grind','Smith','Feeble','Rock to Fakie','Frontside Air','Blunt'];
+const OBSTACLES = ['Corrimão','Escada','Bau','Bowl','Mini-ramp','Quarter','Ledge','Manual pad','Gap','Curb','Banco','Rampa'];
+const FLOORS = ['Granito','Concreto liso','Cimento queimado','Asfalto','Madeira','Cerâmica'];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  tab:'feed',
+  stack:[],                 // [{screen:'spot', id}, ...]
+  feedSeg:'foryou',
+  mapFilter:'all',
+  shopCat:'all',
+  profTab:'videos',
+  searchQ:'', searchSeg:'spots',
+  selPin:null,
+  liked:new Set(), saved:new Set(), following:new Set(['duda_sk','bia_flip']),
+  likedCmts:new Set(),
+  checkedIn:new Set(),
+  favProd:new Set([3]),
+  cart:[],
+  openChat:null,
+  sheet:null,               // {kind, ...}
+  wiz:{step:0,type:null,slomo:false,trick:null,obst:new Set(),rate:0,src:null},
+};
+
+/* ============================================================
+   ROUTER / RENDER
+   ============================================================ */
+const root = $('#root');
+const topOf = () => S.stack.length ? S.stack[S.stack.length-1] : null;
+
+function go(screen,extra={}){ S.stack.push({screen,...extra}); render(); }
+function back(){ S.stack.pop(); render(); }
+function setTab(t){ S.tab=t; S.stack=[]; S.selPin=null; render(); }
+
+function render(){
+  const top = topOf();
+  if(top){
+    root.innerHTML = renderStackScreen(top);
+  } else {
+    root.innerHTML =
+      S.tab==='feed'   ? screenFeed()   :
+      S.tab==='mapa'   ? screenMap()    :
+      S.tab==='loja'   ? screenShop()   :
+      S.tab==='perfil' ? screenProfile(): '';
+  }
+  $$('#tabbar button[data-tab]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.tab===S.tab && b.dataset.tab!=='post' && !top);
+  });
+  // hide tabbar on immersive screens
+  const hideTab = top && ['chat'].includes(top.screen);
+  $('#tabbar').style.display = hideTab ? 'none' : 'grid';
+  bind();
+}
+
+function renderStackScreen(t){
+  switch(t.screen){
+    case 'spot':      return screenSpotDetail(t.id);
+    case 'product':   return screenProduct(t.id);
+    case 'search':    return screenSearch();
+    case 'notifs':    return screenNotifs();
+    case 'messages':  return screenMessages();
+    case 'chat':      return screenChat(t.id);
+    case 'saved':     return screenSaved();
+    case 'cart':      return screenCart();
+    case 'user':      return screenUser(t.u);
+    case 'crew':      return screenCrew();
+    case 'settings':  return screenSettings();
+    default: return '';
+  }
+}
+
+/* ============================================================
+   TOP BAR BUILDERS
+   ============================================================ */
+function topbar(title,{back:hasBack=false,actions=''}={}){
+  return `<div class="topbar">
+    ${hasBack?`<button class="back-btn" data-back>${ICON.back}</button>`:''}
+    <h1>${title}</h1>
+    ${actions}
+  </div>`;
+}
+function tbBtn(icon,attr,badge=false){
+  return `<button class="tb-btn" ${attr}>${icon}${badge?'<span class="dot-badge"></span>':''}</button>`;
+}
+
+/* ============================================================
+   SCREEN · FEED
+   ============================================================ */
+function screenFeed(){
+  const unread = NOTIFS.some(n=>n.unread);
+  const dmUnread = CHATS.some(c=>c.unread>0);
+  const acts = tbBtn(ICON.search,'data-go="search"') +
+               tbBtn(ICON.bell,'data-go="notifs"',unread) +
+               tbBtn(ICON.dm,'data-go="messages"',dmUnread);
+
+  let list = POSTS;
+  if(S.feedSeg==='following') list = POSTS.filter(p=>S.following.has(p.user));
+  if(S.feedSeg==='near')      list = POSTS.filter(p=>['roosevelt','masp','farialima','pompeia'].includes(p.spotId||'') || p.type==='sale');
+  if(S.feedSeg==='vendas')    list = POSTS.filter(p=>p.type==='sale'||p.type==='shopad');
+
+  return topbar('KICK<span class="sl">/</span>PUSH',{actions:acts}) + `
+  <div class="scroll">
+    <div class="segments">
+      <button data-seg="foryou"   class="${S.feedSeg==='foryou'?'on':''}">Pra você</button>
+      <button data-seg="following" class="${S.feedSeg==='following'?'on':''}">Seguindo</button>
+      <button data-seg="near"     class="${S.feedSeg==='near'?'on':''}">Perto</button>
+      <button data-seg="vendas"   class="${S.feedSeg==='vendas'?'on':''}">Vendas</button>
+    </div>
+    ${list.length? list.map(post).join('') : emptyState('Nada por aqui','Siga mais skatistas ou troque o filtro pra ver o rolê.')}
+    ${list.length?'<div class="end-note">— você chegou ao fim —</div>':''}
+  </div>`;
+}
+
+function emptyState(h,p){
+  return `<div class="empty"><div class="big">🛹</div><h4>${h}</h4><p>${p}</p></div>`;
+}
+
+function post(p){
+  const liked = S.liked.has(p.id);
+  const saved = S.saved.has(p.id);
+  const nLikes = p.likes + (liked?1:0);
+  const nCmts  = (COMMENTS[p.id]||[]).length;
+  const isMe   = p.user===ME.user;
+  const showFollow = !isMe && !S.following.has(p.user) && p.type!=='shopad';
+
+  let media = '';
+  if(p.type==='trick'){
+    media = `<div class="vid ${p.grad}" data-vid="${p.id}">
+      <svg class="skater" viewBox="0 0 100 62" fill="currentColor">
+        <ellipse cx="50" cy="57" rx="34" ry="3"/>
+        <path d="M18 46q22-27 44-16l10 10q-12 6-28 9z"/>
+        <circle cx="56" cy="19" r="6.5"/>
+        <path d="M53 26 58 44" stroke="currentColor" stroke-width="3.4" fill="none"/>
+        <path d="M53 30 40 38" stroke="currentColor" stroke-width="3" fill="none"/>
+      </svg>
+      ${p.live?'<span class="vid-live">◉ AO VIVO</span>':''}
+      <div class="vid-play">
+        <svg viewBox="0 0 60 60" fill="rgba(241,234,219,.95)">
+          <circle cx="30" cy="30" r="28" fill="rgba(15,14,13,.48)" stroke="rgba(241,234,219,.9)" stroke-width="1.6"/>
+          <path d="M24 17.5 43 30 24 42.5z"/>
+        </svg>
+      </div>
+      <div class="vid-meta">
+        <button class="tag-spot" data-spot="${p.spotId}">◉ ${esc(p.spot)}</button>
+        <span class="tag-trick">${esc(p.trick)}</span>
+      </div>
+      <div class="vid-bar"><i></i></div>
+    </div>`;
+  }
+  else if(p.type==='sale' || p.type==='shopad'){
+    media = `<div class="listing" data-prodname="${esc(p.item)}">
+      <div class="thumb-sq ${p.img}"></div>
+      <div class="listing-info">
+        <strong>${esc(p.item)}</strong>
+        <small>${esc(p.cond)}</small>
+        <span class="badge ${p.type==='sale'?'used':'new'}">${p.type==='sale'?'2ª MÃO':'LOJA'}</span>
+      </div>
+      <div class="price">${p.price}<small>${esc(p.local)}</small></div>
+    </div>`;
+  }
+  else if(p.type==='spot'){
+    media = `<button class="spot-mini" data-spot="${p.spotId}" style="width:100%">
+      <div class="pinbox ${p.pista?'lime':''}">${ICON.pin}</div>
+      <div class="info"><strong>${esc(p.spotName)}</strong><small>${esc(p.spotSub)}</small>
+        <span class="badge new" style="background:var(--lime);color:var(--lime-ink)">SPOT NOVO</span></div>
+      <span style="color:var(--muted);font-size:20px">›</span>
+    </button>`;
+  }
+
+  return `<article class="post" data-post="${p.id}">
+    <div class="post-head">
+      <button class="av ${p.avc}" data-user="${esc(p.user)}" style="border:1.5px solid var(--ink)">${esc(p.user[0].toUpperCase())}</button>
+      <div class="post-who">
+        <strong>${esc(p.user)}${p.verified?`<span class="verif">${ICON.check}</span>`:''}</strong>
+        <small>${esc(p.when)}${p.spot?' · '+esc(p.spot.split('·')[0].trim()):''}${p.type==='sale'?' · vendendo':''}</small>
+      </div>
+      ${showFollow?`<button class="follow-btn" data-follow="${esc(p.user)}">Seguir</button>`:''}
+      <button class="kebab" data-menu="${p.id}">···</button>
+    </div>
+    ${media}
+    <div class="acts">
+      <button class="act ${liked?'on':''}" data-like="${p.id}">${ICON.heart}${nLikes}</button>
+      <button class="act" data-cmts="${p.id}">${ICON.chat}${nCmts}</button>
+      <button class="act" data-share="${p.id}">${ICON.send}</button>
+      <button class="act save ${saved?'on':''}" data-save="${p.id}">${ICON.bookmark}</button>
+    </div>
+    <div class="cap"><b>${esc(p.user)}</b> ${linkify(p.cap)}</div>
+    ${nCmts?`<button class="cap-more" data-cmts="${p.id}">Ver ${nCmts} comentário${nCmts>1?'s':''}</button>`:''}
+  </article>`;
+}
+
+function linkify(t){
+  return esc(t).replace(/@([a-z0-9_]+)/gi,'<span class="mention">@$1</span>');
+}
+
+/* ============================================================
+   SCREEN · MAP
+   ============================================================ */
+function screenMap(){
+  const filters = [
+    {id:'all',   l:'Todos'},
+    {id:'street',l:'◉ Street'},
+    {id:'pista', l:'◉ Pista'},
+    {id:'live',  l:'Com galera'},
+    {id:'top',   l:'Piso 4.5+'},
+  ];
+  let vis = SPOTS.slice();
+  if(S.mapFilter==='street') vis = vis.filter(s=>s.type==='street');
+  if(S.mapFilter==='pista')  vis = vis.filter(s=>s.type==='pista');
+  if(S.mapFilter==='live')   vis = vis.filter(s=>s.live>0);
+  if(S.mapFilter==='top')    vis = vis.filter(s=>s.rate>=4.5);
+
+  const sel = S.selPin ? SPOTS.find(s=>s.id===S.selPin) : null;
+  const acts = tbBtn(ICON.search,'data-go="search"') + tbBtn(ICON.filter,'data-mapfilter');
+
+  return topbar('MAPA',{actions:acts}) + `
+  <div class="map-wrap">
+    <div class="chips">
+      ${filters.map(f=>`<button class="chip ${S.mapFilter===f.id?'on':''}" data-mf="${f.id}">${f.l}</button>`).join('')}
+    </div>
+    <div class="map-canvas">
+      <svg class="map-svg" viewBox="0 0 360 560" preserveAspectRatio="none">
+        <defs><pattern id="g" width="34" height="34" patternUnits="userSpaceOnUse">
+          <path d="M34 0H0v34" fill="none" stroke="currentColor" stroke-width=".5" opacity=".16"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#g)"/>
+        <path d="M-20 90Q110 66 200 110T380 156" stroke="currentColor" stroke-width="11" fill="none" opacity=".11"/>
+        <path d="M60-20Q80 220 170 292T236 580" stroke="currentColor" stroke-width="11" fill="none" opacity=".11"/>
+        <path d="M-20 392Q150 380 240 424T380 448" stroke="currentColor" stroke-width="15" fill="none" opacity=".09"/>
+        <path d="M-20 240Q120 250 210 190T380 210" stroke="currentColor" stroke-width="7" fill="none" opacity=".08"/>
+        <circle cx="212" cy="268" r="76" fill="currentColor" opacity=".045"/>
+        <circle cx="92" cy="452" r="52" fill="currentColor" opacity=".045"/>
+      </svg>
+      ${vis.map(s=>pinEl(s)).join('')}
+      ${pinEl(ME_PIN)}
+      <div class="map-ctl">
+        <button data-locate>${ICON.locate}</button>
+        <button data-layers>${ICON.layers}</button>
+      </div>
+      ${sel?spotCard(sel):''}
+    </div>
+  </div>`;
+}
+
+function pinEl(s){
+  const cls = s.type==='pista'?'pista':s.type==='me'?'me':'';
+  const ic  = s.type==='pista'?ICON.ramp:s.type==='street'?ICON.tri:'';
+  return `<button class="pin ${cls} ${S.selPin===s.id?'sel':''}" style="left:${s.x}%;top:${s.y}%" data-pin="${s.id}">
+    <span class="body">${ic}${esc(s.name)}</span>
+    ${s.live>0?`<span class="live-badge">${s.live}</span>`:''}
+  </button>`;
+}
+
+function spotCard(s){
+  const inSess = S.checkedIn.has(s.id);
+  return `<div class="spot-card">
+    <button class="x" data-closepin>✕</button>
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <h3>${esc(s.name)}</h3>
+        <div class="sub">${esc(s.sub)} · ${esc(s.hours)}</div>
+      </div>
+      <div class="rate-box">${s.rate}<small>PISO</small></div>
+    </div>
+    <div class="tagrow">${s.tags.slice(0,4).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+    <div class="live-row">
+      <span>${s.live>0?`<span class="ldot"></span><b class="mono">${s.live+(inSess?1:0)} skatando</b> agora`:'<span class="mono" style="color:var(--muted)">ninguém no spot</span>'}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-pill ghost" data-spot="${s.id}">Ver spot</button>
+        <button class="btn-pill ${inSess?'lime':''}" data-checkin="${s.id}">${inSess?'✓ Aqui':'Check-in'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN · SPOT DETAIL
+   ============================================================ */
+function screenSpotDetail(id){
+  const s = SPOTS.find(x=>x.id===id); if(!s) return '';
+  const inSess = S.checkedIn.has(s.id);
+  const clips = POSTS.filter(p=>p.spotId===s.id && p.type==='trick');
+  const grads = ['g-a','g-b','g-c','g-d','g-e','g-f'];
+
+  return `<div class="scroll">
+    <div class="spot-hero ${s.type==='pista'?'pista':''}">
+      <button class="hero-back" data-back>${ICON.back}</button>
+      ${s.type==='pista'?'<div class="bowl"></div>':'<div class="rail"></div><div class="stairs"></div>'}
+      <span class="hero-chip">◉ Foto da comunidade</span>
+      <span class="hero-count">1 / 14</span>
+    </div>
+
+    <div style="padding:14px 16px 4px">
+      <h2 class="anton" style="font-size:27px;margin:0;line-height:1">${esc(s.name)}</h2>
+      <div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px">
+        ${esc(s.sub)} · ${esc(s.hours)}
+      </div>
+    </div>
+
+    <div class="stat3">
+      <div class="stat hot"><div class="n">${s.rate}</div><div class="l">Piso</div></div>
+      <div class="stat"><div class="n">${s.sessions}</div><div class="l">Sessões</div></div>
+      <div class="stat"><div class="n">${s.videos}</div><div class="l">Vídeos</div></div>
+    </div>
+
+    <div style="padding:0 16px 14px">
+      <div class="mono" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:7px">Piso &amp; obstáculos</div>
+      <div class="pickrow">
+        <span class="pk sq on">${esc(s.floor)}</span>
+        ${s.tags.filter(t=>t!==s.floor).map(t=>`<span class="pk sq">${esc(t)}</span>`).join('')}
+      </div>
+    </div>
+
+    ${s.alert?`<div class="alert">${ICON.alert}<div><b>${esc(s.alert.t)}</b>${esc(s.alert.d)}</div></div>`:''}
+
+    <div class="sec-head"><span>Quem tá aqui agora</span><span class="mono" style="color:var(--accent)">${s.live+(inSess?1:0)} ativos</span></div>
+    ${s.live>0?`<div class="who-row">
+      <span class="av sm">D</span><span class="av sm g2">L</span><span class="av sm g3">Z</span>
+      <span class="av sm g4">B</span><span class="av sm g5">N</span>
+      <span class="more">+${Math.max(0,s.live-5+(inSess?1:0))} skatistas</span>
+    </div>`:`<div style="padding:0 16px 14px" class="mono" style="font-size:11px;color:var(--muted)">Ninguém fez check-in ainda hoje.</div>`}
+
+    <div class="sec-head"><span>Manobras neste spot</span><button class="link" data-toast="Abriria a galeria completa do spot">Ver tudo</button></div>
+    <div class="hscroll">
+      ${(clips.length?clips:[{trick:'Kickflip',grad:'g-a'},{trick:'50-50',grad:'g-c'},{trick:'Manual',grad:'g-d'}])
+        .concat([{trick:'Boardslide',grad:'g-e'},{trick:'Nollie',grad:'g-f'},{trick:'Tre Flip',grad:'g-b'}])
+        .slice(0,6).map((c,i)=>`
+        <div class="hclip ${c.grad||grads[i%6]}">
+          <span class="pl">▶</span><span class="tk">${esc(c.trick)}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="cta-row">
+      <button class="cta-alt" data-report="${s.id}">Reportar mancada</button>
+      <button class="cta-main" data-checkin="${s.id}">${inSess?'✓ Check-in feito':'Fazer check-in'}</button>
+    </div>
+    <div class="end-note">Spot validado por 3 skatistas da região</div>
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN · SHOP
+   ============================================================ */
+function screenShop(){
+  const cats = [
+    {id:'all',l:'Tudo'},{id:'shape',l:'Shapes'},{id:'truck',l:'Trucks'},
+    {id:'wheel',l:'Rodas'},{id:'tenis',l:'Tênis'},{id:'parts',l:'Peças'},{id:'usado',l:'Usados'},
+  ];
+  const list = S.shopCat==='all' ? PRODUCTS : PRODUCTS.filter(p=>p.cat===S.shopCat);
+  const nCart = S.cart.length;
+  const acts = tbBtn(ICON.search,'data-go="search"') +
+    `<button class="tb-btn" data-go="cart">${ICON.bag}${nCart?'<span class="dot-badge"></span>':''}</button>`;
+
+  return topbar('LOJA',{actions:acts}) + `
+  <div class="scroll">
+    <div class="chips">
+      ${cats.map(c=>`<button class="chip ${S.shopCat===c.id?(c.id==='usado'?'on-lime':'on'):''}" data-cat="${c.id}">${c.l}</button>`).join('')}
+    </div>
+    ${S.shopCat==='all'?`
+    <div class="shop-banner">
+      <div class="logo">7P</div>
+      <div class="t"><strong>7ply Skateshop</strong><small>A 400 m · lote novo de Indy chegou</small></div>
+      <button class="btn-pill lime" data-toast="Abriria a vitrine da 7ply Skateshop">Ver</button>
+    </div>`:''}
+    <div class="shop-grid">
+      ${list.map(prodCard).join('')}
+    </div>
+    ${!list.length?emptyState('Sem peças nessa categoria','Tente outra categoria ou poste a sua peça usada pelo botão +.'):''}
+    <div class="end-note">${list.length} peça${list.length>1?'s':''} · ordenado por distância</div>
+  </div>`;
+}
+
+function prodCard(p){
+  const fav = S.favProd.has(p.id);
+  return `<button class="card" data-prod="${p.id}">
+    <div class="img ${p.img}">
+      ${p.ver?`<span class="ver-tr">${ICON.check}</span>`:''}
+      <span class="tag-tl ${p.dist?'':'lime'}">${p.dist||'USADO'}</span>
+      <span class="fav-tr ${fav?'on':''}" data-fav="${p.id}">${ICON.heart}</span>
+    </div>
+    <div class="body">
+      <div class="brand">${esc(p.brand)}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="ft"><span class="pr">${p.price}</span><span class="sh">${esc(p.shop)}</span></div>
+    </div>
+  </button>`;
+}
+
+/* ============================================================
+   SCREEN · PRODUCT DETAIL
+   ============================================================ */
+function screenProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id); if(!p) return '';
+  const fav = S.favProd.has(p.id);
+  const isUser = !p.ver;
+  return topbar(esc(p.brand),{back:true,actions:`<button class="tb-btn" data-fav="${p.id}" style="color:${fav?'var(--accent)':'var(--ink)'}">${fav?ICON.heart.replace('<svg','<svg fill="currentColor"'):ICON.heart}</button>`}) + `
+  <div class="scroll">
+    <div class="pd-img ${p.img}">
+      <span class="tag-tl ${p.dist?'':'lime'}" style="top:12px;left:12px">${p.dist? p.dist+' de você':'USADO · COMUNIDADE'}</span>
+      ${p.ver?`<span class="ver-tr" style="top:12px;right:12px;width:26px;height:26px">${ICON.check}</span>`:''}
+    </div>
+    <div class="pd-body">
+      <div class="pd-brand">${esc(p.brand)} · ${esc(p.cond)}</div>
+      <h2 class="pd-name">${esc(p.name)}</h2>
+      <div class="pd-price">${p.price}<small>${esc(p.stock)}</small></div>
+
+      <div class="pd-seller">
+        <span class="av ${isUser?'g2':'shop'}">${isUser?esc(p.shop.replace('@','')[0].toUpperCase()):esc(p.shop.slice(0,2).toUpperCase())}</span>
+        <div style="flex:1;min-width:0;line-height:1.3">
+          <strong style="font-size:13.5px;display:flex;align-items:center;gap:5px">
+            ${esc(p.shop)}${p.ver?`<span class="verif">${ICON.check}</span>`:''}
+          </strong>
+          <small class="mono" style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">
+            ${p.ver? 'Loja verificada · '+p.dist : 'Skatista da comunidade · rep. 4.8'}
+          </small>
+        </div>
+        <button class="btn-pill ghost" data-msgseller="${esc(p.shop)}">Chamar</button>
+      </div>
+
+      <div class="pd-specs">
+        <div class="r"><span>Estado</span><span>${esc(p.cond)}</span></div>
+        <div class="r"><span>Categoria</span><span>${esc({shape:'Shape',truck:'Truck',wheel:'Rodas',tenis:'Tênis',parts:'Peças',usado:'Usado'}[p.cat]||p.cat)}</span></div>
+        <div class="r"><span>${p.ver?'Retirada':'Entrega'}</span><span>${p.ver?'Na loja':'Combinar no chat'}</span></div>
+        <div class="r"><span>Disponível</span><span>${esc(p.stock)}</span></div>
+      </div>
+
+      <p class="pd-desc">${esc(p.desc)}</p>
+
+      <div class="sec-head" style="padding:0 0 8px"><span>Combina com seu setup</span></div>
+      <div class="hint hint-box" style="margin-bottom:8px">
+        Seu shape é <b>8.0"</b>. ${p.cat==='truck'?'Este truck serve — confira o tamanho.':'Compatível com o que você já tem.'}
+      </div>
+    </div>
+  </div>
+  <div class="sticky-buy">
+    <button class="b1" data-fav="${p.id}" style="color:${fav?'var(--accent)':'var(--ink)'}">${fav?'♥':'♡'}</button>
+    <button class="b2" data-addcart="${p.id}">${p.ver?'Reservar na loja':'Combinar compra'}</button>
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN · SEARCH
+   ============================================================ */
+function screenSearch(){
+  const q = S.searchQ.toLowerCase().trim();
+  const segs = [{id:'spots',l:'Spots'},{id:'people',l:'Skatistas'},{id:'tricks',l:'Manobras'},{id:'shop',l:'Peças'}];
+  let results = '';
+
+  if(S.searchSeg==='spots'){
+    const r = SPOTS.filter(s=>!q||s.name.toLowerCase().includes(q)||s.tags.join(' ').toLowerCase().includes(q));
+    results = r.length? `<div class="rowlist">${r.map(s=>`
+      <button class="rowitem" data-spot="${s.id}">
+        <span class="ic ${s.type==='pista'?'lime':''}">${ICON.pin}</span>
+        <span class="tx"><strong>${esc(s.name)}</strong><small>${esc(s.sub)} · ${esc(s.floor)}</small></span>
+        <span class="rt">${s.rate}</span>
+      </button>`).join('')}</div>` : emptyState('Nenhum spot','Tente outro termo, ou cadastre esse spot pelo botão +.');
+  }
+  if(S.searchSeg==='people'){
+    const users = [...new Set(POSTS.map(p=>p.user))].filter(u=>!q||u.toLowerCase().includes(q));
+    results = users.length? `<div class="rowlist">${users.map(u=>{
+      const f = S.following.has(u);
+      const av = (POSTS.find(p=>p.user===u)||{}).avc||'';
+      return `<button class="rowitem" data-user="${esc(u)}">
+        <span class="av ${av}" style="width:38px;height:38px;font-size:15px">${esc(u[0].toUpperCase())}</span>
+        <span class="tx"><strong>${esc(u)}</strong><small>${f?'você segue':'skatista'}</small></span>
+        <span class="btn-pill ${f?'ghost':''}" data-follow="${esc(u)}">${f?'Seguindo':'Seguir'}</span>
+      </button>`;}).join('')}</div>` : emptyState('Ninguém encontrado','Confira a grafia do @ do skatista.');
+  }
+  if(S.searchSeg==='tricks'){
+    const r = TRICKS.filter(t=>!q||t.toLowerCase().includes(q));
+    results = `<div style="padding:14px"><div class="pickrow">${r.map(t=>`<span class="pk" data-toast="Filtraria o feed por ${esc(t)}">${esc(t)}</span>`).join('')}</div></div>`;
+  }
+  if(S.searchSeg==='shop'){
+    const r = PRODUCTS.filter(p=>!q||p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q));
+    results = r.length? `<div class="shop-grid">${r.map(prodCard).join('')}</div>` : emptyState('Sem peças','Nada com esse nome nas lojas por perto.');
+  }
+
+  return `<div class="searchbar">
+    <div class="box">${ICON.search}<input id="sq" placeholder="Buscar spots, skatistas, manobras..." value="${esc(S.searchQ)}"></div>
+    <button class="cancel" data-back>Sair</button>
+  </div>
+  <div class="scroll">
+    <div class="segments">
+      ${segs.map(s=>`<button data-sseg="${s.id}" class="${S.searchSeg===s.id?'on':''}">${s.l}</button>`).join('')}
+    </div>
+    ${!q&&S.searchSeg==='spots'?`<div class="sec-head" style="padding-top:12px"><span>Perto de você</span></div>`:''}
+    ${results}
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN · NOTIFS / MESSAGES / CHAT
+   ============================================================ */
+function screenNotifs(){
+  return topbar('AVISOS',{back:true}) + `<div class="scroll">
+    ${NOTIFS.map(n=>`
+      <button class="notif ${n.unread?'unread':''}" data-notif="${n.id}">
+        <span class="av sm ${n.avc}">${n.avc==='shop'?'7P':esc((n.u||'K')[0].toUpperCase())}</span>
+        <span class="tx">${n.txt}<span class="tm">${esc(n.w)} atrás</span></span>
+        ${n.grad?`<span class="mini ${n.grad}"></span>`:''}
+      </button>`).join('')}
+    <div class="end-note">— fim dos avisos —</div>
+  </div>`;
+}
+
+function screenMessages(){
+  return topbar('MENSAGENS',{back:true}) + `<div class="scroll">
+    ${CHATS.map(c=>`
+      <button class="chatrow" data-chat="${c.id}">
+        <span class="av ${c.avc}">${c.avc==='shop'?'7P':esc(c.u[0].toUpperCase())}</span>
+        <span class="tx"><strong>${esc(c.u)}</strong><small>${esc(c.last)}</small></span>
+        <span class="meta"><span class="t">${esc(c.w)}</span>${c.unread?`<span class="u">${c.unread}</span>`:''}</span>
+      </button>`).join('')}
+    <div class="end-note">— fim —</div>
+  </div>`;
+}
+
+function screenChat(id){
+  const c = CHATS.find(x=>x.id===id); if(!c) return '';
+  c.unread = 0;
+  return `<div class="topbar">
+    <button class="back-btn" data-back>${ICON.back}</button>
+    <span class="av sm ${c.avc}" style="margin-right:8px">${c.avc==='shop'?'7P':esc(c.u[0].toUpperCase())}</span>
+    <h1 style="font-size:19px">${esc(c.u)}</h1>
+  </div>
+  <div class="scroll" id="chatscroll">
+    <div class="bubbles">
+      ${c.msgs.map(m=>`<div class="bub ${m.me?'me':'them'}">${esc(m.t)}<span class="t">${esc(m.w)}</span></div>`).join('')}
+    </div>
+    <div style="height:8px"></div>
+  </div>
+  <div class="composer">
+    <textarea class="fld" id="msgfld" rows="1" placeholder="Escreve aí..."></textarea>
+    <button class="send" id="msgsend">${ICON.send}</button>
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN · PROFILE / USER / SAVED / CART / CREW / SETTINGS
+   ============================================================ */
+function screenProfile(){
+  const myPosts = POSTS.filter(p=>p.user===ME.user);
+  const acts = tbBtn(ICON.bookmark,'data-go="saved"') + tbBtn(ICON.gear,'data-go="settings"');
+  return `<div class="scroll">
+    <div class="cover">
+      <button class="edit" data-toast="Abriria a edição do perfil">Editar</button>
+      <span class="av lg">${ME.av}</span>
+    </div>
+    <div class="prof-body">
+      <h2>${esc(ME.name)}</h2>
+      <div class="h">@${esc(ME.user)} · ${esc(ME.city)}</div>
+      <div class="bio">manda a manobra que a filmagem eu faço. shape 8.0, spitfire 54mm, indy 139.</div>
+      <div class="badges">
+        <span class="crew" data-go="crew">◉ CREW: BAIXA VIBE</span>
+        <span class="lvl">Nível 12</span>
+        <span>Rep. 4.8</span>
+      </div>
+    </div>
+    <div class="stat4">
+      <div><div class="n">${147+myPosts.length}</div><div class="l">Posts</div></div>
+      <div><div class="n">2.1k</div><div class="l">Seguidores</div></div>
+      <div><div class="n">${38}</div><div class="l">Spots</div></div>
+      <div><div class="n">${S.saved.size}</div><div class="l">Salvos</div></div>
+    </div>
+    <div class="segments">
+      <button data-ptab="videos" class="${S.profTab==='videos'?'on':''}">Vídeos</button>
+      <button data-ptab="spots"  class="${S.profTab==='spots'?'on':''}">Spots</button>
+      <button data-ptab="setup"  class="${S.profTab==='setup'?'on':''}">Setup</button>
+      <button data-ptab="vendas" class="${S.profTab==='vendas'?'on':''}">Vendas</button>
+    </div>
+    ${profTabBody()}
+    <div style="height:10px"></div>
+  </div>`;
+}
+
+function profTabBody(){
+  if(S.profTab==='videos'){
+    const g = ['g-a','g-b','g-c','g-d','g-e','g-f','g-c','g-a','g-e','g-b','g-f','g-d'];
+    const lk = [418,217,89,302,511,96,64,188,231,77,145,392];
+    return `<div class="grid3">${g.map((c,i)=>`
+      <button class="t ${c}"><span class="pl">▶</span><span class="lk">♥ ${lk[i]}</span></button>`).join('')}</div>`;
+  }
+  if(S.profTab==='spots'){
+    return `<div class="rowlist">${SPOTS.map(s=>`
+      <button class="rowitem" data-spot="${s.id}">
+        <span class="ic ${s.type==='pista'?'lime':''}">${esc(s.name[0])}</span>
+        <span class="tx"><strong>${esc(s.name)}</strong><small>${esc(s.sub.split('·')[0].trim())} · ${Math.round(s.sessions/8)} sessões suas</small></span>
+        <span class="rt">${s.rate}</span>
+      </button>`).join('')}</div>`;
+  }
+  if(S.profTab==='setup'){
+    const rows = [
+      ['Shape','Baker Team OG 8.0"'],['Truck','Independent Stage 11 139mm'],
+      ['Roda','Spitfire F4 54mm 99A'],['Rolamento','Bones Reds'],
+      ['Lixa','Jessup Ultragrip'],['Tênis','Vans Skate Half Cab \'92'],
+    ];
+    return `<div class="rowlist">
+      ${rows.map(([k,v])=>`<button class="rowitem" data-toast="Trocaria a peça e sugeriria onde comprar">
+        <span class="ic dark">${ICON.wrench}</span>
+        <span class="tx"><small>${k}</small><strong>${esc(v)}</strong></span>
+        <span class="ch">›</span></button>`).join('')}
+      <div class="hint hint-box">Seu setup é público — outros skatistas podem <b>copiar</b> e comprar as mesmas peças na aba Loja.</div>
+    </div>`;
+  }
+  if(S.profTab==='vendas'){
+    const mine = POSTS.filter(p=>p.user===ME.user && (p.type==='sale'));
+    if(!mine.length) return emptyState('Você não tem anúncios','Toque no + e escolha "Peça pra vender" pra anunciar algo do seu quarto.');
+    return `<div class="rowlist">${mine.map(p=>`
+      <div class="rowitem">
+        <span class="thumb-sq ${p.img}" style="width:38px;height:38px"></span>
+        <span class="tx"><strong>${esc(p.item)}</strong><small>${esc(p.cond)}</small></span>
+        <span class="rt">${p.price}</span>
+      </div>`).join('')}</div>`;
+  }
+}
+
+function screenSaved(){
+  const list = POSTS.filter(p=>S.saved.has(p.id));
+  return topbar('SALVOS',{back:true}) + `<div class="scroll">
+    ${list.length? list.map(post).join('') : emptyState('Nada salvo ainda','Toque no marcador de um post pra guardar aqui.')}
+  </div>`;
+}
+
+function screenCart(){
+  return topbar('SACOLA',{back:true}) + `<div class="scroll">
+    ${S.cart.length? `<div class="rowlist">${S.cart.map(id=>{
+      const p = PRODUCTS.find(x=>x.id===id); if(!p) return '';
+      return `<div class="rowitem">
+        <span class="thumb-sq ${p.img}" style="width:44px;height:44px"></span>
+        <span class="tx"><strong>${esc(p.name)}</strong><small>${esc(p.shop)} · ${p.ver?'retirar na loja':'combinar no chat'}</small></span>
+        <span class="rt">${p.price}</span>
+      </div>`;}).join('')}
+      <div class="hint hint-box">Kickpush não processa pagamento no MVP: a reserva avisa a loja e você retira no balcão.</div>
+      <button class="cta-main" style="padding:14px;border-radius:14px;border:1.5px solid var(--ink);font-family:'Anton',sans-serif;font-size:16px;text-transform:uppercase" data-toast="Enviaria a reserva pras lojas">Confirmar reservas</button>
+    </div>` : emptyState('Sacola vazia','Reserve peças na aba Loja pra elas aparecerem aqui.')}
+  </div>`;
+}
+
+function screenUser(u){
+  const uPosts = POSTS.filter(p=>p.user===u);
+  const f = S.following.has(u);
+  const avc = (uPosts[0]||{}).avc||'';
+  return topbar(esc(u),{back:true}) + `<div class="scroll">
+    <div class="cover" style="height:100px"><span class="av lg ${avc}">${esc(u[0].toUpperCase())}</span></div>
+    <div class="prof-body">
+      <h2>${esc(u)}</h2>
+      <div class="h">@${esc(u)} · São Paulo / SP</div>
+      <div class="bio">skatista da cena paulistana. street &amp; transição.</div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-pill ${f?'ghost':''}" data-follow="${esc(u)}" style="padding:9px 18px">${f?'Seguindo ✓':'Seguir'}</button>
+        <button class="btn-pill dark" data-msgseller="${esc(u)}" style="padding:9px 18px">Mensagem</button>
+      </div>
+    </div>
+    <div class="stat4">
+      <div><div class="n">${uPosts.length*23||46}</div><div class="l">Posts</div></div>
+      <div><div class="n">${(Math.floor(u.length*137)%900)+120}</div><div class="l">Seguidores</div></div>
+      <div><div class="n">${(u.length%9)+4}</div><div class="l">Spots</div></div>
+      <div><div class="n">4.${(u.length%5)+4}</div><div class="l">Rep.</div></div>
+    </div>
+    <div class="sec-head"><span>Manobras</span></div>
+    <div class="grid3">${['g-a','g-c','g-e','g-b','g-d','g-f'].map(c=>`<button class="t ${c}"><span class="pl">▶</span></button>`).join('')}</div>
+    <div style="height:12px"></div>
+  </div>`;
+}
+
+function screenCrew(){
+  return topbar('BAIXA VIBE',{back:true}) + `<div class="scroll">
+    <div class="cover" style="height:110px"><span class="av lg g2">BV</span></div>
+    <div class="prof-body">
+      <h2>Baixa Vibe</h2>
+      <div class="h">Crew · Pinheiros / SP · desde 2019</div>
+      <div class="bio">a gente anda de segunda a segunda. rolê marcado toda quarta 19h na Roosevelt.</div>
+    </div>
+    <div class="stat4">
+      <div><div class="n">23</div><div class="l">Membros</div></div>
+      <div><div class="n">412</div><div class="l">Posts</div></div>
+      <div><div class="n">17</div><div class="l">Spots</div></div>
+      <div><div class="n">#4</div><div class="l">Rank SP</div></div>
+    </div>
+    <div class="sec-head"><span>Membros</span></div>
+    <div class="who-row">
+      <span class="av sm">B</span><span class="av sm g2">L</span><span class="av sm g3">D</span>
+      <span class="av sm g4">B</span><span class="av sm g5">N</span><span class="more">+18 skatistas</span>
+    </div>
+    <div class="sec-head"><span>Próximo rolê</span></div>
+    <div style="padding:0 16px 16px">
+      <div class="rowitem"><span class="ic">${ICON.pin}</span>
+        <span class="tx"><strong>Quarta · 19h · Praça Roosevelt</strong><small>14 confirmados</small></span>
+        <span class="btn-pill">Vou</span></div>
+    </div>
+  </div>`;
+}
+
+function screenSettings(){
+  const rows = [
+    ['Conta','Editar perfil, @, foto'],['Privacidade','Quem vê seus check-ins'],
+    ['Notificações','Curtidas, comentários, sessões'],['Crews','Suas crews e convites'],
+    ['Lojas','Virar lojista verificado'],['Ajuda','Reportar problema, contato'],
+  ];
+  return topbar('AJUSTES',{back:true}) + `<div class="scroll">
+    <div class="rowlist">
+      ${rows.map(([a,b])=>`<button class="rowitem" data-toast="Abriria: ${esc(a)}">
+        <span class="ic dark">${ICON.gear}</span>
+        <span class="tx"><strong>${esc(a)}</strong><small>${esc(b)}</small></span>
+        <span class="ch">›</span></button>`).join('')}
+      <button class="rowitem" id="themerow">
+        <span class="ic lime">◐</span>
+        <span class="tx"><strong>Tema</strong><small>Claro / escuro</small></span>
+        <span class="ch">›</span></button>
+    </div>
+    <div class="end-note">Kickpush · protótipo v0.2</div>
+  </div>`;
+}
+
+/* ============================================================
+   SHEETS
+   ============================================================ */
+const ovl = $('#ovl'), sheetEl = $('#sheet');
+const shTitle=$('#sh-title'), shStep=$('#sh-step'), shBody=$('#sh-body'), shFoot=$('#sh-foot');
+
+function openSheet(kind,data={}){
+  S.sheet = {kind,...data};
+  paintSheet();
+  ovl.classList.add('on'); sheetEl.classList.add('on');
+}
+function closeSheet(){
+  ovl.classList.remove('on'); sheetEl.classList.remove('on');
+  setTimeout(()=>{ S.sheet=null; },250);
+}
+function paintSheet(){
+  if(!S.sheet) return;
+  const k = S.sheet.kind;
+  shFoot.style.display='none'; shFoot.innerHTML='';
+  if(k==='comments') paintComments();
+  else if(k==='post') paintWizard();
+  else if(k==='share') paintShare();
+  else if(k==='menu') paintMenu();
+  else if(k==='report') paintReport();
+  else if(k==='layers') paintLayers();
+  bindSheet();
+}
+
+/* --- comments --- */
+function paintComments(){
+  const pid = S.sheet.postId;
+  const list = COMMENTS[pid]||[];
+  shTitle.textContent='Comentários';
+  shStep.textContent = list.length+' no total';
+  shBody.innerHTML = `
+    <div id="cmtlist">
+      ${list.length? list.map(c=>{
+        const on = S.likedCmts.has(c.id);
+        return `<div class="cmt">
+          <span class="av sm ${c.avc}">${esc(c.u[0].toUpperCase())}</span>
+          <span class="tx">
+            <span class="hd"><strong>${esc(c.u)}</strong><span class="tm">${esc(c.w)}</span></span>
+            <p>${linkify(c.t)}</p>
+            <button class="rp" data-replyto="${esc(c.u)}">Responder</button>
+          </span>
+          <button class="hb ${on?'on':''}" data-clike="${c.id}">${ICON.heart}${c.l+(on?1:0)||''}</button>
+        </div>`;}).join('')
+        : `<div class="empty" style="padding:40px 24px"><h4>Ninguém falou nada</h4><p>Seja o primeiro a comentar.</p></div>`}
+    </div>
+    <div style="height:6px"></div>`;
+  shFoot.style.display='flex';
+  shFoot.innerHTML = `
+    <div class="composer" style="padding:0;border:none;background:none;width:100%">
+      <textarea class="fld" id="cmtfld" rows="1" placeholder="Comenta aí..."></textarea>
+      <button class="send" id="cmtsend">${ICON.send}</button>
+    </div>`;
+}
+
+/* --- share --- */
+function paintShare(){
+  shTitle.textContent='Compartilhar'; shStep.textContent='';
+  shBody.innerHTML = `<div class="optlist">
+    <button data-toast="Link do post copiado">${ICON.link}Copiar link</button>
+    <button data-toast="Abriria seus contatos do app">${ICON.dm}Enviar no direct</button>
+    <button data-toast="Abriria a bandeja de compartilhamento do sistema">${ICON.share}Compartilhar fora do app</button>
+    <button data-toast="Post salvo na sua galeria">${ICON.copy}Salvar vídeo</button>
+  </div>`;
+}
+
+/* --- post menu --- */
+function paintMenu(){
+  const pid = S.sheet.postId;
+  const p = POSTS.find(x=>x.id===pid);
+  const mine = p && p.user===ME.user;
+  shTitle.textContent='Opções'; shStep.textContent='';
+  shBody.innerHTML = `<div class="optlist">
+    <button data-savemenu="${pid}">${ICON.bookmark}${S.saved.has(pid)?'Remover dos salvos':'Salvar post'}</button>
+    <button data-toast="Você não verá mais posts parecidos">${ICON.block}Não tenho interesse</button>
+    <button data-toast="Link copiado">${ICON.link}Copiar link</button>
+    ${mine?`<button class="danger" data-delpost="${pid}">${ICON.flag}Apagar post</button>`
+          :`<button class="danger" data-toast="Denúncia enviada pra moderação">${ICON.flag}Denunciar</button>`}
+  </div>`;
+}
+
+/* --- report mancada --- */
+function paintReport(){
+  shTitle.textContent='Reportar mancada'; shStep.textContent='';
+  shBody.innerHTML = `<div class="wiz">
+    <div class="hint" style="margin-bottom:14px">O que tá rolando no spot? A comunidade vê isso no cartão do pico.</div>
+    <div class="pickrow" style="margin-bottom:16px">
+      ${['Segurança expulsando','Spot fechado','Piso quebrado','Obra no local','Muito cheio','Skate proibido']
+        .map((t,i)=>`<span class="pk ${i===0?'on':''}" data-rp>${t}</span>`).join('')}
+    </div>
+    <div class="fld-g"><label>Detalhe (opcional)</label>
+      <textarea placeholder="Ex: seguranca pede pra sair depois das 22h"></textarea></div>
+    <div class="hint hint-box">A mancada expira em <b>7 dias</b> ou quando 3 skatistas marcarem que já resolveu.</div>
+  </div>`;
+  shFoot.style.display='flex';
+  shFoot.innerHTML = `<button class="b-back" data-closesheet>Cancelar</button>
+    <button class="b-pub" data-sendreport>Enviar</button>`;
+}
+
+/* --- map layers --- */
+function paintLayers(){
+  shTitle.textContent='Camadas do mapa'; shStep.textContent='';
+  shBody.innerHTML = `<div class="wiz">
+    ${[['Spots de rua',true],['Pistas públicas',true],['Lojas de skate',false],['Sessões ao vivo',true],['Mancadas ativas',true]]
+      .map(([l,on],i)=>`<div class="tgl-row"><span>${l}</span><button class="tgl ${on?'on':''}" data-lyr="${i}"></button></div>`).join('')}
+    <div class="hint hint-box" style="margin-top:6px">Camadas ajudam quem só quer pista, ou só quer street.</div>
+  </div>`;
+}
+
+/* --- POST WIZARD --- */
+function paintWizard(){
+  const w = S.wiz;
+  if(w.step===0){
+    shTitle.textContent='O que rolou?'; shStep.textContent='Passo 1/3';
+    shBody.innerHTML = `<div class="typepick">
+      <button class="t1" data-wtype="manobra">
+        <span class="ic">${ICON.play}</span>
+        <span class="inf"><strong>Manobra</strong><small>Vídeo com trick tag, spot e setup. Vai pro feed.</small></span>
+        <span class="ar">›</span></button>
+      <button class="t2" data-wtype="spot">
+        <span class="ic">${ICON.pin}</span>
+        <span class="inf"><strong>Spot novo</strong><small>Foto, endereço, nota do piso e obstáculos. Vai pro mapa.</small></span>
+        <span class="ar">›</span></button>
+      <button class="t3" data-wtype="venda">
+        <span class="ic">${ICON.bag}</span>
+        <span class="inf"><strong>Peça pra vender</strong><small>Foto, preço e estado. Aparece no feed e na Loja.</small></span>
+        <span class="ar">›</span></button>
+    </div>`;
+    return;
+  }
+  if(w.step===1){
+    shTitle.textContent = w.type==='manobra'?'Vídeo da manobra':w.type==='spot'?'Foto do spot':'Foto da peça';
+    shStep.textContent='Passo 2/3';
+    const grad = w.type==='manobra'?'g-a':w.type==='spot'?'g-d':'g-c';
+    shBody.innerHTML = `<div class="wiz">
+      <div class="mediabox ${grad}">
+        ${w.src?'<span class="rec">● PRONTO</span>':''}
+        <span class="ic">${w.type==='manobra'
+          ? '<svg viewBox="0 0 40 40" fill="rgba(241,234,219,.92)"><circle cx="20" cy="20" r="18" fill="rgba(15,14,13,.4)" stroke="rgba(241,234,219,.9)" stroke-width="1.6"/><path d="M16 11.5 29 20 16 28.5z"/></svg>'
+          : '<svg viewBox="0 0 40 40" fill="none" stroke="rgba(241,234,219,.92)" stroke-width="2"><rect x="6" y="11" width="28" height="21" rx="3"/><circle cx="20" cy="21.5" r="6"/><path d="M15 11l2-3h6l2 3"/></svg>'}</span>
+      </div>
+      <div class="src2">
+        <button class="${w.src==='cam'?'on':''}" data-src="cam">${ICON.cam}Câmera</button>
+        <button class="${w.src==='gal'?'on':''}" data-src="gal">${ICON.gallery}Galeria</button>
+      </div>
+      ${w.type==='manobra'?`
+        <div class="tgl-row"><span>◉ Câmera lenta</span><button class="tgl ${w.slomo?'on':''}" id="tglslomo"></button></div>
+        <div class="hint" style="text-align:center">Grava em 120 fps · corte automático nos 8 s da manobra</div>`:''}
+      ${w.type!=='manobra'?`<div class="hint hint-box">Boa foto = spot/peça que a galera confia. Enquadre o obstáculo inteiro.</div>`:''}
+    </div>`;
+    shFoot.style.display='flex';
+    shFoot.innerHTML = `<button class="b-back" data-wback>←</button><button class="b-next" data-wnext>Próximo →</button>`;
+    return;
+  }
+  // step 2 = details
+  shTitle.textContent='Detalhes'; shStep.textContent='Passo 3/3';
+  shBody.innerHTML = `<div class="wiz">${
+    w.type==='manobra'?wizManobra(): w.type==='spot'?wizSpot():wizVenda()
+  }</div>`;
+  shFoot.style.display='flex';
+  shFoot.innerHTML = `<button class="b-back" data-wback>←</button><button class="b-pub" data-wpub>Publicar 🛹</button>`;
+}
+
+function wizManobra(){
+  const w=S.wiz;
+  return `
+  <div class="fld-g"><label>Trick tag *</label>
+    <div class="pickrow">${TRICKS.map(t=>`<span class="pk ${w.trick===t?'on':''}" data-wtrick="${esc(t)}">${esc(t)}</span>`).join('')}</div>
+    ${!w.trick?'<div class="hint" style="color:var(--accent)">Escolha a manobra pra galera achar seu vídeo</div>':''}
+  </div>
+  <div class="fld-g"><label>Spot</label>
+    <button class="gpsrow" data-toast="Abriria a lista de spots próximos">
+      ${ICON.pin}
+      <span class="i"><strong>Praça Roosevelt · Handrail 8</strong><small>Consolação · a 120 m de você</small></span>
+      <span style="color:var(--muted)">›</span></button>
+    <div class="hint">Detectado por GPS · toque pra trocar</div>
+  </div>
+  <div class="fld-g"><label>Legenda</label>
+    <textarea id="w-cap" placeholder="Manda um alô pra crew...">saiu limpo! valeu @duda_sk pela filmagem 🤘</textarea></div>
+  <div class="fld-g"><label>Setup usado</label>
+    <div class="hint hint-box">Puxado do seu perfil · <b>Baker 8.0 · Indy 139 · Spitfire F4 54</b></div></div>`;
+}
+
+function wizSpot(){
+  const w=S.wiz;
+  return `
+  <div class="fld-g"><label>Nome do spot *</label>
+    <input id="w-spotname" type="text" placeholder="Ex: Bau do MASP" value="Ledge da Faria Lima"></div>
+  <div class="fld-g"><label>Endereço</label>
+    <div class="gpsrow">${ICON.pin}
+      <span class="i"><strong>Av. Brig. Faria Lima, 2100</strong><small>Pinheiros · detectado por GPS</small></span></div></div>
+  <div class="fld-g"><label>Nota do piso *</label>
+    <div class="stars">${[1,2,3,4,5].map(n=>`<button class="${w.rate>=n?'on':''}" data-wstar="${n}">★</button>`).join('')}</div>
+    <div class="hint">${w.rate?`Sua nota: <b>${w.rate}/5</b>`:'De 1 a 5 — quão liso e íntegro está o piso'}</div></div>
+  <div class="fld-g"><label>Obstáculos *</label>
+    <div class="pickrow">${OBSTACLES.map(o=>`<span class="pk sq ${w.obst.has(o)?'on':''}" data-wobst="${esc(o)}">${esc(o)}</span>`).join('')}</div></div>
+  <div class="fld-g"><label>Tipo de piso</label>
+    <select id="w-floor">${FLOORS.map(f=>`<option>${f}</option>`).join('')}</select></div>
+  <div class="hint hint-box">ⓘ Vai pro mapa depois de <b>3 skatistas da região</b> confirmarem. Isso evita spot fake e pico privado.</div>`;
+}
+
+function wizVenda(){
+  return `
+  <div class="fld-g"><label>Peça *</label>
+    <input id="w-item" type="text" placeholder="Ex: Shape Element 8.0" value="Shape Element Section 8.0&quot;"></div>
+  <div class="fld-2">
+    <div class="fld-g"><label>Preço *</label><input id="w-price" type="text" value="R$180"></div>
+    <div class="fld-g"><label>Estado</label>
+      <select id="w-cond"><option>Novo</option><option selected>Usado</option><option>Muito usado</option></select></div>
+  </div>
+  <div class="fld-g"><label>Tempo de uso</label><input id="w-time" type="text" value="3 semanas"></div>
+  <div class="fld-g"><label>Retirada</label>
+    <div class="gpsrow">${ICON.pin}
+      <span class="i"><strong>Pinheiros / SP</strong><small>combino ponto no chat · sem envio</small></span></div></div>
+  <div class="fld-g"><label>Descrição</label>
+    <textarea id="w-desc">Shape em ótimo estado, só 3 semanas de uso. Vendo pq migrei pra 8.25.</textarea></div>
+  <div class="hint hint-box">Anúncio aparece no <b>feed</b> de quem te segue e na aba <b>Loja &gt; Usados</b>.</div>`;
+}
+
+/* ============================================================
+   BINDINGS
+   ============================================================ */
+function bind(){
+  // back
+  $$('[data-back]').forEach(b=>b.onclick=()=>back());
+  // navigate
+  $$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+  // toasts
+  $$('[data-toast]').forEach(b=>b.onclick=e=>{e.stopPropagation();toast(b.dataset.toast)});
+
+  // feed segments
+  $$('[data-seg]').forEach(b=>b.onclick=()=>{S.feedSeg=b.dataset.seg;render()});
+  $$('[data-sseg]').forEach(b=>b.onclick=()=>{S.searchSeg=b.dataset.sseg;render()});
+  $$('[data-ptab]').forEach(b=>b.onclick=()=>{S.profTab=b.dataset.ptab;render()});
+
+  // video play
+  $$('[data-vid]').forEach(v=>v.onclick=e=>{
+    if(e.target.closest('[data-spot]')) return;
+    v.classList.toggle('playing');
+    if(v.classList.contains('playing')) setTimeout(()=>v.classList.remove('playing'),5000);
+  });
+
+  // post actions
+  $$('[data-like]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.like;
+    S.liked.has(id)?S.liked.delete(id):S.liked.add(id);
+    render();
+  });
+  $$('[data-save]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.save;
+    if(S.saved.has(id)){S.saved.delete(id);toast('Removido dos salvos');}
+    else{S.saved.add(id);toast('✓ Salvo no seu perfil');}
+    render();
+  });
+  $$('[data-cmts]').forEach(b=>b.onclick=()=>openSheet('comments',{postId:+b.dataset.cmts}));
+  $$('[data-share]').forEach(b=>b.onclick=()=>openSheet('share',{postId:+b.dataset.share}));
+  $$('[data-menu]').forEach(b=>b.onclick=()=>openSheet('menu',{postId:+b.dataset.menu}));
+  $$('[data-follow]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const u=b.dataset.follow;
+    if(S.following.has(u)){S.following.delete(u);toast('Deixou de seguir @'+u);}
+    else{S.following.add(u);toast('✓ Seguindo @'+u);}
+    render();
+  });
+  $$('[data-user]').forEach(b=>b.onclick=e=>{
+    if(e.target.closest('[data-follow]')) return;
+    e.stopPropagation(); go('user',{u:b.dataset.user});
+  });
+
+  // map
+  $$('[data-pin]').forEach(p=>p.onclick=()=>{
+    const id=p.dataset.pin;
+    if(id==='me'){toast('◉ Você está aqui');return;}
+    S.selPin = S.selPin===id?null:id; render();
+  });
+  $$('[data-closepin]').forEach(b=>b.onclick=e=>{e.stopPropagation();S.selPin=null;render()});
+  $$('[data-mf]').forEach(b=>b.onclick=()=>{S.mapFilter=b.dataset.mf;S.selPin=null;render()});
+  $$('[data-spot]').forEach(b=>b.onclick=e=>{e.stopPropagation();go('spot',{id:b.dataset.spot})});
+  $$('[data-checkin]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const id=b.dataset.checkin;
+    if(S.checkedIn.has(id)){S.checkedIn.delete(id);toast('Check-in cancelado');}
+    else{S.checkedIn.add(id);toast('◉ Check-in feito! Vale 2 h');}
+    render();
+  });
+  $$('[data-report]').forEach(b=>b.onclick=()=>openSheet('report',{spotId:b.dataset.report}));
+  const loc=$('[data-locate]'); if(loc) loc.onclick=()=>toast('◉ Centralizando em você');
+  const lyr=$('[data-layers]'); if(lyr) lyr.onclick=()=>openSheet('layers');
+  const mfb=$('[data-mapfilter]'); if(mfb) mfb.onclick=()=>openSheet('layers');
+
+  // shop
+  $$('[data-cat]').forEach(b=>b.onclick=()=>{S.shopCat=b.dataset.cat;render()});
+  $$('[data-prod]').forEach(b=>b.onclick=e=>{
+    if(e.target.closest('[data-fav]')) return;
+    go('product',{id:+b.dataset.prod});
+  });
+  $$('[data-fav]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const id=+b.dataset.fav;
+    if(S.favProd.has(id)){S.favProd.delete(id);toast('Removido dos favoritos');}
+    else{S.favProd.add(id);toast('♥ Adicionado aos favoritos');}
+    render();
+  });
+  $$('[data-addcart]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.addcart;
+    if(!S.cart.includes(id)) S.cart.push(id);
+    const p=PRODUCTS.find(x=>x.id===id);
+    toast(p.ver?'✓ Reservado na '+p.shop:'✓ Chat aberto com '+p.shop);
+    render();
+  });
+  $$('[data-msgseller]').forEach(b=>b.onclick=()=>{
+    const who=b.dataset.msgseller.replace('@','');
+    let c = CHATS.find(x=>x.u===who||x.u===b.dataset.msgseller);
+    if(!c){ c={id:rid(),u:b.dataset.msgseller,avc:'g3',last:'—',w:'agora',unread:0,msgs:[]}; CHATS.unshift(c); }
+    S.stack=[]; go('chat',{id:c.id});
+  });
+  $$('[data-prodname]').forEach(b=>b.onclick=()=>{
+    const p = PRODUCTS.find(x=>x.name===b.dataset.prodname);
+    if(p) go('product',{id:p.id}); else toast('Abriria o anúncio completo');
+  });
+
+  // notifs / chats
+  $$('[data-notif]').forEach(b=>b.onclick=()=>{
+    const n=NOTIFS.find(x=>x.id===+b.dataset.notif); if(n) n.unread=false;
+    render(); toast('Abriria o item do aviso');
+  });
+  $$('[data-chat]').forEach(b=>b.onclick=()=>go('chat',{id:+b.dataset.chat}));
+
+  // chat composer
+  const mf=$('#msgfld'), ms=$('#msgsend');
+  if(mf&&ms){
+    const send=()=>{
+      const t=mf.value.trim(); if(!t) return;
+      const top=topOf(); const c=CHATS.find(x=>x.id===top.id);
+      c.msgs.push({me:true,t,w:'agora'}); c.last=t; c.w='agora';
+      mf.value=''; render();
+      setTimeout(()=>{ const sc=$('#chatscroll'); if(sc) sc.scrollTop=sc.scrollHeight; },30);
+    };
+    ms.onclick=send;
+    mf.onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} };
+    const sc=$('#chatscroll'); if(sc) sc.scrollTop=sc.scrollHeight;
+  }
+
+  // search input
+  const sq=$('#sq');
+  if(sq){
+    sq.oninput=()=>{
+      S.searchQ=sq.value;
+      const pos=sq.selectionStart; render();
+      const n=$('#sq'); if(n){ n.focus(); n.setSelectionRange(pos,pos); }
+    };
+  }
+
+  // theme row
+  const tr=$('#themerow'); if(tr) tr.onclick=toggleTheme;
+
+  // crew badge
+  const cb=$('[data-go="crew"]'); if(cb) cb.onclick=()=>go('crew');
+}
+
+function bindSheet(){
+  $$('#sheet [data-toast]').forEach(b=>b.onclick=()=>{toast(b.dataset.toast);closeSheet()});
+  $$('#sheet [data-closesheet]').forEach(b=>b.onclick=closeSheet);
+
+  // comments
+  $$('#sheet [data-clike]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.clike;
+    S.likedCmts.has(id)?S.likedCmts.delete(id):S.likedCmts.add(id);
+    paintSheet();
+  });
+  $$('#sheet [data-replyto]').forEach(b=>b.onclick=()=>{
+    const f=$('#cmtfld'); if(f){ f.value='@'+b.dataset.replyto+' '; f.focus(); }
+  });
+  const cf=$('#cmtfld'), cs=$('#cmtsend');
+  if(cf&&cs){
+    const send=()=>{
+      const t=cf.value.trim(); if(!t) return;
+      const pid=S.sheet.postId;
+      COMMENTS[pid]=COMMENTS[pid]||[];
+      COMMENTS[pid].push({id:rid(),u:ME.user,avc:'',t,w:'agora',l:0});
+      cf.value=''; paintSheet(); render();
+      setTimeout(()=>{ shBody.scrollTop=shBody.scrollHeight; },30);
+    };
+    cs.onclick=send;
+    cf.onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} };
+  }
+
+  // post menu
+  $$('#sheet [data-savemenu]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.savemenu;
+    S.saved.has(id)?S.saved.delete(id):S.saved.add(id);
+    toast(S.saved.has(id)?'✓ Salvo':'Removido dos salvos');
+    closeSheet(); render();
+  });
+  $$('#sheet [data-delpost]').forEach(b=>b.onclick=()=>{
+    const id=+b.dataset.delpost;
+    POSTS = POSTS.filter(p=>p.id!==id);
+    closeSheet(); render(); toast('Post apagado');
+  });
+
+  // report chips
+  $$('#sheet [data-rp]').forEach(c=>c.onclick=()=>{
+    $$('#sheet [data-rp]').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');
+  });
+  const sr=$('#sheet [data-sendreport]');
+  if(sr) sr.onclick=()=>{ closeSheet(); toast('⚠ Mancada enviada. Valeu pelo aviso!',true); };
+
+  // layers toggles
+  $$('#sheet [data-lyr]').forEach(t=>t.onclick=()=>t.classList.toggle('on'));
+
+  // wizard
+  $$('#sheet [data-wtype]').forEach(b=>b.onclick=()=>{S.wiz.type=b.dataset.wtype;S.wiz.step=1;paintSheet()});
+  const wb=$('#sheet [data-wback]'); if(wb) wb.onclick=()=>{S.wiz.step=Math.max(0,S.wiz.step-1);paintSheet()};
+  const wn=$('#sheet [data-wnext]'); if(wn) wn.onclick=()=>{
+    if(!S.wiz.src){ toast('Escolha câmera ou galeria',true); return; }
+    S.wiz.step=2; paintSheet();
+  };
+  $$('#sheet [data-src]').forEach(b=>b.onclick=()=>{S.wiz.src=b.dataset.src;paintSheet()});
+  const ts=$('#tglslomo'); if(ts) ts.onclick=()=>{S.wiz.slomo=!S.wiz.slomo;paintSheet()};
+  $$('#sheet [data-wtrick]').forEach(b=>b.onclick=()=>{S.wiz.trick=b.dataset.wtrick;paintSheet()});
+  $$('#sheet [data-wobst]').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.wobst;
+    S.wiz.obst.has(v)?S.wiz.obst.delete(v):S.wiz.obst.add(v);
+    paintSheet();
+  });
+  $$('#sheet [data-wstar]').forEach(b=>b.onclick=()=>{S.wiz.rate=+b.dataset.wstar;paintSheet()});
+  const wp=$('#sheet [data-wpub]'); if(wp) wp.onclick=publish;
+}
+
+/* ============================================================
+   PUBLISH
+   ============================================================ */
+function publish(){
+  const w=S.wiz;
+  if(w.type==='manobra'){
+    if(!w.trick){ toast('Escolha a trick tag primeiro',true); return; }
+    const cap = ($('#w-cap')&&$('#w-cap').value.trim()) || 'nova manobra';
+    POSTS.unshift({
+      id:rid(), type:'trick', user:ME.user, avc:'', when:'agora',
+      trick:w.trick, spot:'Roosevelt · Handrail 8', spotId:'roosevelt',
+      grad:'g-f', likes:0, cmts:0, cap
+    });
+    closeSheet(); setTab('feed'); toast('✓ Manobra publicada no feed!');
+  }
+  else if(w.type==='spot'){
+    if(!w.rate){ toast('Dê a nota do piso',true); return; }
+    if(!w.obst.size){ toast('Marque ao menos 1 obstáculo',true); return; }
+    const name = ($('#w-spotname')&&$('#w-spotname').value.trim()) || 'Spot novo';
+    const floor = ($('#w-floor')&&$('#w-floor').value) || 'Granito';
+    const id = 'novo'+rid();
+    SPOTS.push({
+      id, x:42, y:34, name, type:'street', rate:w.rate, live:0,
+      sub:'Pinheiros · agora', hours:'Aberto 24h', floor,
+      tags:[floor,...Array.from(w.obst)], sessions:0, videos:0, alert:null
+    });
+    POSTS.unshift({
+      id:rid(), type:'spot', user:ME.user, avc:'', when:'agora',
+      spotName:name, spotSub:'Pinheiros · '+floor.toLowerCase()+' · agora', spotId:id,
+      likes:0, cmts:0, cap:'marquei esse spot novo no mapa. piso nota '+w.rate+'/5.'
+    });
+    closeSheet(); setTab('mapa'); S.selPin=id; render();
+    toast('✓ Spot no mapa! Aguardando 3 confirmações');
+  }
+  else{
+    const item  = ($('#w-item')&&$('#w-item').value.trim()) || 'Peça de skate';
+    const price = ($('#w-price')&&$('#w-price').value.trim()) || 'R$0';
+    const cond  = ($('#w-cond')&&$('#w-cond').value) || 'Usado';
+    const time  = ($('#w-time')&&$('#w-time').value.trim()) || '';
+    const desc  = ($('#w-desc')&&$('#w-desc').value.trim()) || '';
+    const pid = rid();
+    PRODUCTS.unshift({
+      id:pid, brand:'Comunidade', name:item, price, shop:'@'+ME.user, dist:null,
+      img:'p-shape', ver:false, cat:'usado', cond,
+      desc: desc || 'Peça anunciada por skatista da comunidade.', stock:'1 unidade'
+    });
+    POSTS.unshift({
+      id:rid(), type:'sale', user:ME.user, avc:'', when:'agora',
+      item, cond:cond+(time?' · '+time:''), price, local:'ret. Pinheiros',
+      img:'p-shape', likes:0, cmts:0, cap:desc
+    });
+    closeSheet(); S.shopCat='usado'; setTab('loja');
+    toast('✓ Anúncio no feed e na Loja!');
+  }
+  S.wiz={step:0,type:null,slomo:false,trick:null,obst:new Set(),rate:0,src:null};
+}
+
+/* ============================================================
+   TOAST / THEME / WIRE
+   ============================================================ */
+let tTimer=null;
+function toast(msg,red=false){
+  const t=$('#toast');
+  $('#toast-msg').textContent=msg;
+  t.classList.toggle('red',!!red);
+  t.classList.add('on');
+  clearTimeout(tTimer);
+  tTimer=setTimeout(()=>t.classList.remove('on'),2400);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  const sysDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const next = cur ? (cur==='dark'?'light':'dark') : (sysDark?'light':'dark');
+  document.documentElement.setAttribute('data-theme',next);
+  toast('Tema: '+(next==='dark'?'escuro':'claro'));
+}
+
+$$('#tabbar button[data-tab]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    if(b.dataset.tab==='post'){
+      S.wiz={step:0,type:null,slomo:false,trick:null,obst:new Set(),rate:0,src:null};
+      openSheet('post'); return;
+    }
+    setTab(b.dataset.tab);
+  });
+});
+$('#sh-x').addEventListener('click',closeSheet);
+ovl.addEventListener('click',closeSheet);
+const tb=$('#themebtn'); if(tb) tb.addEventListener('click',toggleTheme);
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "Motoreiro · Assistente da garagem",
+  "short_name": "Motoreiro",
+  "description": "Custos, revisões, IPVA, seguro e manutenção inteligente da sua moto.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f2f2",
+  "theme_color": "#ec3013",
+  "icons": []
+}

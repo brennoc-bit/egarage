@@ -1,0 +1,88 @@
+# ==========================================================================
+# Projetos web (HTML/CSS/JS puro) + protótipos. Sem build step na raiz.
+# ==========================================================================
+
+# --- Projeto com repositório próprio -------------------------------------
+# kickpush/ é versionado separadamente, no repositório dele.
+kickpush/
+
+# --- Segredos e credenciais ----------------------------------------------
+# Nada disso existe hoje no projeto; as regras ficam aqui como rede de
+# proteção para não vazar por descuido mais adiante.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+id_rsa*
+id_ed25519*
+*.crt
+*credentials*.json
+*secret*.json
+google-services.json
+GoogleService-Info.plist
+.netrc
+.npmrc.local
+
+# --- Dependências --------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+bower_components/
+
+# --- Saídas de build e caches --------------------------------------------
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+web-build/
+.expo/
+.expo-shared/
+.parcel-cache/
+.cache/
+.vite/
+*.tsbuildinfo
+
+# --- Python (servidor local de desenvolvimento) --------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- Logs e temporários --------------------------------------------------
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.*
+.metro-health-check*
+*.tmp
+*.bak
+*.orig
+
+# --- Configuração local do Claude Code (específica da máquina) -----------
+# .claude/launch.json e settings.json ficam versionados de propósito.
+.claude/settings.local.json
+.claude/*.local.json
+
+# --- Sistema operacional e editores --------------------------------------
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
