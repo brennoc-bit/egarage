@@ -44,9 +44,14 @@ const App = {
     const nav = $('#nav');
     const scroll = tela.scrollTop;
 
-    const v = Store.atual();
     clear(hd); clear(tela); clear(nav);
 
+    // Porteira do protótipo: sem sessão, só existe a tela de login.
+    const semSessao = !Auth.logado();
+    $('#app').classList.toggle('login-ativo', semSessao);
+    if (semSessao) { tela.append(Auth.tela()); return; }
+
+    const v = Store.atual();
     if (!v) { renderSemVeiculo(hd, tela, nav); return; }
 
     const conteudo = (Screens[this.rota] || Screens.inicio)(v);
@@ -365,6 +370,15 @@ const Acoes = {
     document.body.append(input);
     input.click();
     setTimeout(() => input.remove(), 60000);
+  },
+
+  sair() {
+    UI.confirmar({
+      titulo: 'Sair da conta',
+      texto: 'A garagem continua salva neste aparelho; é só entrar de novo para vê-la.',
+      acao: 'Sair',
+      onOk: () => { Auth.sair(); App.ir('inicio'); },
+    });
   },
 
   resetar() {

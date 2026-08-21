@@ -448,6 +448,9 @@ Screens.perfil = () => {
     UI.cta([
       { label: 'Restaurar dados de demonstração', icone: '↻', onClick: () => Acoes.resetar() },
     ]),
+    UI.cta([
+      { label: 'Sair da conta', icone: '⏻', onClick: () => Acoes.sair() },
+    ]),
     h('div', { class: 'note', style: { paddingBottom: 24 } },
       'Motoreiro · assistente da garagem · v1 — implementado a partir do canvas Garagem.dc.html (Modernist DS).'));
 
