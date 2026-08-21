@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-20
+**Última atualização:** 2026-08-21
 
 ---
 
@@ -51,13 +51,16 @@ licenciamento de SP pelo final da placa.
 
 Não foi tocado nesta sessão — entrou no repositório como estava.
 
-### `kickpush.html`, `kickpush-plano-tecnico.html`, `kickpush-qr.png` ✅
+### Kickpush movido para fora do repo ✅
 
-Protótipo web e plano técnico do Kickpush. **O app Expo/React Native tem
-repositório próprio** e a pasta `kickpush/` está no `.gitignore` deste repo —
-sincronize aquele projeto separadamente. As instruções para retomá-lo (incluindo
-a pegadinha do `REACT_NATIVE_PACKAGER_HOSTNAME` com a Radmin VPN) estão em
-`kickpush/RETOMAR.md`, que fica só na máquina local.
+O protótipo web, o plano técnico, o QR do Expo Go e a pasta do app foram
+movidos para `D:\pasta teste claude\` — o Kickpush continua como projeto
+separado, agora também em pasta própria fora do workspace `egarage`. Este
+commit remove os três arquivos que ainda estavam versionados aqui
+(`kickpush.html`, `kickpush-plano-tecnico.html`, `kickpush-qr.png`), alinhando
+o repositório à convenção do `CLAUDE.md`: kickpush não é versionado neste
+repo. Instruções de retomada do app ficam em `RETOMAR.md` dentro da própria
+pasta do projeto, na nova localização.
 
 ### Infraestrutura ✅
 
