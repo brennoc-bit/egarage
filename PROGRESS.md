@@ -67,6 +67,11 @@ configuração local do Claude Code e padrões de credenciais como rede de
 proteção. Varredura de arquivos sensíveis feita antes do primeiro commit —
 nenhum encontrado.
 
+Documentação de entrada para trabalhar nas duas máquinas: `README.md`
+(estrutura, como rodar cada app, rotina de `pull`/`push`) e `CLAUDE.md`
+(instruções que o Claude Code carrega sozinho ao abrir a pasta — ler este
+`PROGRESS.md` primeiro, atualizá-lo ao fim da sessão, convenções do repo).
+
 ---
 
 ## Em andamento
