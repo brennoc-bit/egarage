@@ -11,7 +11,10 @@ const NAV = [
   { id: 'perfil', label: 'Perfil', ic: '◉' },
 ];
 // Telas sem aba própria herdam o destaque de outra.
-const NAV_PAI = { manutencao: 'garagem', veiculo: 'garagem' };
+const NAV_PAI = {
+  manutencao: 'garagem', veiculo: 'garagem',
+  seguro: 'docs', 'seguro-editar': 'docs',
+};
 
 const App = {
   rota: 'inicio',
@@ -23,6 +26,7 @@ const App = {
     const mudou = rota !== this.rota;
     // Sair do cadastro descarta o que estava sendo digitado.
     if (this.rota === 'veiculo' && rota !== 'veiculo') this.limparRascunho();
+    if (this.rota === 'seguro-editar' && rota !== 'seguro-editar') this.limparRascunhoSeguro();
     this.rota = rota;
     if (sub) Object.assign(this.sub, sub);
     this.render({ topo: mudou });
@@ -60,6 +64,28 @@ const App = {
     return this._rascunho;
   },
   limparRascunho() { this._rascunho = null; },
+
+  // Rascunho da apólice, mesma ideia: sobrevive aos redesenhos das chips.
+  rascunhoSeguro(base) {
+    if (!this._rascunhoSeguro) {
+      const texto = (valor) => (valor != null && valor !== '' ? String(valor) : '');
+      this._rascunhoSeguro = {
+        seguradora: texto(base.seguradora), numero: texto(base.numero),
+        telEmergencia: texto(base.telEmergencia), telSeguradora: texto(base.telSeguradora),
+        whatsapp: texto(base.whatsapp), site: texto(base.site),
+        corretorNome: texto(base.corretorNome), corretorTel: texto(base.corretorTel),
+        corretorEmail: texto(base.corretorEmail),
+        franquia: texto(base.franquia), rcfMateriais: texto(base.rcfMateriais),
+        rcfCorporais: texto(base.rcfCorporais),
+        coberturas: (base.coberturas || []).slice(),
+        assistencias: (base.assistencias || []).slice(),
+        guinchoKm: texto(base.guinchoKm), carroReservaDias: texto(base.carroReservaDias),
+        observacoes: texto(base.observacoes),
+      };
+    }
+    return this._rascunhoSeguro;
+  },
+  limparRascunhoSeguro() { this._rascunhoSeguro = null; },
   sairDoCadastro() {
     const editando = this.sub.veiculoId;
     this.limparRascunho();
@@ -108,7 +134,7 @@ const App = {
 
     // Abastecer é a ação mais repetida do app: fica flutuando, sempre à mão.
     // Fora do cadastro, onde ela atrapalharia o formulário.
-    if (this.rota !== 'veiculo') {
+    if (this.rota !== 'veiculo' && this.rota !== 'seguro-editar') {
       tela.append(UI.fab(() => Acoes.registrarAbastecimento(Store.atual()), 'Registrar abastecimento'));
     }
 
@@ -289,6 +315,22 @@ const Acoes = {
   },
 
   /* — documentos — */
+
+  copiar(texto, mensagem) {
+    const avisar = () => UI.toast(mensagem || 'Copiado');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(texto).then(avisar, () => UI.toast('Não foi possível copiar'));
+      return;
+    }
+    // http puro (rede local) não tem clipboard: cai no método antigo.
+    const campo = h('textarea', { style: { position: 'fixed', opacity: 0 } });
+    campo.value = texto;
+    document.body.append(campo);
+    campo.select();
+    try { document.execCommand('copy'); avisar(); }
+    catch (e) { UI.toast('Não foi possível copiar'); }
+    campo.remove();
+  },
 
   pagarParcela(v) {
     const f = Calc.financiamentoStatus(v);

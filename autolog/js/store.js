@@ -24,6 +24,15 @@ const labelTipo = (id) => (TIPOS.find((t) => t.id === id) || TIPOS[0]).label;
 
 const COMBUSTIVEIS = ['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV', 'Híbrido', 'Elétrico'];
 
+const COBERTURAS = [
+  'Colisão', 'Roubo e furto', 'Incêndio', 'Danos a terceiros (RCF)',
+  'Vidros', 'Fenômenos naturais', 'Danos morais', 'Uso em aplicativo',
+];
+const ASSISTENCIAS = [
+  'Guincho', 'Carro reserva', 'Chaveiro', 'Pane seca',
+  'Troca de pneu', 'Auxílio mecânico', 'Assistência residencial',
+];
+
 /* Planos de manutenção por tipo de veículo. Intervalos de referência: o
    usuário ajusta a realidade registrando os serviços que faz. */
 const PLANO_MANUTENCAO = {
@@ -646,6 +655,26 @@ const Store = (() => {
     return `${doc.tag} pago`;
   }
 
+  /**
+   * Dados da apólice: número, contatos, coberturas, franquia. Fica junto do
+   * documento do seguro; sem seguro cadastrado, não há onde guardar.
+   */
+  function atualizarApolice(vid, dados) {
+    const v = veiculo(vid);
+    if (!v) return null;
+    const doc = v.docs.find((d) => d.id === 'seguro');
+    if (!doc) return null;
+    if (dados.seguradora) doc.titulo = dados.seguradora;
+    doc.apolice = Object.assign({}, doc.apolice, dados);
+    salvar();
+    return doc;
+  }
+
+  const apoliceDe = (v) => {
+    const doc = v && v.docs.find((d) => d.id === 'seguro');
+    return doc ? Object.assign({ seguradora: doc.titulo }, doc.apolice || {}) : null;
+  };
+
   function agendarRevisao(vid, dados) {
     const v = veiculo(vid);
     if (!v) return;
@@ -682,6 +711,7 @@ const Store = (() => {
     addLancamento, removerLancamento, registrarServico, categoriaDoItem,
     pagarDocumento, agendarRevisao, salvarSimulacao,
     dadosDoFormulario, atualizarDocsEFinanciamento, pagarParcelaFinanciamento,
+    atualizarApolice, apoliceDe,
     resetar, importar, exportar, normalizarPlaca,
   };
 })();

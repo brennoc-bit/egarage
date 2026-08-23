@@ -374,6 +374,54 @@ button.list-item:active { background: var(--color-surface); }
   background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent);
 }
 
+/* ── Tela da seguradora ────────────────────────────────────────────────── */
+.tela-seguro .bloco { padding: 0 16px 12px; }
+
+/* Contatos: alvo grande, porque são acionados com pressa e com uma mão só. */
+.bloco-contatos { padding: 16px 16px 4px; display: flex; flex-direction: column; gap: 10px; }
+.contato {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 18px; border-radius: var(--r-md); text-decoration: none;
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-divider); min-height: 62px;
+}
+.contato:active { transform: scale(.99); }
+.contato.principal {
+  background: var(--color-accent); color: var(--color-bg);
+  border-color: var(--color-accent); min-height: 76px;
+}
+.contato-lbl {
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.contato.principal .contato-lbl { font-size: 17px; }
+.contato-ic { font-size: 22px; line-height: 1; opacity: .9; }
+
+/* Par rótulo/valor das seções de dados. */
+.dado { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--color-divider); }
+.dado:last-child { border-bottom: 0; }
+.dado .dado-k {
+  width: 108px; flex: none; font-size: 9px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.dado .dado-v { flex: 1; font-size: 13px; font-weight: 600; line-height: 1.4; }
+button.mini {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 100px; cursor: pointer;
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-divider);
+}
+
+/* Chips de cobertura e assistência. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 14px; border-radius: 100px; cursor: pointer; font: inherit;
+  font-size: 12px; font-weight: 600;
+  background: var(--color-bg); color: var(--color-text);
+  border: 1px solid var(--color-divider);
+}
+.chip.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+span.chip { cursor: default; }
+
 /* ── Login (porteira do protótipo) ─────────────────────────────────────── */
 .app.login-ativo > .app-hd,
 .app.login-ativo > .footer-nav { display: none; }

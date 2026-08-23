@@ -368,12 +368,17 @@ function cartaoSeguro(v, s) {
     h('div', { style: { marginTop: 12 } }, UI.meter(s.progresso, s.cor)),
     UI.mono('vigência decorrida', { fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 6 }),
 
-    s.acao ? h('div', { style: { marginTop: 12 } },
+    h('div', { style: { marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' } },
       h('button', {
         class: 'btn btn-secondary',
         style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+        onClick: () => App.ir('seguro'),
+      }, 'Apólice e contatos'),
+      s.acao ? h('button', {
+        class: 'btn btn-secondary',
+        style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
         onClick: () => Acoes.pagar(v, s),
-      }, s.acao)) : null);
+      }, s.acao) : null));
 }
 
 function cartaoFinanciamento(v) {
@@ -528,6 +533,194 @@ function abaSimulacao(v) {
       },
     ]));
 }
+
+/* ── Seguradora: apólice, coberturas e contatos ────────────────────────── */
+
+const soDigitos = (t) => String(t || '').replace(/\D/g, '');
+const telHref = (t) => 'tel:' + soDigitos(t);
+const zapHref = (t) => {
+  const d = soDigitos(t);
+  return 'https://wa.me/' + (d.length <= 11 ? '55' + d : d);
+};
+const siteHref = (t) => (/^https?:\/\//i.test(t) ? t : 'https://' + t);
+
+Screens.seguro = (v) => {
+  const s = Calc.docsStatus(v).find((d) => d.doc.id === 'seguro');
+  if (!s) {
+    return {
+      kicker: 'Seguro', titulo: 'Sem apólice', voltar: 'docs',
+      corpo: h('div', null,
+        UI.vazio('Este veículo não tem seguro cadastrado.'),
+        UI.cta([{ label: 'Cadastrar seguro na ficha', icone: '→', pri: true, onClick: () => Acoes.editarVeiculo(v) }])),
+    };
+  }
+
+  const a = Store.apoliceDe(v) || {};
+  const pag = s.doc.pagamento || { quitado: true };
+
+  // Linha de dado: só aparece quando existe. Campo vazio não vira "—".
+  const dado = (rotulo, valor, extra) => (valor ? h('div', { class: 'dado' },
+    UI.mono(rotulo, { class: 'dado-k' }),
+    h('div', { class: 'dado-v' }, valor, extra || null)) : null);
+
+  const temContato = a.telEmergencia || a.telSeguradora || a.whatsapp || a.corretorTel;
+
+  const botaoTel = (href, rotulo, sub, principal) => h('a', {
+    class: 'contato' + (principal ? ' principal' : ''), href,
+  },
+    h('div', null,
+      h('div', { class: 'contato-lbl' }, rotulo),
+      sub ? UI.mono(sub, { fontSize: 12, marginTop: 3, opacity: .85 }) : null),
+    h('span', { class: 'contato-ic' }, principal ? '☎' : '›'));
+
+  const corpo = h('div', { class: 'tela-seguro' },
+    // — o que importa no pior momento —
+    temContato
+      ? h('div', { class: 'bloco-contatos' },
+          a.telEmergencia ? botaoTel(telHref(a.telEmergencia), 'Assistência 24h', a.telEmergencia, true) : null,
+          a.telSeguradora ? botaoTel(telHref(a.telSeguradora), 'Central da seguradora', a.telSeguradora) : null,
+          a.corretorTel ? botaoTel(telHref(a.corretorTel), a.corretorNome || 'Corretor', a.corretorTel) : null,
+          a.whatsapp ? botaoTel(zapHref(a.whatsapp), 'WhatsApp', a.whatsapp) : null,
+          a.site ? botaoTel(siteHref(a.site), 'Site da seguradora', a.site) : null)
+      : h('div', { class: 'note' },
+          'Nenhum telefone cadastrado ainda. É justamente o que você vai precisar com pressa — vale preencher antes de precisar.'),
+
+    // — identificação da apólice —
+    UI.sectHd('Apólice'),
+    h('div', { class: 'bloco' },
+      dado('Seguradora', a.seguradora),
+      a.numero ? h('div', { class: 'dado' },
+        UI.mono('Número', { class: 'dado-k' }),
+        h('div', { class: 'dado-v', style: { display: 'flex', gap: 10, alignItems: 'center' } },
+          h('span', { class: 'mono', style: { fontWeight: 600 } }, a.numero),
+          h('button', { class: 'mini', onClick: () => Acoes.copiar(a.numero, 'Número da apólice copiado') }, 'copiar'))) : null,
+      dado('Cobertura', s.cobertura.texto),
+      dado('Pagamento', s.pagamentoTexto),
+      dado('Valor da apólice', brl(s.doc.valor)),
+      !pag.quitado ? dado('Próxima parcela', brl(pag.parcela)) : null),
+
+    // — o que está coberto —
+    (a.franquia || a.rcfMateriais || a.rcfCorporais || (a.coberturas || []).length) ? h('div', null,
+      UI.sectHd('Cobertura contratada'),
+      h('div', { class: 'bloco' },
+        dado('Franquia', a.franquia ? brl(parseNum(a.franquia)) : null),
+        dado('RCF · materiais', a.rcfMateriais ? brl(parseNum(a.rcfMateriais)) : null),
+        dado('RCF · corporais', a.rcfCorporais ? brl(parseNum(a.rcfCorporais)) : null),
+        (a.coberturas || []).length ? h('div', { class: 'chips', style: { marginTop: 10 } },
+          a.coberturas.map((c) => h('span', { class: 'chip on' }, c))) : null)) : null,
+
+    // — assistência —
+    ((a.assistencias || []).length || a.guinchoKm || a.carroReservaDias) ? h('div', null,
+      UI.sectHd('Assistência'),
+      h('div', { class: 'bloco' },
+        dado('Guincho', a.guinchoKm ? `até ${num(parseNum(a.guinchoKm))} km` : null),
+        dado('Carro reserva', a.carroReservaDias ? `${num(parseNum(a.carroReservaDias))} dias` : null),
+        (a.assistencias || []).length ? h('div', { class: 'chips', style: { marginTop: 10 } },
+          a.assistencias.map((c) => h('span', { class: 'chip on' }, c))) : null)) : null,
+
+    // — o que a seguradora pergunta no telefone —
+    UI.sectHd('Dados que vão te pedir'),
+    h('div', { class: 'bloco' },
+      dado('Veículo', `${v.marca} ${v.modelo} ${v.ano}`.trim()),
+      v.placa ? h('div', { class: 'dado' },
+        UI.mono('Placa', { class: 'dado-k' }),
+        h('div', { class: 'dado-v', style: { display: 'flex', gap: 10, alignItems: 'center' } },
+          h('span', { class: 'mono', style: { fontWeight: 600 } }, v.placa),
+          h('button', { class: 'mini', onClick: () => Acoes.copiar(v.placa, 'Placa copiada') }, 'copiar'))) : null,
+      dado('Chassi', v.chassi),
+      dado('Renavam', v.renavam),
+      dado('Cor', v.cor)),
+
+    a.observacoes ? h('div', null,
+      UI.sectHd('Observações'),
+      h('div', { class: 'bloco' }, h('div', { style: { fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap' } }, a.observacoes))) : null,
+
+    UI.cta([
+      { label: 'Editar dados do seguro', icone: '✎', pri: true, onClick: () => App.ir('seguro-editar') },
+    ]),
+    h('div', { class: 'note', style: { paddingBottom: 24 } },
+      'Tudo isso fica salvo apenas neste aparelho. Nada é enviado para lugar nenhum.'));
+
+  return { kicker: a.seguradora || 'Seguro', titulo: 'Seguradora', corpo, voltar: 'docs' };
+};
+
+/* Formulário da apólice — muitos campos, todos opcionais. */
+Screens['seguro-editar'] = (v) => {
+  const a = Store.apoliceDe(v) || {};
+  const r = App.rascunhoSeguro(a);
+  const refs = {};
+
+  const campo = (def) => {
+    const ref = UI.campo(Object.assign({}, def, { valor: r[def.name] != null ? r[def.name] : '' }));
+    ref.input.addEventListener('input', () => { r[def.name] = ref.input.value; });
+    ref.input.addEventListener('change', () => { r[def.name] = ref.input.value; });
+    refs[def.name] = ref;
+    return ref.caixa;
+  };
+  const dupla = (x, y) => h('div', { class: 'grid2' }, campo(x), campo(y));
+
+  const chips = (lista, chave) => h('div', { class: 'chips' },
+    lista.map((c) => h('button', {
+      class: 'chip' + ((r[chave] || []).includes(c) ? ' on' : ''),
+      onClick: () => {
+        const atual = r[chave] || [];
+        r[chave] = atual.includes(c) ? atual.filter((x) => x !== c) : atual.concat([c]);
+        App.render();
+      },
+    }, c)));
+
+  const corpo = h('div', { class: 'form-veiculo' },
+    UI.sectHd('Seguradora e apólice'),
+    h('div', { class: 'bloco' },
+      dupla({ name: 'seguradora', label: 'Seguradora', placeholder: 'Porto, Azul, Allianz…' },
+            { name: 'numero', label: 'Número da apólice', placeholder: '00-0000000' })),
+
+    UI.sectHd('Contatos'),
+    h('div', { class: 'bloco' },
+      h('div', { class: 'hint', style: { marginBottom: 14 } },
+        'Estes viram botões de ligar na tela do seguro. O de assistência 24h fica em destaque, no topo.'),
+      campo({ name: 'telEmergencia', label: 'Assistência 24h', placeholder: '0800 000 0000', tipo: 'tel' }),
+      dupla({ name: 'telSeguradora', label: 'Central de atendimento', placeholder: '0800 000 0000', tipo: 'tel' },
+            { name: 'whatsapp', label: 'WhatsApp', placeholder: '(11) 90000-0000', tipo: 'tel' }),
+      campo({ name: 'site', label: 'Site ou app', placeholder: 'portoseguro.com.br' }),
+      dupla({ name: 'corretorNome', label: 'Corretor', placeholder: 'nome' },
+            { name: 'corretorTel', label: 'Telefone do corretor', placeholder: '(11) 90000-0000', tipo: 'tel' }),
+      campo({ name: 'corretorEmail', label: 'E-mail do corretor', placeholder: 'nome@corretora.com.br' })),
+
+    UI.sectHd('Cobertura contratada'),
+    h('div', { class: 'bloco' },
+      campo({ name: 'franquia', label: 'Franquia', tipo: 'dinheiro', placeholder: '0,00', hint: 'O que você paga do próprio bolso em caso de sinistro.' }),
+      dupla({ name: 'rcfMateriais', label: 'RCF · danos materiais', tipo: 'dinheiro', placeholder: '0,00' },
+            { name: 'rcfCorporais', label: 'RCF · danos corporais', tipo: 'dinheiro', placeholder: '0,00' }),
+      UI.mono('O que está coberto', { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '4px 0 8px' }),
+      chips(COBERTURAS, 'coberturas')),
+
+    UI.sectHd('Assistência'),
+    h('div', { class: 'bloco' },
+      dupla({ name: 'guinchoKm', label: 'Guincho até (km)', tipo: 'number', placeholder: '200' },
+            { name: 'carroReservaDias', label: 'Carro reserva (dias)', tipo: 'number', placeholder: '7' }),
+      UI.mono('Serviços incluídos', { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '4px 0 8px' }),
+      chips(ASSISTENCIAS, 'assistencias')),
+
+    UI.sectHd('Observações'),
+    h('div', { class: 'bloco' },
+      campo({ name: 'observacoes', label: 'Anotações', tipo: 'textarea', placeholder: 'Isenção de franquia para vidros, cobertura de app aos fins de semana…' })),
+
+    UI.cta([
+      { label: 'Cancelar', icone: '✕', onClick: () => { App.limparRascunhoSeguro(); App.ir('seguro'); } },
+      {
+        label: 'Salvar', icone: '✓', pri: true,
+        onClick: () => {
+          Store.atualizarApolice(v.id, r);
+          App.limparRascunhoSeguro();
+          App.ir('seguro');
+          UI.toast('Dados do seguro salvos');
+        },
+      },
+    ]));
+
+  return { kicker: 'Editando', titulo: 'Dados do seguro', corpo, voltar: 'seguro' };
+};
 
 /* ── Cadastro / edição do veículo ──────────────────────────────────────── */
 

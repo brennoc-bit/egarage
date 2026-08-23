@@ -82,6 +82,26 @@ parcelas, o valor entra no custo mensal como dinheiro saindo; quitado, vira
 uma provisão de 1/12 para a renovação. Quitar a última parcela **não encerra a
 cobertura** — o app diz isso explicitamente.
 
+### A tela da seguradora
+
+Do cartão do seguro, o botão *Apólice e contatos* abre uma tela pensada para o
+pior momento — batida, pane, roubo — quando ninguém tem paciência de procurar
+menu:
+
+- **Contatos no topo, como botões de ligar.** Assistência 24h em destaque, em
+  vermelho e maior que os outros; depois central da seguradora, corretor,
+  WhatsApp e site. Tocar disca.
+- **Apólice**: número com botão de copiar, cobertura, pagamento e valores.
+- **Cobertura contratada**: franquia, limites de RCF e as coberturas marcadas.
+- **Assistência**: guincho até X km, carro reserva por X dias e os serviços
+  incluídos.
+- **"Dados que vão te pedir"**: veículo, placa (com copiar), chassi, renavam e
+  cor — exatamente o que a central pergunta no telefone.
+
+Campo vazio não aparece: a tela mostra só o que foi preenchido. Nada de CPF ou
+documento pessoal, de propósito — o app não precisa disso para ser útil, e o
+arquivo de exportação ficaria carregando dado sensível à toa.
+
 A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
 intervalo do tipo de veículo — e sem preço associado.
 

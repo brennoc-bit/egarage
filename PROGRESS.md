@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-23 (3ª sessão do dia)
+**Última atualização:** 2026-08-23 (4ª sessão do dia)
 
 ---
 
@@ -97,6 +97,28 @@ datas não têm relação. O app passou a tratar isso como duas linhas do tempo:
   explicitamente ("Seguro quitado · cobertura mantida").
 - Garagens antigas migram sozinhas: o seguro que era uma despesa anual genérica
   vira o novo formato com pagamento quitado.
+
+### Tela da seguradora ✅
+
+Do cartão do seguro na aba Docs, o botão *Apólice e contatos* abre uma rota
+própria (`seguro`), desenhada para o momento de aperto:
+
+- **Contatos como botões de ligar**, no topo: assistência 24h em destaque
+  (vermelho, 76px de altura), central, corretor, WhatsApp e site. Os telefones
+  viram `tel:` com os dígitos limpos, o WhatsApp vira `wa.me` com o 55 na
+  frente.
+- Apólice com número copiável, cobertura, pagamento e valores.
+- Cobertura contratada: franquia, RCF materiais e corporais, e as coberturas
+  marcadas em chips.
+- Assistência: guincho até X km, carro reserva por X dias, serviços incluídos.
+- **"Dados que vão te pedir"**: veículo, placa copiável, chassi, renavam e cor
+  — o que a central pergunta no telefone.
+- Edição em formulário próprio (`seguro-editar`), com rascunho que sobrevive ao
+  toque nas chips e é descartado ao cancelar.
+
+Campo vazio não aparece na tela. **Não há campo de CPF nem documento pessoal**,
+de propósito: não é necessário para o app ser útil e sujaria o arquivo de
+exportação com dado sensível.
 
 ### Ajustes de interface ✅
 
