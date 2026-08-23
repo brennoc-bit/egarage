@@ -6,11 +6,35 @@ moto**. HTML/CSS/JS puro — sem build, sem dependências.
 Nasceu do canvas **`Garagem.dc.html`** (projeto Claude Design *Assistente
 pessoal veicular*), na época em que se chamava Motoreiro e só cuidava de motos.
 
+## Onde o app roda
+
+**No ar, para uso de verdade:**
+<https://brennoc-bit.github.io/egarage/autolog/>
+
+Servido pelo GitHub Pages, que publica o conteúdo da branch `main`. **Não
+depende de nenhum computador seu estar ligado, nem de sessão de trabalho
+aberta.** Está no ar 24 horas por dia enquanto o repositório existir e o Pages
+estiver ativo. Cada `git push` na `main` republica sozinho em um ou dois
+minutos, e como o service worker busca a rede primeiro, o celular pega a versão
+nova ao reabrir o app.
+
+> O endereço mudou quando o app deixou de se chamar Motoreiro: o antigo
+> `/egarage/motoreiro/` responde **404**. Se algum atalho antigo sobrou no
+> celular, apague e instale de novo pelo endereço acima.
+
+**Na máquina, para desenvolver:**
+
 ```bash
 python -m http.server 5174
 ```
 
-Depois abra <http://127.0.0.1:5174/> (ou use `.claude/launch.json`, alvo `autolog`).
+Depois abra <http://127.0.0.1:5174/> (ou use `.claude/launch.json`, alvo
+`autolog`). Esse servidor é só para editar e testar localmente — nada a ver com
+o app publicado. Pode ligar e desligar à vontade.
+
+Uma limitação do servidor local: **em `http://` o navegador não registra
+service worker nem oferece instalar como app**, porque isso exige origem
+segura. Para testar o comportamento de app instalado, use o endereço do Pages.
 
 ## Estrutura
 

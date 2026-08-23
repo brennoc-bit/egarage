@@ -38,6 +38,15 @@ por onde retomar, então "implementado mas não testado" precisa aparecer assim.
   Ao verificar mudanças no navegador, forçar recarga — não concluir que o
   código está errado antes disso.
 
+## O app publicado
+
+O `autolog/` está no ar em https://brennoc-bit.github.io/egarage/autolog/ (GitHub Pages,
+branch `main`). Não depende de servidor local nem de sessão aberta: `git push` na `main`
+republica sozinho. O endereço antigo `/egarage/motoreiro/` dá 404 desde a troca de nome.
+
+Em `http://` (servidor local) o navegador não registra service worker nem oferece instalar
+como app — isso exige origem segura. Testes de PWA só valem pelo endereço do Pages.
+
 ## Portas em uso
 
 | App | Porta |

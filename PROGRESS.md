@@ -7,7 +7,24 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-23 (4ª sessão do dia)
+**Última atualização:** 2026-08-23 — fim do ciclo de testes e ajustes
+
+---
+
+## Como o app roda (leia antes de estranhar)
+
+São duas coisas diferentes, e confundi-las já custou um susto de 404:
+
+| | Endereço | Depende de quê |
+| --- | --- | --- |
+| **Publicado** | <https://brennoc-bit.github.io/egarage/autolog/> | Só do GitHub Pages e da branch `main`. Fica no ar sozinho. |
+| **Local, para desenvolver** | `python -m http.server 5174` dentro de `autolog/` | Do servidor estar rodando na máquina. |
+
+Fechar a sessão de trabalho, desligar o PC ou parar o servidor local **não
+derruba o app publicado**. Testado em 2026-08-23: com o servidor local
+respondendo `000`, o endereço do Pages seguia respondendo `200`.
+
+Para publicar uma mudança, basta `git push` na `main`.
 
 ---
 
@@ -194,39 +211,75 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
-**GitHub Pages está no ar** desde 2026-08-23: o app vive em
-`https://brennoc-bit.github.io/egarage/autolog/`. Como o service worker é
-rede-primeiro, todo push aparece no celular ao reabrir o app.
+Nada aberto. O ciclo foi encerrado com tudo commitado e publicado.
 
-Falta validar no aparelho: se o service worker registra de fato (não deu para
-testar aqui — o navegador embutido do Claude Code bloqueia service workers), se
-instala em tela cheia com o ícone certo e se os botões respondem bem ao toque,
-em especial o flutuante de abastecimento.
+**O app está no ar:** <https://brennoc-bit.github.io/egarage/autolog/>
+
+Não depende de máquina ligada nem de sessão de trabalho. Cada `git push` na
+`main` republica em um ou dois minutos, e o service worker (rede primeiro) faz
+o celular pegar a versão nova ao reabrir.
+
+> **Atenção ao endereço.** O antigo `/egarage/motoreiro/` dá 404 desde a troca
+> de nome. Foi exatamente o que aconteceu no teste de celular em 2026-08-23.
+
+### O que ainda não foi validado no aparelho
+
+Tudo abaixo foi conferido por medição no navegador, mas **não por uso real no
+celular** — o navegador embutido do Claude Code bloqueia service worker, então
+a palavra final é do aparelho:
+
+- Se o service worker registra de fato e o app instala em tela cheia.
+- Se o botão flutuante de abastecimento cai bem no polegar.
+- Se algum alvo de toque ficou apertado (todos medidos acima de 40px; os
+  contatos do seguro, entre 77 e 82px).
 
 ---
 
 ## Próximos passos
 
-**Internacionalização — a direção maior.** A intenção declarada é que o app seja
-global, e hoje ele é pt-BR de ponta a ponta e brasileiro no conteúdo: interface
-em português, valores em R$, e documentos que são IPVA, licenciamento e Detran.
-Um app global pede tradução da interface, moeda e formato por localidade, e
-documentos configuráveis por país. É o maior item da lista e ainda não começou —
-só o nome já nasceu internacional.
+Nada começado. Ordem sugerida por relação entre esforço e retorno.
 
-**`autolog/`**
-- Trocar a senha do protótipo se `2047` for um PIN usado em outro lugar — ela
-  fica visível no código de um repositório público.
-- Notificações de vencimento (revisão próxima, IPVA vencendo, seguro a renovar).
-  Exige permissão do navegador e só funciona com o app instalado.
-- Histórico por item de manutenção: hoje o registro de serviço zera o contador,
-  mas não guarda a linha do tempo daquele item específico.
-- Ajustar alvos de toque depois do teste no celular, se algum botão ficar
-  apertado para o dedo.
+### Rápidos
 
-**Workspace**
-- Decidir se `car-cost-app/` continua separado ou se vira uma tela do `autolog/`
-  — os dois calculam custo de veículo e hoje se sobrepõem.
+- **Redirecionar o endereço antigo.** Um `motoreiro/index.html` de duas linhas
+  apontando para `autolog/` mataria o 404 para sempre, inclusive em links já
+  compartilhados. Foi oferecido e ficou sem resposta — decisão pendente.
+- **Avisar quando o armazenamento encher.** Hoje o `Store.salvar()` captura o
+  erro de cota e só escreve no console: a gravação falha em silêncio. Com o uso
+  atual não acontece, mas passaria a ser plausível com anexos.
+- **Mostrar o consumo no Perfil** ("garagem: 19 KB de ~5 MB").
+- **Trocar a senha do protótipo** se `2047` for um PIN usado em outro lugar —
+  ela fica visível no código de um repositório público.
+
+### Médios
+
+- **Atalho de emergência para o seguro.** Hoje são três toques até a assistência
+  24h (Docs → cartão → tela). Dá para pôr acesso direto na Início, ou toque
+  longo no botão flutuante.
+- **Histórico por item de manutenção**: o registro de serviço zera o contador,
+  mas não guarda a linha do tempo daquele item.
+- **Notificações de vencimento** (revisão, IPVA, seguro). Exige permissão do
+  navegador e só funciona com o app instalado.
+
+### Grandes
+
+- **Anexar apólice e CRLV.** Medido em 2026-08-23: `localStorage` tem teto de
+  ~5 MB por origem, a garagem inteira ocupa 19 KB e cada foto do app custa de
+  80 a 176 KB — folgado para fotos de veículo, mas um PDF de apólice (1 a 5 MB,
+  mais 33% ao virar base64) estoura. Anexo de documento precisa de
+  **IndexedDB**, cuja cota é da origem (2,7 GB na medição).
+- **Internacionalização.** A intenção declarada é que o app seja global, e hoje
+  ele é pt-BR de ponta a ponta e brasileiro no conteúdo: interface em
+  português, valores em R$, documentos que são IPVA, licenciamento e Detran.
+  Pede tradução, moeda e formato por localidade, e documentos configuráveis por
+  país. É o maior item da lista; só o nome já nasceu internacional.
+- **Autenticação de verdade**, se o app deixar de ser protótipo: a conferência
+  precisa sair do navegador e ir para um servidor.
+
+### Workspace
+
+- Decidir se `car-cost-app/` continua separado ou vira uma tela do `autolog/` —
+  os dois calculam custo de veículo e hoje se sobrepõem.
 
 ---
 
