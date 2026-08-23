@@ -11,18 +11,46 @@ const NAV = [
   { id: 'perfil', label: 'Perfil', ic: '◉' },
 ];
 // Telas sem aba própria herdam o destaque de outra.
-const NAV_PAI = { manutencao: 'garagem' };
+const NAV_PAI = { manutencao: 'garagem', veiculo: 'garagem' };
 
 const App = {
   rota: 'inicio',
-  sub: { garagem: 'resumo', docs: 'todos', custos: 'km', periodo: 30, historico: 6 },
+  sub: { garagem: 'resumo', docs: 'todos', custos: 'km', periodo: 30, historico: 6, veiculoId: null },
   _sim: {},
+  _rascunho: null,
 
   ir(rota, sub) {
     const mudou = rota !== this.rota;
+    // Sair do cadastro descarta o que estava sendo digitado.
+    if (this.rota === 'veiculo' && rota !== 'veiculo') this.limparRascunho();
     this.rota = rota;
     if (sub) Object.assign(this.sub, sub);
     this.render({ topo: mudou });
+  },
+
+  /* Rascunho do cadastro: sobrevive aos redesenhos que a escolha de foto e
+     de tipo provocam, sem gravar nada no Store antes de o usuário salvar. */
+  rascunho(base) {
+    if (!this._rascunho) {
+      const texto = (valor) => (valor != null && valor !== '' ? String(valor) : '');
+      this._rascunho = {
+        tipo: base.tipo || 'carro',
+        marca: texto(base.marca), modelo: texto(base.modelo), apelido: texto(base.apelido),
+        ano: texto(base.ano), cor: texto(base.cor), motor: texto(base.motor),
+        combustivel: texto(base.combustivel), placa: texto(base.placa),
+        renavam: texto(base.renavam), chassi: texto(base.chassi),
+        odometro: texto(base.odometro), consumo: texto(base.consumo),
+        precoComb: texto(base.precoComb), fipe: base.fipe ? String(base.fipe) : '',
+        compra: texto(base.compra), foto: base.foto || null,
+      };
+    }
+    return this._rascunho;
+  },
+  limparRascunho() { this._rascunho = null; },
+  sairDoCadastro() {
+    const editando = this.sub.veiculoId;
+    this.limparRascunho();
+    this.ir(editando ? 'garagem' : 'inicio');
   },
 
   // Parâmetros da simulação, por veículo, só na sessão.
@@ -78,11 +106,11 @@ const App = {
 function renderSemVeiculo(hd, tela, nav) {
   hd.append(h('div', { class: 'hd-text' },
     h('div', { class: 'kick' }, 'Garagem vazia'),
-    h('h2', null, 'Motoreiro')));
+    h('h2', null, 'Autolog')));
   tela.append(
     h('div', { class: 'empty', style: { paddingTop: 80 } },
-      'Nenhuma moto cadastrada ainda.', h('br'), 'Comece pela placa, o km atual e o ano.'),
-    UI.cta([{ label: 'Adicionar primeira moto', icone: '+', pri: true, onClick: () => Acoes.novoVeiculo() }]));
+      'Nenhum veículo cadastrado ainda.', h('br'), 'Carro ou moto — comece pelo modelo e pelo km atual.'),
+    UI.cta([{ label: 'Cadastrar primeiro veículo', icone: '+', pri: true, onClick: () => Acoes.novoVeiculo() }]));
   nav.append(h('div', { style: { padding: 8 } }));
 }
 
@@ -95,60 +123,21 @@ const Acoes = {
   /* — veículos — */
 
   novoVeiculo() {
-    UI.sheet({
-      titulo: 'Nova moto', sub: 'Dados mínimos para começar',
-      campos: [
-        { name: 'marca', label: 'Marca', placeholder: 'Honda', meio: true },
-        { name: 'modelo', label: 'Modelo', placeholder: 'CB 300F', obrigatorio: true, meio: true },
-        { name: 'ano', label: 'Ano', tipo: 'number', valor: new Date().getFullYear(), meio: true },
-        { name: 'motor', label: 'Motor', placeholder: '292cc', meio: true },
-        { name: 'placa', label: 'Placa', placeholder: 'ABC1D23', meio: true },
-        { name: 'odometro', label: 'Km atual', tipo: 'number', obrigatorio: true, meio: true },
-        { name: 'consumo', label: 'Consumo (km/L)', tipo: 'number', valor: 30, meio: true },
-        { name: 'fipe', label: 'Valor FIPE', tipo: 'dinheiro', meio: true },
-      ],
-      acao: 'Adicionar',
-      onSubmit: (d) => {
-        const v = Store.addVeiculo(d);
-        App.ir('inicio');
-        UI.toast(`${v.apelido} na garagem`);
-      },
-    });
+    App.limparRascunho();
+    App.ir('veiculo', { veiculoId: null });
   },
 
   editarVeiculo(v) {
-    UI.sheet({
-      titulo: 'Editar ficha', sub: v.apelido || v.modelo,
-      campos: [
-        { name: 'marca', label: 'Marca', valor: v.marca, meio: true },
-        { name: 'modelo', label: 'Modelo', valor: v.modelo, obrigatorio: true, meio: true },
-        { name: 'apelido', label: 'Apelido curto', valor: v.apelido, hint: 'Usado no seletor da garagem' },
-        { name: 'ano', label: 'Ano', tipo: 'number', valor: v.ano, meio: true },
-        { name: 'motor', label: 'Motor', valor: v.motor, meio: true },
-        { name: 'placa', label: 'Placa', valor: v.placa, meio: true },
-        { name: 'renavam', label: 'Renavam', valor: v.renavam, meio: true },
-        { name: 'compra', label: 'Data da compra', tipo: 'date', valor: v.compra, meio: true },
-        { name: 'fipe', label: 'Valor FIPE', tipo: 'dinheiro', valor: v.fipe, meio: true },
-      ],
-      onSubmit: (d) => {
-        Store.atualizarVeiculo(v.id, {
-          marca: d.marca, modelo: d.modelo, apelido: d.apelido || d.modelo,
-          ano: Number(d.ano) || v.ano, motor: d.motor,
-          placa: (d.placa || '').toUpperCase().replace(/[^A-Z0-9]/g, ''),
-          renavam: d.renavam, compra: d.compra || v.compra, fipe: d.fipe,
-        });
-        App.render();
-        UI.toast('Ficha atualizada');
-      },
-    });
+    App.limparRascunho();
+    App.ir('veiculo', { veiculoId: v.id });
   },
 
   removerVeiculo(v) {
     UI.confirmar({
-      titulo: 'Excluir moto',
+      titulo: `Excluir ${labelTipo(v.tipo).toLowerCase()}`,
       texto: `${v.marca} ${v.modelo} e todos os seus lançamentos serão apagados deste aparelho.`,
       acao: 'Excluir',
-      onOk: () => { Store.removerVeiculo(v.id); App.render(); UI.toast('Moto removida'); },
+      onOk: () => { Store.removerVeiculo(v.id); App.render(); UI.toast('Veículo removido'); },
     });
   },
 
@@ -212,7 +201,7 @@ const Acoes = {
         { name: 'data', label: 'Data', tipo: 'date', valor: today(), meio: true },
         { name: 'tipo', label: 'Categoria', tipo: 'select', valor: tipoPadrao || 'manutencao', opcoes: CATEGORIAS.map((c) => ({ value: c.id, label: c.label })), meio: true },
         { name: 'titulo', label: 'Descrição', placeholder: 'Troca de óleo', obrigatorio: true },
-        { name: 'local', label: 'Oficina / loja', placeholder: 'MotoCenter', meio: true },
+        { name: 'local', label: 'Oficina / loja', placeholder: 'nome da oficina', meio: true },
         { name: 'valor', label: 'Valor', tipo: 'dinheiro', obrigatorio: true, meio: true },
         { name: 'odometro', label: 'Km (opcional)', tipo: 'number' },
       ],
@@ -251,7 +240,7 @@ const Acoes = {
         { name: 'data', label: 'Data do serviço', tipo: 'date', valor: today(), meio: true },
         { name: 'km', label: 'Km no painel', tipo: 'number', valor: v.odometro, meio: true },
         { name: 'valor', label: 'Valor pago (opcional)', tipo: 'dinheiro', meio: true },
-        { name: 'local', label: 'Oficina', placeholder: 'MotoCenter', meio: true },
+        { name: 'local', label: 'Oficina', placeholder: 'nome da oficina', meio: true },
       ],
       acao: 'Registrar serviço',
       onSubmit: (d) => {
@@ -342,7 +331,7 @@ const Acoes = {
   exportar() {
     const blob = new Blob([Store.exportar()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = h('a', { href: url, download: `motoreiro-${today()}.json` });
+    const a = h('a', { href: url, download: `autolog-${today()}.json` });
     document.body.append(a);
     a.click();
     a.remove();
@@ -384,7 +373,7 @@ const Acoes = {
   resetar() {
     UI.confirmar({
       titulo: 'Restaurar demonstração',
-      texto: 'Suas motos e lançamentos deste aparelho serão substituídos pelos dados de exemplo.',
+      texto: 'Seus veículos e lançamentos deste aparelho serão substituídos pelos dados de exemplo.',
       acao: 'Restaurar',
       onOk: () => { Store.resetar(); App.ir('inicio'); UI.toast('Dados de demonstração restaurados'); },
     });

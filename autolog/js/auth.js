@@ -9,13 +9,22 @@
 'use strict';
 
 const Auth = (() => {
-  const KEY = 'motoreiro-sessao-v1';
+  const KEY = 'autolog-sessao-v1';
+  const KEY_ANTIGA = 'motoreiro-sessao-v1'; // app se chamava Motoreiro
   const USUARIO = 'brenno';
   const SENHA = '2047';
 
   const logado = () => {
-    try { return localStorage.getItem(KEY) === 'ok'; }
-    catch (e) { return false; }
+    try {
+      if (localStorage.getItem(KEY) === 'ok') return true;
+      // Quem já estava logado antes da troca de nome continua logado.
+      if (localStorage.getItem(KEY_ANTIGA) === 'ok') {
+        localStorage.setItem(KEY, 'ok');
+        localStorage.removeItem(KEY_ANTIGA);
+        return true;
+      }
+      return false;
+    } catch (e) { return false; }
   };
 
   function entrar(usuario, senha) {
@@ -79,8 +88,8 @@ const Auth = (() => {
 
     const raiz = h('div', { class: 'login' },
       h('div', { class: 'login-marca' },
-        h('div', { class: 'mono login-kick' }, 'Assistente da garagem'),
-        h('h1', null, 'Motoreiro'),
+        h('div', { class: 'mono login-kick' }, 'Sua garagem, em ordem'),
+        h('h1', null, 'Autolog'),
         h('div', { class: 'login-risco' })),
       form,
       h('div', { class: 'login-nota' },

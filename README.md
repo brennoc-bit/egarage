@@ -5,12 +5,12 @@ HTML/CSS/JS puro, sem build step.
 
 | Pasta / arquivo | O que é | Como rodar |
 | --- | --- | --- |
-| [`motoreiro/`](motoreiro) | Assistente de garagem de moto: custos, revisões, IPVA, seguro e diagnóstico de manutenção. Sete telas, dados calculados de verdade, persistência em `localStorage`. | `python -m http.server 5174` dentro da pasta → <http://127.0.0.1:5174> |
+| [`autolog/`](autolog) | **Autolog** — custos, revisões, documentos e manutenção de carro ou moto. Instalável como app (PWA), dados calculados de verdade, persistência em `localStorage`. | `python -m http.server 5174` dentro da pasta → <http://127.0.0.1:5174> |
 | [`car-cost-app/`](car-cost-app) | Simulador de custos do veículo: formulário de seis blocos e tela de resultado. | `python -m http.server 5173` dentro da pasta → <http://127.0.0.1:5173> |
 | `kickpush.html` | Protótipo web do Kickpush. | Abrir direto no navegador. |
 | `kickpush-plano-tecnico.html` | Plano técnico do Kickpush. | Abrir direto no navegador. |
 
-O `motoreiro/` tem documentação própria em [`motoreiro/README.md`](motoreiro/README.md):
+O `autolog/` tem documentação própria em [`autolog/README.md`](autolog/README.md):
 arquitetura, mapa das telas do design para as rotas e os desvios assumidos.
 
 ## Começando em uma máquina nova

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   sw.js — service worker do Motoreiro.
+   sw.js — service worker do Autolog.
 
    Estratégia: rede primeiro, cache como rede de segurança.
 
@@ -10,7 +10,7 @@
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'motoreiro-v1';
+const VERSAO = 'autolog-v2';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [

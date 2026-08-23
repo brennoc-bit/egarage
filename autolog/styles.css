@@ -265,20 +265,23 @@ button.list-item:active { background: var(--color-surface); }
 @keyframes rise { from { transform: translateY(24px); opacity: .4 } }
 .sheet h3 { font-size: 20px; text-transform: uppercase; letter-spacing: -.02em; margin: 0 0 2px; }
 .sheet .sheet-sub { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
-.sheet .f { margin-bottom: 14px; }
-.sheet .f > label {
+/* Campo de formulário — mesmo desenho na folha e na tela de cadastro. */
+.campo { margin-bottom: 14px; }
+.campo > label {
   display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
 }
-.sheet .f input, .sheet .f select, .sheet .f textarea {
+.campo input, .campo select, .campo textarea {
   width: 100%; padding: 12px 14px; font: inherit; font-size: 15px; font-weight: 600;
   color: var(--color-text); background: var(--color-bg);
   border: 1px solid var(--color-divider); border-radius: var(--r-md);
 }
-.sheet .f input:focus-visible, .sheet .f select:focus-visible { border-color: var(--color-accent); outline: none; }
-.sheet .f .hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
-.sheet .f.err input, .sheet .f.err select { border-color: var(--color-accent); }
-.sheet .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible {
+  border-color: var(--color-accent); outline: none;
+}
+.campo .hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.campo.err input, .campo.err select { border-color: var(--color-accent); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .sheet-actions { display: flex; gap: 10px; margin-top: 20px; }
 .sheet-actions > button {
   flex: 1; padding: 14px; border-radius: 100px; cursor: pointer;
@@ -288,6 +291,52 @@ button.list-item:active { background: var(--color-surface); }
   border: 1px solid var(--color-divider);
 }
 .sheet-actions > button.pri { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
+
+/* ── Tela de cadastro do veículo ───────────────────────────────────────── */
+.form-veiculo { padding-bottom: 8px; }
+.form-veiculo .bloco { padding: 4px 16px 8px; }
+.form-veiculo .erro-geral {
+  margin: 0 16px 12px; padding: 12px 14px; border-radius: var(--r-md);
+  background: var(--color-accent-100); color: var(--color-accent-800);
+  font-size: 12px; line-height: 1.45;
+}
+
+/* Foto: o bloco é o próprio botão de escolher imagem. */
+.foto-slot {
+  position: relative; margin: 16px; height: 190px; border-radius: var(--r-md);
+  overflow: hidden; background: var(--color-surface); display: block; width: calc(100% - 32px);
+  border: 1px dashed var(--color-neutral-500); cursor: pointer; padding: 0;
+}
+.foto-slot.tem-foto { border-style: solid; border-color: var(--color-divider); }
+.foto-slot img { width: 100%; height: 100%; object-fit: cover; }
+.foto-slot .vazia {
+  height: 100%; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; color: var(--color-neutral-700);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+}
+.foto-slot .vazia .mais { font-family: var(--font-heading); font-size: 30px; font-weight: 800; line-height: 1; }
+.foto-acoes { display: flex; gap: 10px; margin: -6px 16px 12px; }
+.foto-acoes button {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 8px 14px; border-radius: 100px; cursor: pointer;
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-divider);
+}
+
+/* Escolha de tipo: cartões grandes, alvo de toque generoso. */
+.tipo-escolha { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 4px; }
+.tipo-escolha button {
+  padding: 16px 12px; border-radius: var(--r-md); cursor: pointer; text-align: left;
+  background: var(--color-bg); color: var(--color-text);
+  border: 1px solid var(--color-divider);
+}
+.tipo-escolha button .ic { font-family: var(--font-heading); font-size: 22px; font-weight: 800; line-height: 1; }
+.tipo-escolha button .nm {
+  display: block; margin-top: 8px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.tipo-escolha button.on {
+  background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent);
+}
 
 /* ── Login (porteira do protótipo) ─────────────────────────────────────── */
 .app.login-ativo > .app-hd,

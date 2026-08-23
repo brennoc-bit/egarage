@@ -1,7 +1,7 @@
 {
-  "name": "Motoreiro · Assistente da garagem",
-  "short_name": "Motoreiro",
-  "description": "Custos, revisões, IPVA, seguro e manutenção inteligente da sua moto.",
+  "name": "Autolog · Sua garagem, em ordem",
+  "short_name": "Autolog",
+  "description": "Custos, revisões, documentos e manutenção do seu carro ou moto, em um lugar só.",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "./",

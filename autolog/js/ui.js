@@ -72,6 +72,52 @@ const UI = (() => {
     toastTimer = setTimeout(() => clear(host), 2600);
   }
 
+  /* ── Campos de formulário ───────────────────────────────────────────── */
+
+  /**
+   * Monta um campo rotulado. Serve à folha e à tela de cadastro — mesma
+   * aparência, mesma leitura de valor.
+   * def: { name, label, tipo, valor, placeholder, opcoes, obrigatorio, hint }
+   * tipo: text | number | dinheiro | date | select | textarea
+   */
+  function campo(def) {
+    const id = 'f-' + def.name;
+    const caixa = h('div', { class: 'campo' }, h('label', { for: id }, def.label));
+
+    let input;
+    if (def.tipo === 'select') {
+      input = h('select', { id },
+        (def.opcoes || []).map((o) => h('option', {
+          value: o.value, selected: String(o.value) === String(def.valor),
+        }, o.label)));
+    } else if (def.tipo === 'textarea') {
+      input = h('textarea', { id, rows: 3, placeholder: def.placeholder || '' }, def.valor || '');
+    } else {
+      // Números ficam em campo de texto: "9,5" é o que o teclado pt-BR
+      // entrega, e input[type=number] descarta a vírgula. parseNum resolve.
+      input = h('input', {
+        id,
+        type: def.tipo === 'date' ? 'date' : 'text',
+        inputmode: def.tipo === 'dinheiro' || def.tipo === 'number' ? 'decimal' : null,
+        autocapitalize: def.maiusculas ? 'characters' : null,
+        placeholder: def.placeholder || '',
+        value: def.valor != null ? def.valor : '',
+      });
+      if (def.maiusculas) {
+        input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+      }
+    }
+
+    caixa.append(input);
+    if (def.hint) caixa.append(h('div', { class: 'hint' }, def.hint));
+    return { caixa, input, def };
+  }
+
+  const valorDoCampo = (ref) => {
+    const bruto = ref.input.value.trim();
+    return (ref.def.tipo === 'dinheiro' || ref.def.tipo === 'number') ? parseNum(bruto) : bruto;
+  };
+
   /* ── Folha de formulário ────────────────────────────────────────────── */
 
   function fecharSheet() {
@@ -94,35 +140,14 @@ const UI = (() => {
     const refs = {};
     let par = null;
     for (const c of campos) {
-      const campo = h('div', { class: 'f' });
-      campo.append(h('label', { for: 'f-' + c.name }, c.label));
-
-      let input;
-      if (c.tipo === 'select') {
-        input = h('select', { id: 'f-' + c.name },
-          (c.opcoes || []).map((o) => h('option', { value: o.value, selected: String(o.value) === String(c.valor) }, o.label)));
-      } else if (c.tipo === 'textarea') {
-        input = h('textarea', { id: 'f-' + c.name, rows: 3, placeholder: c.placeholder || '' }, c.valor || '');
-      } else {
-        // Números ficam em campo de texto: "9,5" é o que o teclado pt-BR
-        // entrega, e input[type=number] descarta a vírgula. parseNum resolve.
-        input = h('input', {
-          id: 'f-' + c.name,
-          type: c.tipo === 'date' ? 'date' : 'text',
-          inputmode: c.tipo === 'dinheiro' || c.tipo === 'number' ? 'decimal' : null,
-          placeholder: c.placeholder || '',
-          value: c.valor != null ? c.valor : '',
-        });
-      }
-      campo.append(input);
-      if (c.hint) campo.append(h('div', { class: 'hint' }, c.hint));
-      refs[c.name] = { input, campo, def: c };
+      const ref = campo(c);
+      refs[c.name] = ref;
 
       if (c.meio) {
         if (!par) { par = h('div', { class: 'grid2' }); corpo.append(par); }
-        par.append(campo);
+        par.append(ref.caixa);
         if (par.children.length === 2) par = null;
-      } else { par = null; corpo.append(campo); }
+      } else { par = null; corpo.append(ref.caixa); }
     }
 
     const erro = h('div', { class: 'hint', style: { color: 'var(--color-accent)', display: 'none' } }, 'Preencha os campos destacados.');
@@ -136,10 +161,9 @@ const UI = (() => {
       const vals = {};
       let invalido = false;
       for (const [nome, r] of Object.entries(refs)) {
-        const bruto = r.input.value.trim();
-        if (r.def.obrigatorio && !bruto) { r.campo.classList.add('err'); invalido = true; }
-        else r.campo.classList.remove('err');
-        vals[nome] = (r.def.tipo === 'dinheiro' || r.def.tipo === 'number') ? parseNum(bruto) : bruto;
+        if (r.def.obrigatorio && !r.input.value.trim()) { r.caixa.classList.add('err'); invalido = true; }
+        else r.caixa.classList.remove('err');
+        vals[nome] = valorDoCampo(r);
       }
       if (invalido) { erro.style.display = 'block'; return; }
       fecharSheet();
@@ -199,5 +223,8 @@ const UI = (() => {
       onTrocar ? h('button', { class: 'photo-btn', onClick: onTrocar }, v.foto ? 'trocar foto' : '+ foto') : null);
   }
 
-  return { dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras, toast, sheet, fecharSheet, confirmar, pedirFoto, foto };
+  return {
+    dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras,
+    campo, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
+  };
 })();

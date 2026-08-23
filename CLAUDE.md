@@ -42,5 +42,5 @@ por onde retomar, então "implementado mas não testado" precisa aparecer assim.
 
 | App | Porta |
 | --- | --- |
-| `motoreiro/` | 5174 |
+| `autolog/` | 5174 |
 | `car-cost-app/` | 5173 |

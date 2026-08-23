@@ -17,7 +17,7 @@ Screens.inicio = (v) => {
       class: x.id === v.id ? 'on' : '',
       onClick: () => { Store.selecionar(x.id); App.render(); },
     }, x.apelido || x.modelo)),
-    h('button', { onClick: () => Acoes.novoVeiculo() }, '+ Nova'));
+    h('button', { onClick: () => Acoes.novoVeiculo() }, '+ Novo'));
 
   const vencimentos = Calc.proximosVencimentos(v, 4);
 
@@ -68,8 +68,8 @@ Screens.inicio = (v) => {
     ]));
 
   return {
-    kicker: `Sua garagem · ${Store.veiculos().length} ${Store.veiculos().length === 1 ? 'moto' : 'motos'}`,
-    titulo: `Olá, ${Store.get().perfil.nome || 'motoreiro'}`,
+    kicker: `Sua garagem · ${Store.veiculos().length} ${Store.veiculos().length === 1 ? 'veículo' : 'veículos'}`,
+    titulo: Store.get().perfil.nome ? `Olá, ${Store.get().perfil.nome}` : 'Sua garagem',
     corpo,
   };
 };
@@ -132,9 +132,11 @@ function abaFicha(v) {
   const linha = (a, b) => UI.row(UI.kv(a), UI.kv(b));
   const consumo = Calc.consumoMedio(v);
   return h('div', null,
-    linha({ k: 'Marca', v: v.marca || '—' }, { k: 'Ano', v: String(v.ano) }),
-    linha({ k: 'Motor', v: v.motor || '—' }, { k: 'Placa', v: v.placa || '—' }),
-    linha({ k: 'Renavam', v: v.renavam || '—' }, { k: 'Compra', v: fmtMesAno(v.compra) }),
+    linha({ k: 'Tipo', v: labelTipo(v.tipo) }, { k: 'Marca', v: v.marca || '—' }),
+    linha({ k: 'Ano', v: String(v.ano) }, { k: 'Cor', v: v.cor || '—' }),
+    linha({ k: 'Motor', v: v.motor || '—' }, { k: 'Combustível', v: v.combustivel || '—' }),
+    linha({ k: 'Placa', v: v.placa || '—' }, { k: 'Renavam', v: v.renavam || '—' }),
+    linha({ k: 'Chassi', v: v.chassi || '—' }, { k: 'Compra', v: fmtMesAno(v.compra) }),
     linha({ k: 'Consumo ref.', v: `${num(v.consumo, 0)} km/L`, sub: consumo.real ? `real ${num(consumo.valor, 1)}` : 'sem medição' },
       { k: 'Valor FIPE', v: v.fipe ? brl0(v.fipe) : '—' }),
     UI.row(UI.kv({ k: 'Odômetro', v: kmFmt(v.odometro), onClick: () => Acoes.atualizarOdometro(v) })),
@@ -417,6 +419,150 @@ function abaSimulacao(v) {
     ]));
 }
 
+/* ── Cadastro / edição do veículo ──────────────────────────────────────── */
+
+Screens.veiculo = (atual) => {
+  const editando = App.sub.veiculoId ? Store.veiculo(App.sub.veiculoId) : null;
+  const base = editando || {};
+
+  // Rascunho vive no App para sobreviver ao redesenho da foto e do tipo.
+  const r = App.rascunho(base);
+  const refs = {};
+
+  const grupo = (titulo, ...campos) => h('div', null,
+    UI.sectHd(titulo),
+    h('div', { class: 'bloco' }, campos));
+
+  const campo = (def) => {
+    const ref = UI.campo(Object.assign({}, def, { valor: r[def.name] != null ? r[def.name] : def.valor }));
+    ref.input.addEventListener('input', () => { r[def.name] = ref.input.value; erroGeral.style.display = 'none'; });
+    ref.input.addEventListener('change', () => { r[def.name] = ref.input.value; });
+    refs[def.name] = ref;
+    return ref.caixa;
+  };
+
+  const dupla = (a, b) => h('div', { class: 'grid2' }, campo(a), campo(b));
+
+  const erroGeral = h('div', { class: 'erro-geral', style: { display: 'none' } },
+    'Preencha os campos destacados: modelo e quilometragem são o mínimo para o app calcular alguma coisa.');
+
+  // — foto —
+  const slotFoto = h('button', {
+    class: 'foto-slot' + (r.foto ? ' tem-foto' : ''),
+    type: 'button',
+    onClick: () => UI.pedirFoto((dataUrl) => { r.foto = dataUrl; App.render(); }),
+  }, r.foto
+    ? h('img', { src: r.foto, alt: 'Foto do veículo', class: 'grayscale' })
+    : h('div', { class: 'vazia' },
+        h('span', { class: 'mais' }, '+'),
+        h('span', null, 'foto do veículo'),
+        h('span', { style: { textTransform: 'none', letterSpacing: 0, fontSize: 11, opacity: .8 } },
+          'câmera ou galeria · opcional')));
+
+  const corpo = h('div', { class: 'form-veiculo' },
+    slotFoto,
+    r.foto ? h('div', { class: 'foto-acoes' },
+      h('button', { onClick: () => UI.pedirFoto((d) => { r.foto = d; App.render(); }) }, 'trocar'),
+      h('button', { onClick: () => { r.foto = null; App.render(); } }, 'remover')) : null,
+
+    UI.sectHd('Tipo de veículo'),
+    h('div', { class: 'tipo-escolha' },
+      TIPOS.map((t) => h('button', {
+        class: r.tipo === t.id ? 'on' : '',
+        onClick: () => { r.tipo = t.id; App.render(); },
+      }, h('span', { class: 'ic' }, t.icone), h('span', { class: 'nm' }, t.label)))),
+
+    grupo('Identificação',
+      dupla({ name: 'marca', label: 'Marca', placeholder: r.tipo === 'moto' ? 'Honda' : 'Chevrolet' },
+            { name: 'modelo', label: 'Modelo', placeholder: r.tipo === 'moto' ? 'CB 300F' : 'Onix 1.0', obrigatorio: true }),
+      campo({ name: 'apelido', label: 'Apelido', placeholder: 'como você chama ele', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
+      dupla({ name: 'ano', label: 'Ano', tipo: 'number', placeholder: String(new Date().getFullYear()) },
+            { name: 'cor', label: 'Cor', placeholder: 'Prata' }),
+      dupla({ name: 'motor', label: 'Motor', placeholder: r.tipo === 'moto' ? '292cc' : '1.0 turbo' },
+            { name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
+
+    grupo('Documentos',
+      dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
+            { name: 'renavam', label: 'Renavam', tipo: 'number', placeholder: '000000000' }),
+      campo({ name: 'chassi', label: 'Chassi', placeholder: '9BW...', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
+
+    grupo('Uso',
+      dupla({ name: 'odometro', label: 'Km atual', tipo: 'number', placeholder: '0', obrigatorio: true },
+            { name: 'consumo', label: 'Consumo (km/L)', tipo: 'dinheiro', placeholder: r.tipo === 'moto' ? '30' : '11' }),
+      campo({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro', placeholder: '5,89', hint: 'Referência para estimativas enquanto não há abastecimentos registrados.' })),
+
+    grupo('Financeiro',
+      dupla({ name: 'fipe', label: 'Valor FIPE', tipo: 'dinheiro', placeholder: '0,00' },
+            { name: 'compra', label: 'Data da compra', tipo: 'date' })),
+
+    erroGeral,
+
+    UI.cta([
+      { label: 'Cancelar', icone: '✕', onClick: () => App.sairDoCadastro() },
+      {
+        label: editando ? 'Salvar ficha' : 'Adicionar à garagem', icone: '✓', pri: true,
+        onClick: () => salvarVeiculo(editando, r, refs, erroGeral),
+      },
+    ]),
+
+    editando ? h('div', { class: 'note' },
+      'Mudar o tipo do veículo troca o plano de manutenção; o que já foi registrado nos itens em comum é preservado.') : null);
+
+  return {
+    kicker: editando ? 'Editando ficha' : 'Novo veículo',
+    titulo: editando ? (editando.apelido || editando.modelo) : 'Cadastro',
+    corpo,
+    voltar: editando ? 'garagem' : 'inicio',
+  };
+};
+
+function salvarVeiculo(editando, r, refs, erroGeral) {
+  const obrigatorios = ['modelo', 'odometro'];
+  let faltando = false;
+  for (const nome of obrigatorios) {
+    const ref = refs[nome];
+    if (!ref) continue;
+    const vazio = !String(r[nome] || '').trim();
+    ref.caixa.classList.toggle('err', vazio);
+    if (vazio) faltando = true;
+  }
+  if (faltando) {
+    erroGeral.style.display = 'block';
+    erroGeral.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+
+  const dados = {
+    tipo: r.tipo, marca: r.marca, modelo: r.modelo,
+    apelido: r.apelido || r.modelo, ano: r.ano, cor: r.cor, motor: r.motor,
+    combustivel: r.combustivel, placa: r.placa, renavam: r.renavam, chassi: r.chassi,
+    odometro: r.odometro, consumo: r.consumo, precoComb: r.precoComb,
+    fipe: r.fipe, compra: r.compra, foto: r.foto,
+  };
+
+  if (editando) {
+    Store.atualizarVeiculo(editando.id, {
+      tipo: dados.tipo, marca: dados.marca, modelo: dados.modelo, apelido: dados.apelido,
+      ano: Number(dados.ano) || editando.ano, cor: dados.cor, motor: dados.motor,
+      combustivel: dados.combustivel, placa: Store.normalizarPlaca(dados.placa),
+      renavam: dados.renavam, chassi: (dados.chassi || '').toUpperCase(),
+      odometro: Math.max(editando.odometro, Math.round(parseNum(dados.odometro))),
+      consumo: parseNum(dados.consumo) || editando.consumo,
+      precoComb: parseNum(dados.precoComb) || editando.precoComb,
+      fipe: parseNum(dados.fipe), compra: dados.compra || editando.compra, foto: dados.foto,
+    });
+    App.limparRascunho();
+    App.ir('garagem', { garagem: 'ficha' });
+    UI.toast('Ficha atualizada');
+    return;
+  }
+
+  const novo = Store.addVeiculo(dados);
+  App.limparRascunho();
+  App.ir('inicio');
+  UI.toast(`${novo.apelido} na garagem`);
+}
+
 /* ── Perfil (fora do canvas — necessário para o app funcionar) ─────────── */
 
 Screens.perfil = () => {
@@ -424,7 +570,7 @@ Screens.perfil = () => {
   const corpo = h('div', null,
     UI.row(UI.kv({ k: 'Nome', v: st.perfil.nome || '—', sub: 'toque para editar', onClick: () => Acoes.editarPerfil() })),
 
-    UI.sectHd('Garagem', '+ moto', () => Acoes.novoVeiculo()),
+    UI.sectHd('Garagem', '+ veículo', () => Acoes.novoVeiculo()),
     st.veiculos.map((x) => h('div', { class: 'list-item' },
       UI.dot(x.id === st.selecionado ? 'var(--color-accent)' : 'var(--color-neutral-400)'),
       h('button', {
@@ -452,7 +598,7 @@ Screens.perfil = () => {
       { label: 'Sair da conta', icone: '⏻', onClick: () => Acoes.sair() },
     ]),
     h('div', { class: 'note', style: { paddingBottom: 24 } },
-      'Motoreiro · assistente da garagem · v1 — implementado a partir do canvas Garagem.dc.html (Modernist DS).'));
+      'Autolog · sua garagem, em ordem · v1 — nasceu do canvas Garagem.dc.html (Modernist DS).'));
 
   return { kicker: 'Conta e dados', titulo: 'Perfil', corpo };
 };
