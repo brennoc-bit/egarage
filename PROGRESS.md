@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-23 (2ª sessão do dia)
+**Última atualização:** 2026-08-23 (3ª sessão do dia)
 
 ---
 
@@ -58,9 +58,9 @@ arquitetura e desvios do design estão no `autolog/README.md`.
 O app inventava IPVA, seguro, licenciamento e até um preço de revisão para todo
 veículo novo — números que não vinham de lugar nenhum. **Agora ele pergunta.**
 
-- O cadastro tem uma seção de IPVA (valor do ano, em quantas parcelas,
-  vencimento da 1ª), seguro (valor do ano, renovação, seguradora) e
-  licenciamento (valor, vencimento). Campo em branco não vira documento.
+- O cadastro pergunta IPVA (valor do ano, em quantas parcelas, vencimento da
+  1ª) e licenciamento (valor, vencimento); o seguro ganhou seção própria, logo
+  abaixo. Campo em branco não vira documento.
 - A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
   intervalo do tipo de veículo — e sem preço associado.
 - Editar a ficha preserva o que já foi pago: parcelas quitadas continuam
@@ -79,6 +79,24 @@ número inventado.
 Na aba Docs há um cartão do financiamento com saldo, progresso e o botão
 *Registrar parcela paga*, que baixa uma parcela e lança a despesa do mês.
 Zerando as parcelas, o veículo vira quitado sozinho.
+
+### Seguro: cobertura separada do pagamento ✅
+
+A apólice vale 12 meses, mas pode estar sendo paga em 3 parcelas — e as duas
+datas não têm relação. O app passou a tratar isso como duas linhas do tempo:
+
+- O cadastro pergunta **"Tem seguro?"** e, se sim, **"Já está pago?"**. Não
+  estando pago, pede valor da parcela e quantas faltam, além da seguradora, do
+  valor total e da data **até quando a cobertura vale**.
+- O cartão do seguro na aba Docs mostra as duas linhas rotuladas, uma embaixo
+  da outra: `COBERTURA até 18/06/2027 · 9 meses` e `PAGAMENTO 2 parcelas de
+  R$ 413,33 · faltam R$ 826,66`.
+- Enquanto há parcelas, o valor entra no custo mensal como dinheiro saindo;
+  quitado, vira provisão de 1/12 para a renovação — com rótulos diferentes.
+- Quitar a última parcela **não encerra a cobertura**: o app avisa
+  explicitamente ("Seguro quitado · cobertura mantida").
+- Garagens antigas migram sozinhas: o seguro que era uma despesa anual genérica
+  vira o novo formato com pagamento quitado.
 
 ### Ajustes de interface ✅
 
@@ -101,8 +119,8 @@ O "+ Nova" abria uma folha rápida com oito campos. Agora é **rota própria**
 - Escolha de **tipo** em dois cartões grandes.
 - Campos agrupados em **Identificação** (marca, modelo, apelido, ano, cor,
   combustível), **Documentos** (placa, renavam, chassi), **Uso** (km atual,
-  consumo, preço do litro, data da compra), **Financiamento** e **IPVA, seguro
-  e licenciamento**.
+  consumo, preço do litro, data da compra), **Financiamento**, **Seguro** e
+  **IPVA e licenciamento**.
 - Validação com destaque nos campos e mensagem no rodapé; só modelo e km atual
   são obrigatórios.
 - **A mesma tela edita a ficha** — substituiu também a folha de edição.
@@ -119,7 +137,7 @@ Perfil.
 credenciais estão no código-fonte de um repositório público. Antes de qualquer
 uso real, isso precisa ir para um servidor.
 
-### Instalável como app (PWA) ✅ código pronto, falta publicar
+### Instalável como app (PWA) ✅ publicado
 
 - `ferramentas/gerar-icones.py`: gera os ícones em Python puro (só biblioteca
   padrão). O desenho é um **mostrador com ponteiro** — emblema geométrico, sem
@@ -154,16 +172,14 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
-**Publicar o Autolog no GitHub Pages.** O código do PWA está pronto e na `main`;
-falta a ativação, que só pode ser feita na interface do GitHub:
-*Settings → Pages → Source: Deploy from a branch → Branch: `main` → `/(root)`*.
+**GitHub Pages está no ar** desde 2026-08-23: o app vive em
+`https://brennoc-bit.github.io/egarage/autolog/`. Como o service worker é
+rede-primeiro, todo push aparece no celular ao reabrir o app.
 
-Depois disso o app fica em `https://brennoc-bit.github.io/egarage/autolog/`
-(atenção: a pasta mudou de nome, então o endereço mudou também). No celular é só
-abrir e usar *Instalar app* no menu do Chrome.
-
-Falta então validar no aparelho: se o service worker registra, se instala em
-tela cheia com o ícone certo e se os botões respondem bem ao toque.
+Falta validar no aparelho: se o service worker registra de fato (não deu para
+testar aqui — o navegador embutido do Claude Code bloqueia service workers), se
+instala em tela cheia com o ícone certo e se os botões respondem bem ao toque,
+em especial o flutuante de abastecimento.
 
 ---
 

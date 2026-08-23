@@ -49,8 +49,11 @@ const App = {
         diaVencimento: texto(extras.diaVencimento),
         ipvaValor: texto(extras.ipvaValor), ipvaParcelas: texto(extras.ipvaParcelas),
         ipvaVenc: texto(extras.ipvaVenc),
+        temSeguro: !!extras.temSeguro,
         seguroValor: texto(extras.seguroValor), seguroVenc: texto(extras.seguroVenc),
         seguroNome: texto(extras.seguroNome),
+        seguroQuitado: extras.seguroQuitado !== false,
+        seguroParcela: texto(extras.seguroParcela), seguroRestantes: texto(extras.seguroRestantes),
         licValor: texto(extras.licValor), licVenc: texto(extras.licVenc),
       };
     }

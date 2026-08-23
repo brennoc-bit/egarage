@@ -186,19 +186,37 @@ const Calc = (() => {
         ? `Agendada ${fmtData(doc.agendada.data)}${doc.agendada.oficina ? ' · ' + doc.agendada.oficina : ''}`
         : (doc.sub || '');
       r.acao = 'Agendar oficina';
-    } else if (doc.tipo === 'anual') {
+    } else if (doc.tipo === 'seguro') {
+      // Duas linhas do tempo independentes: até quando cobre e quanto falta pagar.
+      const pag = doc.pagamento || { quitado: true, parcela: 0, restantes: 0 };
       const ini = doc.inicio || toISO(addMonths(fromISO(doc.venc), -12));
       const total = Math.max(1, (fromISO(doc.venc) - fromISO(ini)) / DIA_MS);
       const decorrido = (fromISO(today()) - fromISO(ini)) / DIA_MS;
-      r.pago = doc.pago ? doc.valor : 0;
-      r.pendente = doc.pago ? 0 : doc.valor;
+      const mesesRestantes = Math.max(0, monthsBetween(today(), doc.venc));
+      const aPagar = pag.quitado ? 0 : pag.parcela * pag.restantes;
+
+      r.pago = doc.valor - aPagar;
+      r.pendente = aPagar;
       r.progresso = clamp((decorrido / total) * 100, 0, 100);
-      r.valorTexto = brl(doc.valor);
       r.venc = doc.venc;
-      r.prazo = `Renova ${fmtDia(doc.venc)}`;
+      r.cobertura = {
+        ate: doc.venc,
+        meses: mesesRestantes,
+        texto: daysUntil(doc.venc) < 0
+          ? `Cobertura vencida em ${fmtData(doc.venc)}`
+          : `Cobertura até ${fmtData(doc.venc)} · ${mesesRestantes >= 1
+              ? `${mesesRestantes} ${mesesRestantes === 1 ? 'mês' : 'meses'}`
+              : `${daysUntil(doc.venc)} dias`}`,
+      };
+      r.pagamentoTexto = pag.quitado
+        ? `Pago integralmente · ${brl(doc.valor)}`
+        : `${pag.restantes} ${pag.restantes === 1 ? 'parcela' : 'parcelas'} de ${brl(pag.parcela)} · faltam ${brl(aPagar)}`;
+      r.valorTexto = pag.quitado ? brl(doc.valor) : brl(pag.parcela);
+      r.prazo = r.cobertura.texto;
       r.status = statusPorPrazo(doc.venc, 30);
-      // Já pago: só oferece renovar quando a data se aproxima.
-      r.acao = doc.pago ? (r.status === 'ok' ? null : 'Renovar apólice') : 'Pagar apólice';
+      r.sub = r.pagamentoTexto;
+      r.acao = !pag.quitado ? 'Pagar parcela do seguro'
+        : (r.status === 'ok' ? null : 'Renovar apólice');
     } else {
       r.pago = doc.pago ? doc.valor : 0;
       r.pendente = doc.pago ? 0 : doc.valor;
@@ -312,10 +330,23 @@ const Calc = (() => {
     const itensDocs = [];
     let docsMes = 0;
     for (const d of v.docs) {
+      // Seguro em parcelas é dinheiro saindo agora; quitado vira provisão
+      // mensal para a renovação. As duas coisas entram com rótulo diferente.
+      if (d.tipo === 'seguro') {
+        const pag = d.pagamento || { quitado: true };
+        if (!pag.quitado && pag.restantes > 0) {
+          docsMes += pag.parcela;
+          itensDocs.push({ label: 'SEGURO', valor: pag.parcela, detalhe: `${pag.restantes} parcelas restantes` });
+        } else if (d.valor > 0) {
+          docsMes += d.valor / 12;
+          itensDocs.push({ label: 'SEGURO', valor: d.valor / 12, detalhe: 'provisão p/ renovação' });
+        }
+        continue;
+      }
       let anual = 0;
       if (d.tipo === 'parcelas') anual = d.parcelas.reduce((s, p) => s + p.valor, 0);
       else if (d.tipo === 'anual' || d.tipo === 'unico') anual = d.valor || 0;
-      if (anual > 0) { docsMes += anual / 12; itensDocs.push({ label: d.tag, valor: anual / 12 }); }
+      if (anual > 0) { docsMes += anual / 12; itensDocs.push({ label: d.tag, valor: anual / 12, detalhe: 'anual ÷ 12' }); }
     }
 
     const comb = mediaMensalCombustivel(v);

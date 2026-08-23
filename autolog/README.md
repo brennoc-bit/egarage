@@ -66,6 +66,22 @@ vencimento. Com isso a tela inicial mostra o **custo por mês**: parcela +
 despesas anuais diluídas em doze + a média real de combustível dos três meses
 fechados anteriores.
 
+### Seguro: cobertura e pagamento são coisas diferentes
+
+A apólice costuma valer 12 meses, mas pode estar sendo paga em 3 parcelas —
+e as duas datas não têm relação. O app trata isso como duas linhas do tempo
+separadas, e o cartão do seguro mostra as duas, uma embaixo da outra:
+
+```
+COBERTURA    Cobertura até 18/06/2027 · 9 meses
+PAGAMENTO    2 parcelas de R$ 413,33 · faltam R$ 826,66
+```
+
+O cadastro pergunta *Tem seguro?* e, se sim, *Já está pago?*. Enquanto houver
+parcelas, o valor entra no custo mensal como dinheiro saindo; quitado, vira
+uma provisão de 1/12 para a renovação. Quitar a última parcela **não encerra a
+cobertura** — o app diz isso explicitamente.
+
 A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
 intervalo do tipo de veículo — e sem preço associado.
 

@@ -95,6 +95,14 @@ const Store = (() => {
       if (!v.chassi) v.chassi = '';
       if (!Array.isArray(v.simulacoes)) v.simulacoes = [];
       if (!v.financiamento) v.financiamento = { quitado: true };
+      // Seguro deixou de ser uma despesa anual genérica: agora separa
+      // cobertura (até quando vale) de pagamento (à vista ou parcelado).
+      const seg = (v.docs || []).find((d) => d.id === 'seguro');
+      if (seg && seg.tipo === 'anual') {
+        seg.tipo = 'seguro';
+        seg.pagamento = { quitado: !!seg.pago, parcela: 0, restantes: 0 };
+        delete seg.pago;
+      }
     }
     return dados;
   }
@@ -197,7 +205,7 @@ const Store = (() => {
       compra: `${ano - 4}-03-15`,
       odometro, consumo, precoComb,
       manutencao,
-      docs: seedDocs(hoje, ano, 20000),
+      docs: seedDocs(hoje, ano, 20000),  // seguro quitado
       financiamento: { quitado: true },
       lancamentos: lanc,
       simulacoes: [],
@@ -263,7 +271,7 @@ const Store = (() => {
       compra: `${ano - 5}-04-10`,
       odometro, consumo, precoComb,
       manutencao,
-      docs: seedDocs(hoje, ano, 60000),
+      docs: seedDocs(hoje, ano, 60000, 2, 2),  // apólice de 2 meses, em 3x, faltam 2
       // Exemplo com financiamento em aberto, para o custo fixo aparecer.
       financiamento: { quitado: false, parcela: 1180, restantes: 22, dia: 10 },
       lancamentos: lanc,
@@ -271,13 +279,13 @@ const Store = (() => {
     };
   }
 
-  function seedDocs(hoje, ano, alvoRevisao) {
+  function seedDocs(hoje, ano, alvoRevisao, seguroRestantes, mesesDeApolice) {
     const parcela = (n, offMes) => {
       const d = addMonths(new Date(hoje.getFullYear(), hoje.getMonth(), 22), offMes);
       return { n, valor: 148.2, venc: toISO(d), pago: offMes < 0 };
     };
     const licAno = hoje.getMonth() > 10 ? ano + 1 : ano;
-    const seguroInicio = addMonths(new Date(hoje.getFullYear(), hoje.getMonth(), 18), -11);
+    const seguroInicio = addMonths(new Date(hoje.getFullYear(), hoje.getMonth(), 18), -(mesesDeApolice == null ? 11 : mesesDeApolice));
 
     return [
       {
@@ -290,7 +298,11 @@ const Store = (() => {
       },
       {
         id: 'seguro', tag: 'SEGURO', titulo: 'Cobertura total', sub: 'Apólice #77-4021',
-        tipo: 'anual', valor: 1240, inicio: toISO(seguroInicio), venc: toISO(addMonths(seguroInicio, 12)), pago: true,
+        tipo: 'seguro', valor: 1240,
+        inicio: toISO(seguroInicio), venc: toISO(addMonths(seguroInicio, 12)),
+        pagamento: seguroRestantes
+          ? { quitado: false, parcela: 413.33, restantes: seguroRestantes }
+          : { quitado: true, parcela: 0, restantes: 0 },
       },
       {
         id: 'revisao', tag: 'REVISÃO', titulo: 'Revisão programada', sub: 'Concessionária vinculada',
@@ -424,17 +436,23 @@ const Store = (() => {
       });
     }
 
+    // Seguro: cobertura e pagamento são coisas separadas. A apólice vale 12
+    // meses, mas pode estar sendo paga em 3 parcelas — e quem tem o seguro
+    // precisa enxergar as duas datas sem confundir uma com a outra.
     const segValor = parseNum(d.seguroValor);
-    if (segValor > 0) {
+    if (d.temSeguro && segValor > 0) {
       const venc = d.seguroVenc || toISO(addMonths(new Date(), 12));
-      const antigo = antigos.get('seguro');
+      const parcelado = d.seguroQuitado === false;
       docs.push({
         id: 'seguro', tag: 'SEGURO',
         titulo: d.seguroNome || 'Seguro do veículo',
-        sub: 'informado no cadastro', tipo: 'anual', valor: segValor,
+        sub: 'informado no cadastro', tipo: 'seguro', valor: segValor,
         inicio: toISO(addMonths(fromISO(venc), -12)), venc,
-        // Renovação no futuro = ciclo atual já pago; vencida = pendente.
-        pago: antigo ? !!antigo.pago : daysUntil(venc) >= 0,
+        pagamento: {
+          quitado: !parcelado,
+          parcela: parcelado ? parseNum(d.seguroParcela) : 0,
+          restantes: parcelado ? Math.max(0, Math.round(parseNum(d.seguroRestantes))) : 0,
+        },
       });
     }
 
@@ -467,6 +485,7 @@ const Store = (() => {
     const ipva = v.docs.find((d) => d.id === 'ipva');
     const lic = v.docs.find((d) => d.id === 'licenciamento');
     const seg = v.docs.find((d) => d.id === 'seguro');
+    const pag = (seg && seg.pagamento) || { quitado: true };
     const fin = v.financiamento || { quitado: true };
     return {
       ipvaValor: ipva ? ipva.parcelas.reduce((s, p) => s + p.valor, 0) : '',
@@ -474,9 +493,13 @@ const Store = (() => {
       ipvaVenc: ipva && ipva.parcelas[0] ? ipva.parcelas[0].venc : '',
       licValor: lic ? lic.valor : '',
       licVenc: lic ? lic.venc : '',
+      temSeguro: !!seg,
       seguroValor: seg ? seg.valor : '',
       seguroVenc: seg ? seg.venc : '',
       seguroNome: seg ? seg.titulo : '',
+      seguroQuitado: pag.quitado !== false,
+      seguroParcela: pag.quitado === false ? pag.parcela : '',
+      seguroRestantes: pag.quitado === false ? pag.restantes : '',
       quitado: fin.quitado !== false,
       parcela: fin.quitado === false ? fin.parcela : '',
       parcelasRestantes: fin.quitado === false ? fin.restantes : '',
@@ -589,18 +612,29 @@ const Store = (() => {
       return `${doc.tag} · ${p.n}ª parcela paga`;
     }
 
-    // Apólice anual: pagar de novo abre um novo ciclo de 12 meses.
-    if (doc.tipo === 'anual') {
-      const renovacao = doc.pago;
+    // Seguro: enquanto houver parcelas, pagar baixa uma. Quitado, pagar de
+    // novo é renovar a apólice por mais 12 meses de cobertura.
+    if (doc.tipo === 'seguro') {
+      const pag = doc.pagamento || { quitado: true };
+      if (!pag.quitado && pag.restantes > 0) {
+        pag.restantes -= 1;
+        if (pag.restantes === 0) pag.quitado = true;
+        addLancamento(vid, {
+          data: today(), tipo: 'seguro',
+          titulo: `${doc.titulo} · parcela`, local: '', valor: pag.parcela,
+        });
+        return pag.restantes === 0
+          ? 'Seguro quitado · cobertura mantida'
+          : `Parcela paga · faltam ${pag.restantes}`;
+      }
       doc.inicio = today();
       doc.venc = toISO(addMonths(new Date(), 12));
-      doc.pago = true;
+      doc.pagamento = { quitado: true, parcela: 0, restantes: 0 };
       addLancamento(vid, {
         data: today(), tipo: 'seguro',
-        titulo: doc.titulo + (renovacao ? ' · renovação' : ''),
-        local: doc.sub || '', valor: doc.valor,
+        titulo: `${doc.titulo} · renovação`, local: '', valor: doc.valor,
       });
-      return `${doc.tag} ${renovacao ? 'renovado' : 'pago'}`;
+      return 'Apólice renovada por 12 meses';
     }
 
     if (doc.pago) return null;

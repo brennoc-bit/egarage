@@ -114,7 +114,7 @@ function blocoCustoMensal(v) {
         UI.mono(brl0(c.fixo), { fontSize: 14, marginTop: 4, fontWeight: 600 }))),
     h('div', { style: { height: 1, background: 'rgba(255,255,255,.18)', margin: '10px 0 2px' } }),
     fin.quitado ? null : linha('Parcela', brl(c.parcela), `${fin.restantes} restantes · dia ${fin.dia}`),
-    c.itensDocs.map((i) => linha(i.label, brl(i.valor), 'anual ÷ 12')),
+    c.itensDocs.map((i) => linha(i.label, brl(i.valor), i.detalhe)),
     linha('Combustível', brl(c.combustivel), c.combustivelReal ? 'média dos 3 meses fechados' : 'sem histórico ainda'));
 }
 
@@ -317,7 +317,7 @@ Screens.docs = (v) => {
 
     cartaoFinanciamento(v),
 
-    visiveis.map((s) => h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+    visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
         h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), s.tag),
         UI.mono(s.prazo, { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
@@ -331,7 +331,7 @@ Screens.docs = (v) => {
           class: 'btn btn-secondary',
           style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
           onClick: () => (s.doc.tipo === 'km' ? Acoes.agendarOficina(v) : Acoes.pagar(v, s)),
-        }, s.acao)) : null)),
+        }, s.acao)) : null))),
 
     pagaveis.length || revisao ? UI.cta([
       pagaveis.length ? { label: pagaveis[0].acao, pri: true, onClick: () => Acoes.pagar(v, pagaveis[0]) } : null,
@@ -340,6 +340,41 @@ Screens.docs = (v) => {
 
   return { kicker: 'Cronograma do ciclo', titulo: 'Documentos', corpo };
 };
+
+/* O seguro tem duas linhas do tempo que a pessoa confunde o tempo todo:
+   até quando ele cobre, e até quando ela ainda está pagando. Ficam separadas
+   e rotuladas, uma embaixo da outra. */
+function cartaoSeguro(v, s) {
+  const pag = s.doc.pagamento || { quitado: true };
+  const detalhe = (rotulo, texto, cor) => h('div', {
+    style: { display: 'flex', gap: 10, alignItems: 'baseline', marginTop: 10 },
+  },
+    UI.mono(rotulo, { width: 92, flex: 'none', fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)' }),
+    h('div', { style: { fontSize: 12, flex: 1, color: cor || 'inherit' } }, texto));
+
+  return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
+      h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), 'SEGURO'),
+      UI.mono(pag.quitado ? 'quitado' : `${pag.restantes}x a pagar`,
+        { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
+
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 } },
+      h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-.01em', flex: 1 } }, s.titulo),
+      UI.mono(brl(s.doc.valor), { fontSize: 13, fontWeight: 600 })),
+
+    detalhe('Cobertura', s.cobertura.texto, s.status === 'bad' ? 'var(--color-accent)' : null),
+    detalhe('Pagamento', s.pagamentoTexto),
+
+    h('div', { style: { marginTop: 12 } }, UI.meter(s.progresso, s.cor)),
+    UI.mono('vigência decorrida', { fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 6 }),
+
+    s.acao ? h('div', { style: { marginTop: 12 } },
+      h('button', {
+        class: 'btn btn-secondary',
+        style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+        onClick: () => Acoes.pagar(v, s),
+      }, s.acao)) : null);
+}
 
 function cartaoFinanciamento(v) {
   const f = Calc.financiamentoStatus(v);
@@ -580,17 +615,41 @@ Screens.veiculo = (atual) => {
                   { name: 'parcelasRestantes', label: 'Parcelas restantes', tipo: 'number', placeholder: '0' }),
             campo({ name: 'diaVencimento', label: 'Dia do vencimento', tipo: 'number', placeholder: '10', hint: 'A parcela entra no custo fixo de todo mês, junto com os documentos.' }))),
 
-    // — despesas anuais: só o que a pessoa informar —
-    UI.sectHd('IPVA, seguro e licenciamento'),
+    // — seguro: cobertura e pagamento são perguntas diferentes —
+    UI.sectHd('Seguro'),
+    h('div', { class: 'bloco' },
+      h('div', { class: 'pergunta' }, 'Tem seguro?'),
+      h('div', { class: 'sim-nao' },
+        h('button', { class: r.temSeguro ? 'on' : '', onClick: () => { r.temSeguro = true; App.render(); } }, 'Sim'),
+        h('button', { class: !r.temSeguro ? 'on' : '', onClick: () => { r.temSeguro = false; App.render(); } }, 'Não')),
+      !r.temSeguro
+        ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Sem seguro para acompanhar.')
+        : h('div', { style: { marginTop: 14 } },
+            campo({ name: 'seguroNome', label: 'Seguradora', placeholder: 'nome da seguradora ou do plano' }),
+            dupla({ name: 'seguroValor', label: 'Valor total da apólice', tipo: 'dinheiro', placeholder: '0,00' },
+                  { name: 'seguroVenc', label: 'Cobertura até', tipo: 'date' }),
+            h('div', { class: 'hint', style: { marginTop: -6, marginBottom: 16 } },
+              'A apólice costuma valer 12 meses. Essa data é até quando você está coberto — não tem relação com o parcelamento.'),
+            h('div', { class: 'pergunta' }, 'Já está pago?'),
+            h('div', { class: 'sim-nao' },
+              h('button', { class: r.seguroQuitado ? 'on' : '', onClick: () => { r.seguroQuitado = true; App.render(); } }, 'Sim'),
+              h('button', { class: !r.seguroQuitado ? 'on' : '', onClick: () => { r.seguroQuitado = false; App.render(); } }, 'Não')),
+            r.seguroQuitado
+              ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Nada a pagar até a renovação.')
+              : h('div', { style: { marginTop: 14 } },
+                  dupla({ name: 'seguroParcela', label: 'Valor da parcela', tipo: 'dinheiro', placeholder: '0,00' },
+                        { name: 'seguroRestantes', label: 'Parcelas restantes', tipo: 'number', placeholder: '0' }),
+                  h('div', { class: 'hint', style: { marginTop: -6 } },
+                    'A parcela entra no custo mensal enquanto durar; a cobertura segue valendo até a data acima.')))),
+
+    // — demais despesas: só o que a pessoa informar —
+    UI.sectHd('IPVA e licenciamento'),
     h('div', { class: 'bloco' },
       h('div', { class: 'hint', style: { marginBottom: 14 } },
-        'O app não estima esses valores: eles mudam por estado, por veículo e por seguradora. O que você deixar em branco simplesmente não é acompanhado.'),
+        'O app não estima esses valores: eles mudam por estado e por veículo. O que você deixar em branco simplesmente não é acompanhado.'),
       dupla({ name: 'ipvaValor', label: 'IPVA · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
             { name: 'ipvaParcelas', label: 'Em quantas parcelas', tipo: 'number', placeholder: '1' }),
       campo({ name: 'ipvaVenc', label: 'Vencimento da 1ª parcela', tipo: 'date' }),
-      dupla({ name: 'seguroValor', label: 'Seguro · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
-            { name: 'seguroVenc', label: 'Renovação em', tipo: 'date' }),
-      campo({ name: 'seguroNome', label: 'Seguradora', placeholder: 'nome da seguradora ou do plano' }),
       dupla({ name: 'licValor', label: 'Licenciamento', tipo: 'dinheiro', placeholder: '0,00' },
             { name: 'licVenc', label: 'Vencimento', tipo: 'date' })),
 
