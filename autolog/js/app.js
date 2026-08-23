@@ -33,15 +33,25 @@ const App = {
   rascunho(base) {
     if (!this._rascunho) {
       const texto = (valor) => (valor != null && valor !== '' ? String(valor) : '');
+      // Ao editar, os documentos e o financiamento voltam para o formulário.
+      const extras = base.id ? Store.dadosDoFormulario(base) : { quitado: true };
       this._rascunho = {
         tipo: base.tipo || 'carro',
         marca: texto(base.marca), modelo: texto(base.modelo), apelido: texto(base.apelido),
-        ano: texto(base.ano), cor: texto(base.cor), motor: texto(base.motor),
+        ano: texto(base.ano), cor: texto(base.cor),
         combustivel: texto(base.combustivel), placa: texto(base.placa),
         renavam: texto(base.renavam), chassi: texto(base.chassi),
         odometro: texto(base.odometro), consumo: texto(base.consumo),
-        precoComb: texto(base.precoComb), fipe: base.fipe ? String(base.fipe) : '',
-        compra: texto(base.compra), foto: base.foto || null,
+        precoComb: texto(base.precoComb), compra: texto(base.compra),
+        foto: base.foto || null,
+        quitado: extras.quitado !== false,
+        parcela: texto(extras.parcela), parcelasRestantes: texto(extras.parcelasRestantes),
+        diaVencimento: texto(extras.diaVencimento),
+        ipvaValor: texto(extras.ipvaValor), ipvaParcelas: texto(extras.ipvaParcelas),
+        ipvaVenc: texto(extras.ipvaVenc),
+        seguroValor: texto(extras.seguroValor), seguroVenc: texto(extras.seguroVenc),
+        seguroNome: texto(extras.seguroNome),
+        licValor: texto(extras.licValor), licVenc: texto(extras.licVenc),
       };
     }
     return this._rascunho;
@@ -92,6 +102,12 @@ const App = {
     }
 
     tela.append(conteudo.corpo);
+
+    // Abastecer é a ação mais repetida do app: fica flutuando, sempre à mão.
+    // Fora do cadastro, onde ela atrapalharia o formulário.
+    if (this.rota !== 'veiculo') {
+      tela.append(UI.fab(() => Acoes.registrarAbastecimento(Store.atual()), 'Registrar abastecimento'));
+    }
 
     const ativo = NAV_PAI[this.rota] || this.rota;
     NAV.forEach((n) => nav.append(h('button', {
@@ -270,6 +286,20 @@ const Acoes = {
   },
 
   /* — documentos — */
+
+  pagarParcela(v) {
+    const f = Calc.financiamentoStatus(v);
+    UI.confirmar({
+      titulo: 'Parcela do financiamento',
+      texto: `${brl(f.parcela)} — o valor entra no histórico de custos de hoje e sobram ${f.restantes - 1}.`,
+      acao: 'Registrar pagamento',
+      onOk: () => {
+        const msg = Store.pagarParcelaFinanciamento(v.id);
+        App.render();
+        UI.toast(msg || 'Nada a pagar');
+      },
+    });
+  },
 
   pagar(v, s) {
     UI.confirmar({

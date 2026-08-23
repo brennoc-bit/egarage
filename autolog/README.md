@@ -48,8 +48,26 @@ foi registrado nos itens que existem nos dois.
 Cinco abas — Início · Garagem (Resumo/Ficha/Histórico) · Custos (Custo/km +
 Financiamento) · Docs · Perfil — mais duas rotas próprias: o Diagnóstico de
 manutenção e o **Cadastro de veículo**, com foto, tipo e campos agrupados em
-Identificação, Documentos, Uso e Financeiro. A mesma tela serve para editar a
-ficha depois.
+Identificação, Documentos, Uso, Financiamento e despesas anuais. A mesma tela
+serve para editar a ficha depois.
+
+Um **botão flutuante** no canto inferior direito registra abastecimento de
+qualquer tela — é a ação mais repetida do app.
+
+## O que o app não inventa
+
+IPVA, seguro e licenciamento **são perguntados no cadastro**, nunca estimados:
+os valores mudam por estado, por veículo e por seguradora, e um número chutado
+seria pior que nenhum. Campo em branco simplesmente não é acompanhado.
+
+O mesmo vale para o financiamento. O cadastro pergunta se o veículo está
+quitado; se não estiver, pede o valor da parcela, quantas faltam e o dia do
+vencimento. Com isso a tela inicial mostra o **custo por mês**: parcela +
+despesas anuais diluídas em doze + a média real de combustível dos três meses
+fechados anteriores.
+
+A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
+intervalo do tipo de veículo — e sem preço associado.
 
 ## O que é calculado (nada é estático)
 
@@ -85,8 +103,10 @@ Perfil, recria o exemplo — uma moto e um carro, sempre relativos à data de ho
   (ex.: gasto do mês R$ 386 na tela 01 e R$ 173 na 07). Aqui tudo vem dos lançamentos.
 - **Barra de status do celular (9:41 · 5G · 100%)** foi removida: é artefato de mockup.
 - **“Enviar para banco”** virou **“Salvar simulação”**, que de fato guarda o cenário.
-- **Foto do veículo** é real (câmera/galeria, redimensionada no cliente e salva como data URL,
-  com o `.grayscale` do DS). O hachurado do canvas ficou como estado vazio.
+- **Foto do veículo** é real (câmera/galeria, redimensionada no cliente e salva como data URL).
+  O canvas previa tratá-las em preto e branco com o `.grayscale` do DS; aqui elas saem
+  **coloridas** — é a moto ou o carro do dono, não peça de catálogo. O hachurado
+  do canvas ficou como estado vazio.
 - **Cores de sinal** (verde `#2d8a4a` / âmbar `#e0a91b` / vermelho do acento) seguem a nota do
   canvas: entram só como sinal, fora da paleta mono-vermelha do Modernist.
 

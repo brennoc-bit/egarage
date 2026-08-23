@@ -61,6 +61,22 @@ const UI = (() => {
       }, h('div', { class: 'lbl' }, d.label))));
   }
 
+  /* ── Botão flutuante ────────────────────────────────────────────────── */
+
+  // Bomba de combustível desenhada em SVG: sem dependência de fonte de ícones.
+  const SVG_BOMBA = `
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/>
+      <path d="M3 21h12"/>
+      <path d="M4 10h10"/>
+      <path d="M14 7h2.5L19 9.5V17a1.75 1.75 0 0 0 3 0v-6"/>
+    </svg>`;
+
+  const fab = (onClick, rotulo) => h('button', {
+    class: 'fab', onClick, 'aria-label': rotulo, title: rotulo,
+  }, h('span', { class: 'fab-ic', html: SVG_BOMBA }));
+
   /* ── Toast ──────────────────────────────────────────────────────────── */
 
   let toastTimer = null;
@@ -215,8 +231,9 @@ const UI = (() => {
   }
 
   function foto(v, { grande = true, onTrocar } = {}) {
+    // Foto sai colorida: o veículo é do dono, não peça de catálogo.
     const conteudo = v.foto
-      ? h('img', { src: v.foto, alt: `${v.marca} ${v.modelo}`, class: 'grayscale' })
+      ? h('img', { src: v.foto, alt: `${v.marca} ${v.modelo}` })
       : h('div', { class: 'placeholder-img' }, `foto · ${v.apelido || v.modelo} · ${v.ano}`);
     return h('div', { class: 'hero' + (grande ? '' : ' sm') },
       conteudo,
@@ -224,7 +241,7 @@ const UI = (() => {
   }
 
   return {
-    dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras,
+    dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras, fab,
     campo, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
   };
 })();

@@ -11,6 +11,7 @@ const CATEGORIAS = [
   { id: 'transmissao', label: 'Transmissão' },
   { id: 'documentacao', label: 'Documentação' },
   { id: 'seguro', label: 'Seguro' },
+  { id: 'financiamento', label: 'Financiamento' },
   { id: 'outros', label: 'Outros' },
 ];
 const labelCategoria = (id) => (CATEGORIAS.find((c) => c.id === id) || { label: 'Outros' }).label;
@@ -93,6 +94,7 @@ const Store = (() => {
       if (!v.cor) v.cor = '';
       if (!v.chassi) v.chassi = '';
       if (!Array.isArray(v.simulacoes)) v.simulacoes = [];
+      if (!v.financiamento) v.financiamento = { quitado: true };
     }
     return dados;
   }
@@ -196,6 +198,7 @@ const Store = (() => {
       odometro, consumo, precoComb,
       manutencao,
       docs: seedDocs(hoje, ano, 20000),
+      financiamento: { quitado: true },
       lancamentos: lanc,
       simulacoes: [],
     };
@@ -261,6 +264,8 @@ const Store = (() => {
       odometro, consumo, precoComb,
       manutencao,
       docs: seedDocs(hoje, ano, 60000),
+      // Exemplo com financiamento em aberto, para o custo fixo aparecer.
+      financiamento: { quitado: false, parcela: 1180, restantes: 22, dia: 10 },
       lancamentos: lanc,
       simulacoes: [],
     };
@@ -289,7 +294,7 @@ const Store = (() => {
       },
       {
         id: 'revisao', tag: 'REVISÃO', titulo: 'Revisão programada', sub: 'Concessionária vinculada',
-        tipo: 'km', alvoKm: alvoRevisao, valor: 480, pago: false, agendada: null,
+        tipo: 'km', alvoKm: alvoRevisao, valor: 0, pago: false, agendada: null,
       },
     ];
   }
@@ -361,12 +366,9 @@ const Store = (() => {
       consumo: parseNum(dados.consumo) || (tipo === 'moto' ? 30 : 11),
       precoComb: parseNum(dados.precoComb) || 5.89,
       manutencao: manutencaoPadrao(tipo, odometro, today()),
-      docs: seedDocs(hoje, hoje.getFullYear(), Math.ceil((odometro + 1) / intervaloRevisao) * intervaloRevisao)
-        .map((d) => {
-          if (d.tipo === 'parcelas') return Object.assign({}, d, { parcelas: d.parcelas.map((p) => Object.assign({}, p, { pago: false })) });
-          if (d.id === 'seguro') return Object.assign({}, d, { pago: false });
-          return d;
-        }),
+      // Nada de valor inventado: só entra o que o usuário informou.
+      docs: docsInformados(dados, Math.ceil((odometro + 1) / intervaloRevisao) * intervaloRevisao),
+      financiamento: financiamentoInformado(dados),
       lancamentos: [],
       simulacoes: [],
     };
@@ -377,6 +379,138 @@ const Store = (() => {
   }
 
   const normalizarPlaca = (p) => (p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  /* ── Documentos e financiamento vindos do cadastro ──────────────────── */
+
+  /**
+   * Monta os documentos a partir do que a pessoa informou. Campo em branco
+   * não vira documento — o app não adivinha valor de IPVA nem de seguro.
+   * `anteriores` permite preservar o que já foi pago ao editar a ficha.
+   */
+  function docsInformados(d, alvoRevisao, anteriores) {
+    const antigos = new Map((anteriores || []).map((x) => [x.id, x]));
+    const docs = [];
+
+    const ipvaValor = parseNum(d.ipvaValor);
+    if (ipvaValor > 0) {
+      const n = clamp(Math.round(parseNum(d.ipvaParcelas)) || 1, 1, 12);
+      const base = d.ipvaVenc ? fromISO(d.ipvaVenc) : new Date();
+      const antigo = antigos.get('ipva');
+      const jaPagas = antigo && antigo.parcelas ? antigo.parcelas.filter((p) => p.pago).length : 0;
+      const parcelas = [];
+      for (let i = 0; i < n; i++) {
+        parcelas.push({
+          n: i + 1,
+          valor: Math.round((ipvaValor / n) * 100) / 100,
+          venc: toISO(addMonths(base, i)),
+          pago: i < jaPagas,
+        });
+      }
+      docs.push({
+        id: 'ipva', tag: 'IPVA',
+        titulo: `IPVA ${base.getFullYear()}${n > 1 ? ` · ${n} parcelas` : ' · cota única'}`,
+        sub: 'informado no cadastro', tipo: 'parcelas', parcelas,
+      });
+    }
+
+    const licValor = parseNum(d.licValor);
+    if (licValor > 0) {
+      const antigo = antigos.get('licenciamento');
+      docs.push({
+        id: 'licenciamento', tag: 'LICENC.', titulo: 'Licenciamento anual',
+        sub: 'informado no cadastro', tipo: 'unico', valor: licValor,
+        venc: d.licVenc || toISO(addMonths(new Date(), 6)),
+        pago: antigo ? !!antigo.pago : false,
+      });
+    }
+
+    const segValor = parseNum(d.seguroValor);
+    if (segValor > 0) {
+      const venc = d.seguroVenc || toISO(addMonths(new Date(), 12));
+      const antigo = antigos.get('seguro');
+      docs.push({
+        id: 'seguro', tag: 'SEGURO',
+        titulo: d.seguroNome || 'Seguro do veículo',
+        sub: 'informado no cadastro', tipo: 'anual', valor: segValor,
+        inicio: toISO(addMonths(fromISO(venc), -12)), venc,
+        // Renovação no futuro = ciclo atual já pago; vencida = pendente.
+        pago: antigo ? !!antigo.pago : daysUntil(venc) >= 0,
+      });
+    }
+
+    // Revisão é derivada do odômetro, não de preço chutado.
+    const antigaRev = antigos.get('revisao');
+    docs.push({
+      id: 'revisao', tag: 'REVISÃO', titulo: 'Revisão programada',
+      sub: 'próxima pelo odômetro', tipo: 'km',
+      alvoKm: antigaRev ? antigaRev.alvoKm : alvoRevisao,
+      valor: 0, pago: false, agendada: antigaRev ? antigaRev.agendada : null,
+    });
+
+    return docs;
+  }
+
+  function financiamentoInformado(d) {
+    if (d.quitado === false || d.quitado === 'nao') {
+      return {
+        quitado: false,
+        parcela: parseNum(d.parcela),
+        restantes: Math.max(0, Math.round(parseNum(d.parcelasRestantes))),
+        dia: clamp(Math.round(parseNum(d.diaVencimento)) || 10, 1, 28),
+      };
+    }
+    return { quitado: true };
+  }
+
+  // Devolve os dados de docs/financiamento no formato do formulário.
+  function dadosDoFormulario(v) {
+    const ipva = v.docs.find((d) => d.id === 'ipva');
+    const lic = v.docs.find((d) => d.id === 'licenciamento');
+    const seg = v.docs.find((d) => d.id === 'seguro');
+    const fin = v.financiamento || { quitado: true };
+    return {
+      ipvaValor: ipva ? ipva.parcelas.reduce((s, p) => s + p.valor, 0) : '',
+      ipvaParcelas: ipva ? ipva.parcelas.length : '',
+      ipvaVenc: ipva && ipva.parcelas[0] ? ipva.parcelas[0].venc : '',
+      licValor: lic ? lic.valor : '',
+      licVenc: lic ? lic.venc : '',
+      seguroValor: seg ? seg.valor : '',
+      seguroVenc: seg ? seg.venc : '',
+      seguroNome: seg ? seg.titulo : '',
+      quitado: fin.quitado !== false,
+      parcela: fin.quitado === false ? fin.parcela : '',
+      parcelasRestantes: fin.quitado === false ? fin.restantes : '',
+      diaVencimento: fin.quitado === false ? fin.dia : '',
+    };
+  }
+
+  function atualizarDocsEFinanciamento(vid, dados) {
+    const v = veiculo(vid);
+    if (!v) return;
+    const intervalo = v.tipo === 'moto' ? 6000 : 10000;
+    v.docs = docsInformados(dados, Math.ceil((v.odometro + 1) / intervalo) * intervalo, v.docs);
+    v.financiamento = financiamentoInformado(dados);
+    salvar();
+  }
+
+  // Baixa uma parcela do financiamento e registra a despesa do mês.
+  function pagarParcelaFinanciamento(vid) {
+    const v = veiculo(vid);
+    const fin = v && v.financiamento;
+    if (!fin || fin.quitado || fin.restantes <= 0) return null;
+    fin.restantes -= 1;
+    addLancamento(vid, {
+      data: today(), tipo: 'financiamento',
+      titulo: 'Parcela do financiamento', local: '', valor: fin.parcela,
+    });
+    if (fin.restantes === 0) {
+      v.financiamento = { quitado: true };
+      salvar();
+      return 'Financiamento quitado';
+    }
+    salvar();
+    return `Parcela paga · faltam ${fin.restantes}`;
+  }
 
   function removerVeiculo(id) {
     state.veiculos = state.veiculos.filter((v) => v.id !== id);
@@ -513,6 +647,7 @@ const Store = (() => {
     selecionar, atualizarPerfil, atualizarVeiculo, addVeiculo, removerVeiculo,
     addLancamento, removerLancamento, registrarServico, categoriaDoItem,
     pagarDocumento, agendarRevisao, salvarSimulacao,
+    dadosDoFormulario, atualizarDocsEFinanciamento, pagarParcelaFinanciamento,
     resetar, importar, exportar, normalizarPlaca,
   };
 })();

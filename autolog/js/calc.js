@@ -287,6 +287,62 @@ const Calc = (() => {
     return { pv, n, i, parcela, primeira: parcela, ultima: parcela, total, juros: total - pv, sistema };
   }
 
+  /* ── Custo mensal: o que sai do bolso todo mês ──────────────────────── */
+
+  // Média do que foi gasto com combustível nos meses fechados anteriores.
+  function mediaMensalCombustivel(v, meses = 3) {
+    const hoje = new Date();
+    const ini = toISO(new Date(hoje.getFullYear(), hoje.getMonth() - meses, 1));
+    const fim = toISO(new Date(hoje.getFullYear(), hoje.getMonth(), 0));
+    const gasto = v.lancamentos
+      .filter((l) => l.tipo === 'combustivel' && l.data >= ini && l.data <= fim)
+      .reduce((s, l) => s + l.valor, 0);
+    return { valor: gasto / meses, real: gasto > 0 };
+  }
+
+  /**
+   * Parcela do financiamento + despesas anuais diluídas em 12 + média de
+   * combustível. Só entra o que a pessoa informou — nada é estimado por conta
+   * própria.
+   */
+  function custoMensal(v) {
+    const fin = v.financiamento || { quitado: true };
+    const parcela = fin.quitado ? 0 : (fin.parcela || 0);
+
+    const itensDocs = [];
+    let docsMes = 0;
+    for (const d of v.docs) {
+      let anual = 0;
+      if (d.tipo === 'parcelas') anual = d.parcelas.reduce((s, p) => s + p.valor, 0);
+      else if (d.tipo === 'anual' || d.tipo === 'unico') anual = d.valor || 0;
+      if (anual > 0) { docsMes += anual / 12; itensDocs.push({ label: d.tag, valor: anual / 12 }); }
+    }
+
+    const comb = mediaMensalCombustivel(v);
+    return {
+      parcela, docsMes, itensDocs,
+      fixo: parcela + docsMes,
+      combustivel: comb.valor, combustivelReal: comb.real,
+      total: parcela + docsMes + comb.valor,
+    };
+  }
+
+  function financiamentoStatus(v) {
+    const fin = v.financiamento || { quitado: true };
+    if (fin.quitado) return { quitado: true };
+    const pagas = v.lancamentos.filter((l) => l.tipo === 'financiamento').length;
+    const total = pagas + fin.restantes;
+    return {
+      quitado: false,
+      parcela: fin.parcela,
+      restantes: fin.restantes,
+      pagas, total,
+      saldo: fin.parcela * fin.restantes,
+      progresso: total > 0 ? (pagas / total) * 100 : 0,
+      dia: fin.dia,
+    };
+  }
+
   /* ── Panorama para a home ───────────────────────────────────────────── */
 
   function panorama(v) {
@@ -307,6 +363,7 @@ const Calc = (() => {
     inicioDoMes, diasAtras, consumoMedio, precoMedioLitro,
     custoPorKm, composicao, resumoMensal,
     statusItem, diagnostico, statusDoc, docsStatus, proximosVencimentos, compromissosAnuais,
+    mediaMensalCombustivel, custoMensal, financiamentoStatus,
     financiamento, panorama,
   };
 })();

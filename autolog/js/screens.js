@@ -28,7 +28,7 @@ Screens.inicio = (v) => {
     h('div', { class: 'headline-lockup' },
       UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
       h('h3', null, v.modelo),
-      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  motor ${v.motor || '—'}`, { marginTop: 6, letterSpacing: '.06em' })),
+      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' })),
 
     UI.row(
       UI.kv({
@@ -47,6 +47,8 @@ Screens.inicio = (v) => {
         onClick: () => App.ir('manutencao'),
       })),
 
+    blocoCustoMensal(v),
+
     UI.sectHd('Próximos vencimentos', 'ver todos ›', () => App.ir('docs')),
     vencimentos.length ? vencimentos.map((it) => h('button', {
       class: 'list-item',
@@ -63,9 +65,9 @@ Screens.inicio = (v) => {
     )) : UI.vazio('Nada vencendo por aqui. Bom sinal.'),
 
     UI.cta([
-      { label: 'Abastecimento', icone: '+', pri: true, onClick: () => Acoes.registrarAbastecimento(v) },
-      { label: 'Lançamento', icone: '+', onClick: () => Acoes.registrarLancamento(v) },
-    ]));
+      { label: 'Novo lançamento', icone: '+', onClick: () => Acoes.registrarLancamento(v) },
+    ]),
+    h('div', { style: { height: 76 } })); // respiro para o botão flutuante
 
   return {
     kicker: `Sua garagem · ${Store.veiculos().length} ${Store.veiculos().length === 1 ? 'veículo' : 'veículos'}`,
@@ -73,6 +75,48 @@ Screens.inicio = (v) => {
     corpo,
   };
 };
+
+/* Quanto sai do bolso por mês: parcela + documentos diluídos + combustível.
+   Só aparece o que a pessoa informou — nada de valor estimado por conta. */
+function blocoCustoMensal(v) {
+  const c = Calc.custoMensal(v);
+  const fin = Calc.financiamentoStatus(v);
+  const nada = c.total <= 0;
+
+  const linha = (rotulo, valor, detalhe) => h('div', {
+    style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginTop: 8 },
+  },
+    h('div', null,
+      UI.mono(rotulo, { fontSize: 11, letterSpacing: '.08em', opacity: .75 }),
+      detalhe ? UI.mono(detalhe, { fontSize: 10, opacity: .5, marginTop: 2 }) : null),
+    UI.mono(valor, { fontSize: 13, fontWeight: 600 }));
+
+  if (nada) {
+    return h('div', null,
+      UI.sectHd('Custo mensal'),
+      h('div', { class: 'note', style: { paddingTop: 0 } },
+        'Informe a parcela do financiamento, o IPVA e o seguro na ficha do veículo para o app somar o custo fixo de cada mês.'),
+      h('div', { style: { padding: '0 16px 16px' } },
+        h('button', {
+          class: 'btn btn-secondary',
+          style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+          onClick: () => Acoes.editarVeiculo(v),
+        }, 'Completar ficha')));
+  }
+
+  return h('div', { class: 'price-strip', style: { flexDirection: 'column', alignItems: 'stretch', gap: 4 } },
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' } },
+      h('div', null,
+        h('div', { class: 'pk' }, 'Custo por mês'),
+        h('div', { class: 'pv', style: { fontSize: 30 } }, brl(c.total))),
+      h('div', { style: { textAlign: 'right' } },
+        h('div', { class: 'pk' }, 'fixo'),
+        UI.mono(brl0(c.fixo), { fontSize: 14, marginTop: 4, fontWeight: 600 }))),
+    h('div', { style: { height: 1, background: 'rgba(255,255,255,.18)', margin: '10px 0 2px' } }),
+    fin.quitado ? null : linha('Parcela', brl(c.parcela), `${fin.restantes} restantes · dia ${fin.dia}`),
+    c.itensDocs.map((i) => linha(i.label, brl(i.valor), 'anual ÷ 12')),
+    linha('Combustível', brl(c.combustivel), c.combustivelReal ? 'média dos 3 meses fechados' : 'sem histórico ainda'));
+}
 
 const resumoDiag = (d) => {
   const partes = [];
@@ -117,7 +161,7 @@ function abaResumo(v) {
       UI.kv({ k: 'Preço médio', v: brl(Calc.precoMedioLitro(v)), sub: 'por litro' })),
     UI.row(
       UI.kv({ k: 'Lançamentos', v: String(v.lancamentos.length), sub: 'registrados' }),
-      UI.kv({ k: 'Valor FIPE', v: v.fipe ? brl0(v.fipe) : '—', sub: 'referência atual' })),
+      UI.kv({ k: 'Custo por mês', v: brl0(Calc.custoMensal(v).total), sub: 'fixo + combustível' })),
 
     UI.sectHd('Gasto por mês', 'R$'),
     UI.barras(meses.map((m) => ({ label: m.label, valor: m.gasto, on: chaveMes(m.iso) === mesAtual })),
@@ -134,11 +178,18 @@ function abaFicha(v) {
   return h('div', null,
     linha({ k: 'Tipo', v: labelTipo(v.tipo) }, { k: 'Marca', v: v.marca || '—' }),
     linha({ k: 'Ano', v: String(v.ano) }, { k: 'Cor', v: v.cor || '—' }),
-    linha({ k: 'Motor', v: v.motor || '—' }, { k: 'Combustível', v: v.combustivel || '—' }),
+    linha({ k: 'Combustível', v: v.combustivel || '—' },
+      { k: 'Consumo ref.', v: `${num(v.consumo, 0)} km/L`, sub: consumo.real ? `real ${num(consumo.valor, 1)}` : 'sem medição' }),
     linha({ k: 'Placa', v: v.placa || '—' }, { k: 'Renavam', v: v.renavam || '—' }),
     linha({ k: 'Chassi', v: v.chassi || '—' }, { k: 'Compra', v: fmtMesAno(v.compra) }),
-    linha({ k: 'Consumo ref.', v: `${num(v.consumo, 0)} km/L`, sub: consumo.real ? `real ${num(consumo.valor, 1)}` : 'sem medição' },
-      { k: 'Valor FIPE', v: v.fipe ? brl0(v.fipe) : '—' }),
+    (() => {
+      const f = Calc.financiamentoStatus(v);
+      return f.quitado
+        ? UI.row(UI.kv({ k: 'Financiamento', v: 'Quitado', sub: 'sem parcela mensal' }))
+        : UI.row(
+            UI.kv({ k: 'Parcela', v: brl(f.parcela), sub: `dia ${f.dia}` }),
+            UI.kv({ k: 'Restam', v: String(f.restantes), sub: `saldo ${brl0(f.saldo)}` }));
+    })(),
     UI.row(UI.kv({ k: 'Odômetro', v: kmFmt(v.odometro), onClick: () => Acoes.atualizarOdometro(v) })),
     h('div', { class: 'note' }, 'Os dados da ficha alimentam o diagnóstico de manutenção e a simulação de financiamento.'),
     UI.cta([
@@ -207,8 +258,8 @@ Screens.manutencao = (v) => {
     h('div', { style: { padding: 16, borderBottom: '1px solid var(--color-divider)', background: 'var(--color-surface)' } },
       UI.mono('Parâmetros do diagnóstico', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 12, color: 'var(--muted)' }),
       h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+        parametro('Tipo', labelTipo(v.tipo)),
         parametro('Ano', String(v.ano)),
-        parametro('Motor', v.motor || '—'),
         h('div', { style: { gridColumn: '1 / -1' } },
           parametro('Quilometragem atual', kmFmt(v.odometro), () => Acoes.atualizarOdometro(v))))),
 
@@ -264,6 +315,8 @@ Screens.docs = (v) => {
       UI.kv({ k: 'Pago', v: brl0(anuais.pago) }),
       UI.kv({ k: 'A pagar', v: brl0(anuais.pendente), cor: 'var(--color-accent)' })),
 
+    cartaoFinanciamento(v),
+
     visiveis.map((s) => h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
         h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), s.tag),
@@ -287,6 +340,28 @@ Screens.docs = (v) => {
 
   return { kicker: 'Cronograma do ciclo', titulo: 'Documentos', corpo };
 };
+
+function cartaoFinanciamento(v) {
+  const f = Calc.financiamentoStatus(v);
+  if (f.quitado) return null;
+  return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
+      h('span', { class: 'status-tag' }, UI.dot(COR.warn, 8), 'FINANC.'),
+      UI.mono(`todo dia ${f.dia}`, { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
+    h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 } },
+      h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-.01em', flex: 1 } },
+        `Parcela do ${labelTipo(v.tipo).toLowerCase()}`),
+      UI.mono(brl(f.parcela), { fontSize: 13, fontWeight: 600 })),
+    h('div', { style: { fontSize: 11, color: 'var(--muted)', marginTop: 6 } },
+      `${f.restantes} ${f.restantes === 1 ? 'parcela restante' : 'parcelas restantes'} · saldo ${brl0(f.saldo)}`),
+    h('div', { style: { marginTop: 12 } }, UI.meter(f.progresso, COR.warn)),
+    h('div', { style: { marginTop: 12 } },
+      h('button', {
+        class: 'btn btn-secondary',
+        style: { borderRadius: 100, padding: '10px 16px', fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+        onClick: () => Acoes.pagarParcela(v),
+      }, 'Registrar parcela paga')));
+}
 
 /* ── 05 · Custo por km  +  06 · Simulação ──────────────────────────────── */
 
@@ -363,7 +438,7 @@ function abaSimulacao(v) {
 
   return h('div', null,
     h('div', { style: { padding: '18px 20px 8px', display: 'grid', gap: 14 } },
-      caixa('Valor do veículo', brl0(s.valor), v.fipe ? `FIPE · ${v.apelido || v.modelo}` : null,
+      caixa('Valor do veículo', brl0(s.valor), 'toque para ajustar',
         () => Acoes.editarSim('valor', 'Valor do veículo', s.valor)),
       h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
         caixa('Entrada', brl0(s.entrada), null, () => Acoes.editarSim('entrada', 'Entrada', s.entrada)),
@@ -411,7 +486,7 @@ function abaSimulacao(v) {
           UI.mono(`${brl0(sim.valor)} · entrada ${brl0(sim.entrada)} · ${num(sim.taxa, 2)}% a.m. · ${sim.sistema === 'sac' ? 'SAC' : 'Price'}`, { marginTop: 2, color: 'var(--muted)' }))))) : null,
 
     UI.cta([
-      { label: 'Usar FIPE', icone: '↻', onClick: () => { App.setSim({ valor: v.fipe || 0 }); App.render(); UI.toast('Valor FIPE aplicado'); } },
+      { label: 'Limpar', icone: '↻', onClick: () => { App.setSim({ entrada: 0, meses: 36, taxa: 1.49, sistema: 'price' }); App.render(); } },
       {
         label: 'Salvar simulação', icone: '✓', pri: true,
         onClick: () => { Store.salvarSimulacao(v.id, { ...s, parcela: r.parcela, juros: r.juros, total: r.total }); App.render(); UI.toast('Simulação salva'); },
@@ -452,7 +527,7 @@ Screens.veiculo = (atual) => {
     type: 'button',
     onClick: () => UI.pedirFoto((dataUrl) => { r.foto = dataUrl; App.render(); }),
   }, r.foto
-    ? h('img', { src: r.foto, alt: 'Foto do veículo', class: 'grayscale' })
+    ? h('img', { src: r.foto, alt: 'Foto do veículo' })
     : h('div', { class: 'vazia' },
         h('span', { class: 'mais' }, '+'),
         h('span', null, 'foto do veículo'),
@@ -478,8 +553,7 @@ Screens.veiculo = (atual) => {
       campo({ name: 'apelido', label: 'Apelido', placeholder: 'como você chama ele', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
       dupla({ name: 'ano', label: 'Ano', tipo: 'number', placeholder: String(new Date().getFullYear()) },
             { name: 'cor', label: 'Cor', placeholder: 'Prata' }),
-      dupla({ name: 'motor', label: 'Motor', placeholder: r.tipo === 'moto' ? '292cc' : '1.0 turbo' },
-            { name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
+      campo({ name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
 
     grupo('Documentos',
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
@@ -489,11 +563,36 @@ Screens.veiculo = (atual) => {
     grupo('Uso',
       dupla({ name: 'odometro', label: 'Km atual', tipo: 'number', placeholder: '0', obrigatorio: true },
             { name: 'consumo', label: 'Consumo (km/L)', tipo: 'dinheiro', placeholder: r.tipo === 'moto' ? '30' : '11' }),
-      campo({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro', placeholder: '5,89', hint: 'Referência para estimativas enquanto não há abastecimentos registrados.' })),
-
-    grupo('Financeiro',
-      dupla({ name: 'fipe', label: 'Valor FIPE', tipo: 'dinheiro', placeholder: '0,00' },
+      dupla({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro', placeholder: '5,89' },
             { name: 'compra', label: 'Data da compra', tipo: 'date' })),
+
+    // — financiamento —
+    UI.sectHd('Financiamento'),
+    h('div', { class: 'bloco' },
+      h('div', { class: 'pergunta' }, r.tipo === 'moto' ? 'Moto quitada?' : 'Carro quitado?'),
+      h('div', { class: 'sim-nao' },
+        h('button', { class: r.quitado ? 'on' : '', onClick: () => { r.quitado = true; App.render(); } }, 'Sim'),
+        h('button', { class: !r.quitado ? 'on' : '', onClick: () => { r.quitado = false; App.render(); } }, 'Não')),
+      r.quitado
+        ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Sem parcela entrando no custo mensal.')
+        : h('div', { style: { marginTop: 14 } },
+            dupla({ name: 'parcela', label: 'Valor da parcela', tipo: 'dinheiro', placeholder: '0,00' },
+                  { name: 'parcelasRestantes', label: 'Parcelas restantes', tipo: 'number', placeholder: '0' }),
+            campo({ name: 'diaVencimento', label: 'Dia do vencimento', tipo: 'number', placeholder: '10', hint: 'A parcela entra no custo fixo de todo mês, junto com os documentos.' }))),
+
+    // — despesas anuais: só o que a pessoa informar —
+    UI.sectHd('IPVA, seguro e licenciamento'),
+    h('div', { class: 'bloco' },
+      h('div', { class: 'hint', style: { marginBottom: 14 } },
+        'O app não estima esses valores: eles mudam por estado, por veículo e por seguradora. O que você deixar em branco simplesmente não é acompanhado.'),
+      dupla({ name: 'ipvaValor', label: 'IPVA · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
+            { name: 'ipvaParcelas', label: 'Em quantas parcelas', tipo: 'number', placeholder: '1' }),
+      campo({ name: 'ipvaVenc', label: 'Vencimento da 1ª parcela', tipo: 'date' }),
+      dupla({ name: 'seguroValor', label: 'Seguro · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
+            { name: 'seguroVenc', label: 'Renovação em', tipo: 'date' }),
+      campo({ name: 'seguroNome', label: 'Seguradora', placeholder: 'nome da seguradora ou do plano' }),
+      dupla({ name: 'licValor', label: 'Licenciamento', tipo: 'dinheiro', placeholder: '0,00' },
+            { name: 'licVenc', label: 'Vencimento', tipo: 'date' })),
 
     erroGeral,
 
@@ -532,25 +631,20 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
     return;
   }
 
-  const dados = {
-    tipo: r.tipo, marca: r.marca, modelo: r.modelo,
-    apelido: r.apelido || r.modelo, ano: r.ano, cor: r.cor, motor: r.motor,
-    combustivel: r.combustivel, placa: r.placa, renavam: r.renavam, chassi: r.chassi,
-    odometro: r.odometro, consumo: r.consumo, precoComb: r.precoComb,
-    fipe: r.fipe, compra: r.compra, foto: r.foto,
-  };
+  const dados = Object.assign({}, r, { apelido: r.apelido || r.modelo });
 
   if (editando) {
     Store.atualizarVeiculo(editando.id, {
       tipo: dados.tipo, marca: dados.marca, modelo: dados.modelo, apelido: dados.apelido,
-      ano: Number(dados.ano) || editando.ano, cor: dados.cor, motor: dados.motor,
+      ano: Number(dados.ano) || editando.ano, cor: dados.cor,
       combustivel: dados.combustivel, placa: Store.normalizarPlaca(dados.placa),
       renavam: dados.renavam, chassi: (dados.chassi || '').toUpperCase(),
       odometro: Math.max(editando.odometro, Math.round(parseNum(dados.odometro))),
       consumo: parseNum(dados.consumo) || editando.consumo,
       precoComb: parseNum(dados.precoComb) || editando.precoComb,
-      fipe: parseNum(dados.fipe), compra: dados.compra || editando.compra, foto: dados.foto,
+      compra: dados.compra || editando.compra, foto: dados.foto,
     });
+    Store.atualizarDocsEFinanciamento(editando.id, dados);
     App.limparRascunho();
     App.ir('garagem', { garagem: 'ficha' });
     UI.toast('Ficha atualizada');

@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-23
+**Última atualização:** 2026-08-23 (2ª sessão do dia)
 
 ---
 
@@ -53,6 +53,44 @@ arquitetura e desvios do design estão no `autolog/README.md`.
   "Cadastrar primeiro veículo").
 - Dados de exemplo passaram a ser uma moto (CB 300F) e um carro (Onix).
 
+### Custos reais, sem chute ✅
+
+O app inventava IPVA, seguro, licenciamento e até um preço de revisão para todo
+veículo novo — números que não vinham de lugar nenhum. **Agora ele pergunta.**
+
+- O cadastro tem uma seção de IPVA (valor do ano, em quantas parcelas,
+  vencimento da 1ª), seguro (valor do ano, renovação, seguradora) e
+  licenciamento (valor, vencimento). Campo em branco não vira documento.
+- A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
+  intervalo do tipo de veículo — e sem preço associado.
+- Editar a ficha preserva o que já foi pago: parcelas quitadas continuam
+  quitadas mesmo se o valor do IPVA mudar.
+
+### Financiamento e custo mensal ✅
+
+O cadastro pergunta **"Carro quitado? / Moto quitada?"**. Se não estiver, pede
+valor da parcela, parcelas restantes e dia do vencimento.
+
+Com isso a tela inicial ganhou o bloco **Custo por mês**: parcela + despesas
+anuais diluídas em doze + média real de combustível dos três meses fechados
+anteriores. Quem não informou nada vê um convite para completar a ficha, não um
+número inventado.
+
+Na aba Docs há um cartão do financiamento com saldo, progresso e o botão
+*Registrar parcela paga*, que baixa uma parcela e lança a despesa do mês.
+Zerando as parcelas, o veículo vira quitado sozinho.
+
+### Ajustes de interface ✅
+
+- **Fotos saem coloridas.** O canvas previa `.grayscale`; o veículo é do dono,
+  não peça de catálogo.
+- **Abastecer virou botão flutuante** redondo, no canto inferior direito, na cor
+  do app e com ícone de bomba desenhado em SVG. Fica fixo enquanto a tela rola e
+  some no cadastro, onde atrapalharia o formulário.
+- **Cilindradas e valor FIPE saíram do cadastro** — não são informação que a
+  pessoa deva digitar para o app funcionar. O simulador de financiamento agora
+  parte de um valor editável na própria tela.
+
 ### Tela de cadastro de veículo ✅
 
 O "+ Nova" abria uma folha rápida com oito campos. Agora é **rota própria**
@@ -62,8 +100,9 @@ O "+ Nova" abria uma folha rápida com oito campos. Agora é **rota própria**
   redimensionada no cliente, com ações de trocar e remover.
 - Escolha de **tipo** em dois cartões grandes.
 - Campos agrupados em **Identificação** (marca, modelo, apelido, ano, cor,
-  motor, combustível), **Documentos** (placa, renavam, chassi), **Uso** (km
-  atual, consumo, preço do litro) e **Financeiro** (FIPE, data da compra).
+  combustível), **Documentos** (placa, renavam, chassi), **Uso** (km atual,
+  consumo, preço do litro, data da compra), **Financiamento** e **IPVA, seguro
+  e licenciamento**.
 - Validação com destaque nos campos e mensagem no rodapé; só modelo e km atual
   são obrigatórios.
 - **A mesma tela edita a ficha** — substituiu também a folha de edição.
