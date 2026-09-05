@@ -45,9 +45,27 @@
     // local o navegador bloqueia — e é por isso que o app não fica instalável
     // quando aberto pelo IP do PC.
     if ('serviceWorker' in navigator && window.isSecureContext) {
-      window.addEventListener('load', () => {
+      // Instalado como app, não existe "recarregar forçado": o usuário não tem
+      // barra de endereço. Então o app precisa se atualizar sozinho — procura
+      // versão nova ao abrir e sempre que volta para a frente, e recarrega
+      // quando o service worker novo assume.
+      var tinhaControle = !!navigator.serviceWorker.controller;
+      var recarregando = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!tinhaControle || recarregando) return; // 1ª instalação não recarrega
+        recarregando = true;
+        location.reload();
+      });
+
+      window.addEventListener('load', function () {
         navigator.serviceWorker.register('sw.js')
-          .catch((err) => console.warn('service worker não registrado:', err));
+          .then(function (reg) {
+            reg.update();
+            document.addEventListener('visibilitychange', function () {
+              if (!document.hidden) reg.update();
+            });
+          })
+          .catch(function (err) { console.warn('service worker não registrado:', err); });
       });
     }
   </script>

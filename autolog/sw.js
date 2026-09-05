@@ -7,10 +7,18 @@
    mas prenderia você numa versão antiga depois de cada push — que é justo o
    problema de cache descrito no CLAUDE.md. Assim, com internet você sempre vê
    a versão nova; sem internet, abre a última que funcionou.
+
+   ATENÇÃO AO `cache: 'no-store'` ABAIXO
+   "Rede primeiro" não bastava. O GitHub Pages responde com
+   `Cache-Control: max-age=600`, então o `fetch()` daqui era atendido pelo
+   cache HTTP do navegador — sem sair para a rede — e o app continuava
+   mostrando a versão de até dez minutos atrás mesmo depois do push. Pedir
+   `no-store` obriga a ida real ao servidor; o nosso cache (`caches`) segue
+   guardando a cópia para quando não houver rede.
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'autolog-v12';
+const VERSAO = 'autolog-v13';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [
@@ -38,7 +46,8 @@ const ESSENCIAIS = [
 self.addEventListener('install', (ev) => {
   ev.waitUntil(
     caches.open(VERSAO)
-      .then((cache) => cache.addAll(ESSENCIAIS))
+      // `reload` para o pré-cache não nascer já velho, vindo do cache HTTP.
+      .then((cache) => cache.addAll(ESSENCIAIS.map((u) => new Request(u, { cache: 'reload' }))))
       // Um arquivo faltando não pode impedir a instalação inteira.
       .catch((err) => console.warn('[sw] pré-cache incompleto:', err))
       .then(() => self.skipWaiting())
@@ -74,7 +83,7 @@ self.addEventListener('fetch', (ev) => {
   if (url.origin !== self.location.origin) return; // fontes do Google e afins
 
   ev.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-store' })
       .then((resp) => {
         if (resp && resp.ok) {
           const copia = resp.clone();

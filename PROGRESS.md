@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — editor de foto, avisos e limpeza dos textos de formulário
+**Última atualização:** 2026-09-05 — limpeza dos textos de formulário e correção do cache que travava a atualização no celular
 
 ---
 
@@ -317,6 +317,24 @@ uso real, isso precisa ir para um servidor.
 - `manifest.json`: ícones 192/512/maskable, `display: standalone`, `scope`.
 - `sw.js`: service worker **rede primeiro, cache como reserva**, para nunca
   prender o app numa versão antiga depois de um push.
+
+**Armadilha resolvida em 2026-09-05 — "dei push e o celular não atualizou".**
+"Rede primeiro" não era suficiente. O GitHub Pages responde
+`Cache-Control: max-age=600`, então o `fetch()` de dentro do service worker era
+atendido pelo **cache HTTP do navegador**, sem sair para a rede: o app seguia
+mostrando a versão de até dez minutos antes. Duas correções:
+
+1. `sw.js` busca com `cache: 'no-store'` (e pré-carrega com `cache: 'reload'`),
+   forçando a ida real ao servidor. O cache do app segue guardando a cópia para
+   o modo offline.
+2. `index.html` procura versão nova ao abrir e a cada vez que o app volta para
+   a frente (`reg.update()` em `visibilitychange`), e **recarrega sozinho**
+   quando o service worker novo assume (`controllerchange`). Instalado como
+   app, o usuário não tem barra de endereço — não existe "recarregar forçado",
+   então o app precisa se atualizar sem ajuda.
+
+Diagnóstico feito comparando o arquivo publicado (que já estava novo) com o que
+o aparelho mostrava — o servidor não era o problema.
 
 **Pendente de verificação:** o registro do service worker não pôde ser testado
 aqui — o navegador embutido do Claude Code bloqueia service workers (o `fetch`
