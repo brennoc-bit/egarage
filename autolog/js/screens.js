@@ -989,9 +989,7 @@ Screens.veiculo = (atual) => {
     ? h('img', { src: r.foto, alt: 'Foto do veículo' })
     : h('div', { class: 'vazia' },
         h('span', { class: 'mais' }, '+'),
-        h('span', null, 'foto do veículo'),
-        h('span', { style: { textTransform: 'none', letterSpacing: 0, fontSize: 11, opacity: .8 } },
-          'câmera ou galeria · opcional')));
+        h('span', null, 'foto do veículo')));
 
   const corpo = h('div', { class: 'form-veiculo' },
     slotFoto,
@@ -1007,11 +1005,11 @@ Screens.veiculo = (atual) => {
       }, h('span', { class: 'ic' }, t.icone), h('span', { class: 'nm' }, t.label)))),
 
     grupo('Identificação',
-      dupla({ name: 'marca', label: 'Marca', placeholder: 'toque para ver a lista', sugestoes: sugerirMarca },
-            { name: 'modelo', label: 'Modelo', placeholder: 'digite ou escolha', obrigatorio: true, sugestoes: sugerirModelo }),
+      dupla({ name: 'marca', label: 'Marca', sugestoes: sugerirMarca },
+            { name: 'modelo', label: 'Modelo', obrigatorio: true, sugestoes: sugerirModelo }),
       campo({ name: 'apelido', label: 'Apelido', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
       dupla({ name: 'ano', label: 'Ano', tipo: 'number' },
-            { name: 'cor', label: 'Cor', placeholder: 'toque para ver a lista', sugestoes: sugerirCor }),
+            { name: 'cor', label: 'Cor', sugestoes: sugerirCor }),
       campo({ name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
 
     grupo('Documentos',

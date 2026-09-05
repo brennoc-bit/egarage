@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — editor de foto, avisos e ajustes de formulário
+**Última atualização:** 2026-09-05 — editor de foto, avisos e limpeza dos textos de formulário
 
 ---
 
@@ -163,7 +163,10 @@ O service worker ganhou `notificationclick` para trazer o app à frente.
 ### Formulário: placeholders e cor ✅
 
 - Placeholders que fingiam dado real ("Honda", "CG 160", "Prata", "5,89")
-  saíram: viraram instrução neutra ("toque para ver a lista") ou nada.
+  saíram. Numa segunda passada os textos de instrução também caíram: **Marca,
+  Modelo e Cor abrem vazios** e o slot de foto mostra só `+ foto do veículo`,
+  sem o "câmera ou galeria · opcional". Tocar no campo já abre a lista, então a
+  instrução era ruído.
 - **Cor** virou campo com sugestão, como marca e modelo: 19 cores usuais de
   emplacamento, filtrando sem acento.
 
