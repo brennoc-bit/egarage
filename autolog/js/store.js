@@ -24,6 +24,13 @@ const labelTipo = (id) => (TIPOS.find((t) => t.id === id) || TIPOS[0]).label;
 
 const COMBUSTIVEIS = ['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV', 'Híbrido', 'Elétrico'];
 
+// Cores usuais de emplacamento no Brasil. Sugestão, não restrição.
+const CORES = [
+  'Branco', 'Preto', 'Prata', 'Cinza', 'Grafite', 'Vermelho', 'Azul',
+  'Azul-escuro', 'Verde', 'Amarelo', 'Laranja', 'Marrom', 'Bege', 'Dourado',
+  'Vinho', 'Champagne', 'Rosa', 'Roxo', 'Fantasia',
+];
+
 const COBERTURAS = [
   'Colisão', 'Roubo e furto', 'Incêndio', 'Danos a terceiros (RCF)',
   'Vidros', 'Fenômenos naturais', 'Danos morais', 'Uso em aplicativo',

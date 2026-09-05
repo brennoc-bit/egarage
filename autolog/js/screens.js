@@ -722,6 +722,57 @@ Screens['seguro-editar'] = (v) => {
   return { kicker: 'Editando', titulo: 'Dados do seguro', corpo, voltar: 'seguro' };
 };
 
+/* Avisos de vencimento: o que dá para fazer sem servidor, dito com clareza. */
+function blocoAvisos() {
+  const cfg = Avisos.config();
+  const perm = Avisos.permissao();
+  const proximos = Avisos.proximos(cfg.dias);
+
+  const ligado = cfg.ativo && perm === 'granted';
+  const estado = !Avisos.suportado() ? 'Este navegador não faz notificação'
+    : perm === 'denied' ? 'Bloqueado nas configurações do navegador'
+      : ligado ? `Ligado · ${cfg.dias} dias antes`
+        : 'Desligado';
+
+  const opcoesDias = [3, 7, 15, 30].map((d) => h('button', {
+    class: 'chip' + (cfg.dias === d ? ' on' : ''),
+    onClick: () => { Avisos.definirConfig({ dias: d }); App.render(); },
+  }, `${d} dias`));
+
+  return h('div', null,
+    UI.row(UI.kv({
+      k: 'Avisar antes', v: ligado ? 'Ligado' : 'Desligado',
+      cor: ligado ? COR.ok : null, sub: estado,
+      onClick: () => Acoes.alternarAvisos(),
+    })),
+
+    h('div', { class: 'bloco', style: { paddingTop: 12 } },
+      UI.mono('Quantos dias antes', { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }),
+      h('div', { class: 'chips' }, opcoesDias)),
+
+    proximos.length
+      ? h('div', null,
+          UI.sectHd(`Nos próximos ${cfg.dias} dias`),
+          proximos.map((i) => h('div', { class: 'list-item' },
+            h('div', { style: { width: 52, textAlign: 'center', padding: '8px 4px', background: 'var(--color-surface)', borderRadius: 12 } },
+              h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 20, lineHeight: 1 } },
+                String(fromISO(i.data).getDate()).padStart(2, '0')),
+              UI.mono(mesCurto(i.data), { fontSize: 9, letterSpacing: '.1em', marginTop: 2 })),
+            h('div', { style: { flex: 1 } },
+              h('div', { style: { fontSize: 13, fontWeight: 600 } }, i.titulo),
+              UI.mono(`${i.sub}${i.valor ? ' · ' + brl(i.valor) : ''}`, { marginTop: 2, color: 'var(--muted)' })),
+            UI.mono(i.faltam === 0 ? 'hoje' : `${i.faltam}d`, { fontSize: 12, fontWeight: 600 }))))
+      : h('div', { class: 'note' }, `Nada vencendo nos próximos ${cfg.dias} dias.`),
+
+    h('div', { class: 'note' },
+      'App web não acorda o celular sozinho: o aviso acima aparece quando você abre o Autolog. ',
+      h('strong', null, 'Para ser avisado com o app fechado'),
+      ', exporte os vencimentos para o calendário do celular — o alarme fica lá e dispara sozinho.'),
+    UI.cta([
+      { label: 'Enviar ao calendário', icone: '↓', pri: true, onClick: () => Acoes.exportarAgenda() },
+    ]));
+}
+
 /* ── Leitura por foto: chave, modelo e instruções ──────────────────────── */
 
 Screens.gemini = () => {
@@ -898,6 +949,13 @@ Screens.veiculo = (atual) => {
       .map((m) => ({ texto: m }));
   };
 
+  const sugerirCor = (termo) => {
+    const alvo = normalizar(termo);
+    return CORES
+      .filter((c) => !alvo || normalizar(c).includes(alvo))
+      .map((c) => ({ texto: c }));
+  };
+
   const sugerirModelo = (termo) => {
     const alvo = normalizar(termo);
     const daMarca = Dados.modelos(r.tipo, r.marca);
@@ -926,7 +984,7 @@ Screens.veiculo = (atual) => {
   const slotFoto = h('button', {
     class: 'foto-slot' + (r.foto ? ' tem-foto' : ''),
     type: 'button',
-    onClick: () => UI.pedirFoto((dataUrl) => { r.foto = dataUrl; App.render(); }),
+    onClick: () => Foto.escolherEAjustar((dataUrl) => { r.foto = dataUrl; App.render(); }),
   }, r.foto
     ? h('img', { src: r.foto, alt: 'Foto do veículo' })
     : h('div', { class: 'vazia' },
@@ -938,7 +996,7 @@ Screens.veiculo = (atual) => {
   const corpo = h('div', { class: 'form-veiculo' },
     slotFoto,
     r.foto ? h('div', { class: 'foto-acoes' },
-      h('button', { onClick: () => UI.pedirFoto((d) => { r.foto = d; App.render(); }) }, 'trocar'),
+      h('button', { onClick: () => Foto.escolherEAjustar((d) => { r.foto = d; App.render(); }) }, 'ajustar'),
       h('button', { onClick: () => { r.foto = null; App.render(); } }, 'remover')) : null,
 
     UI.sectHd('Tipo de veículo'),
@@ -949,22 +1007,22 @@ Screens.veiculo = (atual) => {
       }, h('span', { class: 'ic' }, t.icone), h('span', { class: 'nm' }, t.label)))),
 
     grupo('Identificação',
-      dupla({ name: 'marca', label: 'Marca', placeholder: r.tipo === 'moto' ? 'Honda' : 'Chevrolet', sugestoes: sugerirMarca },
-            { name: 'modelo', label: 'Modelo', placeholder: r.tipo === 'moto' ? 'CG 160' : 'Onix', obrigatorio: true, sugestoes: sugerirModelo }),
-      campo({ name: 'apelido', label: 'Apelido', placeholder: 'como você chama ele', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
-      dupla({ name: 'ano', label: 'Ano', tipo: 'number', placeholder: String(new Date().getFullYear()) },
-            { name: 'cor', label: 'Cor', placeholder: 'Prata' }),
+      dupla({ name: 'marca', label: 'Marca', placeholder: 'toque para ver a lista', sugestoes: sugerirMarca },
+            { name: 'modelo', label: 'Modelo', placeholder: 'digite ou escolha', obrigatorio: true, sugestoes: sugerirModelo }),
+      campo({ name: 'apelido', label: 'Apelido', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
+      dupla({ name: 'ano', label: 'Ano', tipo: 'number' },
+            { name: 'cor', label: 'Cor', placeholder: 'toque para ver a lista', sugestoes: sugerirCor }),
       campo({ name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
 
     grupo('Documentos',
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
             { name: 'renavam', label: 'Renavam', tipo: 'number', placeholder: '000000000' }),
-      campo({ name: 'chassi', label: 'Chassi', placeholder: '9BW...', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
+      campo({ name: 'chassi', label: 'Chassi', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
 
     grupo('Uso',
       dupla({ name: 'odometro', label: 'Km atual', tipo: 'number', placeholder: '0', obrigatorio: true },
-            { name: 'consumo', label: 'Consumo (km/L)', tipo: 'dinheiro', placeholder: r.tipo === 'moto' ? '30' : '11' }),
-      dupla({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro', placeholder: '5,89' },
+            { name: 'consumo', label: 'Consumo (km/L)', tipo: 'dinheiro' }),
+      dupla({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro' },
             { name: 'compra', label: 'Data da compra', tipo: 'date' })),
 
     // — financiamento —
@@ -991,7 +1049,7 @@ Screens.veiculo = (atual) => {
       !r.temSeguro
         ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Sem seguro para acompanhar.')
         : h('div', { style: { marginTop: 14 } },
-            campo({ name: 'seguroNome', label: 'Seguradora', placeholder: 'nome da seguradora ou do plano' }),
+            campo({ name: 'seguroNome', label: 'Seguradora' }),
             dupla({ name: 'seguroValor', label: 'Valor total da apólice', tipo: 'dinheiro', placeholder: '0,00' },
                   { name: 'seguroVenc', label: 'Cobertura até', tipo: 'date' }),
             h('div', { class: 'hint', style: { marginTop: -6, marginBottom: 16 } },
@@ -1102,6 +1160,9 @@ Screens.perfil = () => {
       st.veiculos.length > 1
         ? h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir')
         : null)),
+
+    UI.sectHd('Avisos de vencimento'),
+    blocoAvisos(),
 
     UI.sectHd('Leitura por foto'),
     UI.row(UI.kv({

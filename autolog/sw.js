@@ -10,7 +10,7 @@
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'autolog-v10';
+const VERSAO = 'autolog-v12';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [
@@ -23,6 +23,8 @@ const ESSENCIAIS = [
   './js/store.js',
   './js/calc.js',
   './js/dados.js',
+  './js/foto.js',
+  './js/avisos.js',
   './dados/veiculos.json',
   './js/gemini.js',
   './js/ui.js',
@@ -51,6 +53,17 @@ self.addEventListener('activate', (ev) => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+// Tocar na notificação traz o app para a frente em vez de abrir outra aba.
+self.addEventListener('notificationclick', (ev) => {
+  ev.notification.close();
+  ev.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((abas) => {
+    for (const aba of abas) {
+      if (aba.url.includes('/autolog/') && 'focus' in aba) return aba.focus();
+    }
+    return clients.openWindow ? clients.openWindow('./') : null;
+  }));
 });
 
 self.addEventListener('fetch', (ev) => {

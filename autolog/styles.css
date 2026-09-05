@@ -140,11 +140,11 @@ button.list-item:active { background: var(--color-surface); }
 .dot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; display: inline-block; }
 
 .hero {
-  height: 200px; margin: 16px; border-radius: var(--r-md);
+  aspect-ratio: 16 / 9; margin: 16px; border-radius: var(--r-md);
   overflow: hidden; position: relative; background: var(--color-surface);
 }
 .hero img { width: 100%; height: 100%; object-fit: cover; }
-.hero.sm { height: 150px; }
+.hero.sm { max-height: 190px; }
 .placeholder-img {
   background: repeating-linear-gradient(135deg, var(--color-neutral-300) 0 10px, var(--color-neutral-200) 10px 20px);
   height: 100%; display: grid; place-items: center; color: var(--color-neutral-700);
@@ -324,7 +324,7 @@ button.list-item:active { background: var(--color-surface); }
 
 /* Foto: o bloco é o próprio botão de escolher imagem. */
 .foto-slot {
-  position: relative; margin: 16px; height: 190px; border-radius: var(--r-md);
+  position: relative; margin: 16px; aspect-ratio: 16 / 9; border-radius: var(--r-md);
   overflow: hidden; background: var(--color-surface); display: block; width: calc(100% - 32px);
   border: 1px dashed var(--color-neutral-500); cursor: pointer; padding: 0;
 }
@@ -421,6 +421,46 @@ button.mini {
 }
 .chip.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 span.chip { cursor: default; }
+
+/* ── Editor de foto ────────────────────────────────────────────────────── */
+.ajuste-fundo {
+  position: absolute; inset: 0; z-index: 40;
+  background: color-mix(in srgb, var(--color-neutral-900) 75%, transparent);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.ajuste-painel {
+  width: 100%; background: var(--color-bg); border-radius: var(--r-lg);
+  padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.ajuste-titulo {
+  font-family: var(--font-heading); font-weight: 800; font-size: 18px;
+  text-transform: uppercase; letter-spacing: -.01em;
+}
+.ajuste-dica { font-size: 11px; color: var(--muted); margin: 4px 0 14px; line-height: 1.45; }
+
+/* A moldura é a mesma proporção em que a foto aparece no app. */
+.ajuste-quadro {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  overflow: hidden; border-radius: var(--r-md);
+  background: var(--color-neutral-900); cursor: grab; touch-action: none;
+  border: 2px solid var(--color-accent);
+}
+.ajuste-quadro:active { cursor: grabbing; }
+.ajuste-img {
+  position: absolute; left: 50%; top: 50%;
+  max-width: none; user-select: none; -webkit-user-drag: none;
+}
+.ajuste-zoom-linha { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
+.ajuste-zoom { flex: 1; }
+.ajuste-acoes { display: flex; gap: 10px; margin-top: 16px; }
+.ajuste-acoes button {
+  flex: 1; padding: 14px; border-radius: 100px; cursor: pointer;
+  font-family: var(--font-heading); font-weight: 800; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase;
+  background: var(--color-surface); color: var(--color-text);
+  border: 1px solid var(--color-divider);
+}
+.ajuste-acoes button.pri { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
 
 /* ── Login (porteira do protótipo) ─────────────────────────────────────── */
 .app.login-ativo > .app-hd,

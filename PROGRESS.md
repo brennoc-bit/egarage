@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — autocompletar de marca e modelo
+**Última atualização:** 2026-09-05 — editor de foto, avisos e ajustes de formulário
 
 ---
 
@@ -136,6 +136,36 @@ própria (`seguro`), desenhada para o momento de aperto:
 Campo vazio não aparece na tela. **Não há campo de CPF nem documento pessoal**,
 de propósito: não é necessário para o app ser útil e sujaria o arquivo de
 exportação com dado sensível.
+
+### Editor de foto ✅
+
+O botão de foto adicionava a imagem como veio, sem recurso para quem
+fotografou de perto ou torto. Agora abre um editor: arrastar move, pinçar ou
+barra aproxima, e a moldura é a mesma proporção (16:9) em que a foto aparece no
+app. `transform` de CSS enquanto ajusta, canvas só ao confirmar — saída
+1100×619, JPEG 0.78. `.hero` e `.foto-slot` passaram a usar `aspect-ratio`
+para bater com o recorte.
+
+### Avisos de vencimento ✅ com limite conhecido
+
+Perfil → Avisos de vencimento: ligar/desligar e escolher 3, 7, 15 ou 30 dias de
+antecedência. Cobre parcela de IPVA, licenciamento, fim da cobertura do seguro
+e parcela do financiamento.
+
+**Limite real:** site estático não acorda o celular. Notificação agendada com o
+app fechado exige servidor de push, que não existe aqui. Por isso são dois
+caminhos: aviso ao abrir o app (funciona, mas depende de abrir) e **exportação
+para o calendário em `.ics`**, com `VALARM` na antecedência escolhida — esse
+dispara com o app fechado e é o que de fato resolve.
+
+O service worker ganhou `notificationclick` para trazer o app à frente.
+
+### Formulário: placeholders e cor ✅
+
+- Placeholders que fingiam dado real ("Honda", "CG 160", "Prata", "5,89")
+  saíram: viraram instrução neutra ("toque para ver a lista") ou nada.
+- **Cor** virou campo com sugestão, como marca e modelo: 19 cores usuais de
+  emplacamento, filtrando sem acento.
 
 ### Autocompletar de marca e modelo ✅
 

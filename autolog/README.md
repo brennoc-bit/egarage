@@ -129,9 +129,38 @@ arquivo de exportação ficaria carregando dado sensível à toa.
 A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
 intervalo do tipo de veículo — e sem preço associado.
 
+## Foto do veículo: enquadrar antes de salvar
+
+O botão de foto abre um **editor** em vez de aceitar a imagem como veio.
+Arrastar move, pinçar ou usar a barra aproxima, e a moldura é **a mesma
+proporção (16:9) em que a foto aparece no app** — o que se vê é o que fica.
+
+Enquanto se ajusta, é `transform` de CSS (resposta imediata); só ao confirmar
+vira canvas, recortado em 1100×619 e salvo em JPEG 0.78.
+
+## Avisos de vencimento
+
+Em **Perfil → Avisos de vencimento** dá para ligar o aviso e escolher a
+antecedência: 3, 7, 15 ou 30 dias. Entram parcelas de IPVA, licenciamento, fim
+da cobertura do seguro e a parcela do financiamento.
+
+### O limite, dito de frente
+
+**Um site estático não acorda o celular sozinho.** Notificação agendada com o
+app fechado exige um servidor mandando push, que este app não tem. Então são
+dois caminhos, e o app oferece os dois:
+
+1. **Aviso ao abrir o app** — confiável, mas só aparece quando você abre.
+2. **Exportar para o calendário (`.ics`)** — o alarme fica no celular e dispara
+   com o app fechado. É o único jeito de ser avisado sem depender de abrir.
+
+O segundo é o que resolve; o primeiro é complemento. O arquivo leva os
+compromissos dos próximos 12 meses, cada um como evento de dia inteiro com
+`VALARM` na antecedência escolhida.
+
 ## Autocompletar de marca e modelo
 
-Os campos **Marca** e **Modelo** do cadastro sugerem enquanto você digita, no
+Os campos **Marca**, **Modelo** e **Cor** do cadastro sugerem enquanto você digita, no
 estilo do Webmotors. Tocar abre a lista; digitar filtra sem acento e sem caixa
 (`citro` acha `Citroën`). Escolher a marca restringe os modelos àquela marca.
 

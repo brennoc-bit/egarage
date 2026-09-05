@@ -187,7 +187,7 @@ const Acoes = {
   },
 
   trocarFoto(v) {
-    UI.pedirFoto((dataUrl) => {
+    Foto.escolherEAjustar((dataUrl) => {
       Store.atualizarVeiculo(v.id, { foto: dataUrl });
       App.render();
       UI.toast('Foto atualizada');
@@ -341,6 +341,34 @@ const Acoes = {
 
   /* — documentos — */
 
+  /* — avisos — */
+
+  async alternarAvisos() {
+    const cfg = Avisos.config();
+    if (cfg.ativo) {
+      Avisos.definirConfig({ ativo: false });
+      App.render();
+      UI.toast('Avisos desligados');
+      return;
+    }
+    if (!Avisos.suportado()) { UI.toast('Este navegador não faz notificação'); return; }
+    try {
+      await Avisos.pedirPermissao();
+      Avisos.definirConfig({ ativo: true });
+      const n = Avisos.notificarPendentes();
+      App.render();
+      UI.toast(n ? `Avisos ligados · ${n} vencendo agora` : 'Avisos ligados');
+    } catch (e) {
+      App.render();
+      UI.toast(e.message || 'Não foi possível ligar');
+    }
+  },
+
+  exportarAgenda() {
+    const n = Avisos.paraCalendario();
+    UI.toast(n ? `${n} compromisso(s) no arquivo · abra para importar` : 'Nada para exportar');
+  },
+
   /* — leitura por foto — */
 
   configurarGemini() { App.ir('gemini'); },
@@ -492,3 +520,7 @@ App.render({ topo: true });
 // Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
 // tela de cadastro já estiver aberta esperando por ele.
 Dados.carregar().then(() => { if (App.rota === 'veiculo') App.render(); });
+
+// Avisos de vencimento: o app não acorda o celular, então o momento possível
+// de avisar é este — quando ele é aberto.
+setTimeout(() => { try { Avisos.notificarPendentes(); } catch (e) { /* ignora */ } }, 1500);
