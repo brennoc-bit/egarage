@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — teste de conexão com imagem real
+**Última atualização:** 2026-08-24 — cota e custo do Gemini explicados
 
 ---
 
@@ -165,6 +165,13 @@ futuras. Instrução editada ganha selo, e o erro de JSON sugere restaurar.
 público e todo o JS é baixado pelo navegador — chave no código seria chave
 vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
 exportação** da garagem.
+
+**Custo e cota, documentados no app.** A chave é gratuita; o uso tem camada
+grátis nos `flash` e `pro`, com limite diário, e sem cobrança cadastrada o
+estouro bloqueia em vez de virar fatura. Modelos de **geração de imagem** têm
+`Free Tier: Not available` — escolher um faz a primeira chamada voltar 429 sem
+nunca ter funcionado, que foi o que aconteceu em 2026-08-24. A tela ganhou uma
+seção "Custo" e o 429 passou a explicar a causa em vez de mandar tentar depois.
 
 **O teste de conexão passou a usar imagem.** Ele mandava só texto — então
 passaria com um modelo que não enxerga figura, e a falha apareceria só na

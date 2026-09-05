@@ -844,6 +844,10 @@ Screens.gemini = () => {
         h('button', { class: 'mini', onClick: () => buscarModelos() }, 'buscar modelos disponíveis')),
       listaModelos),
 
+    UI.sectHd('Custo'),
+    h('div', { class: 'note', style: { paddingTop: 0 } },
+      'A chave em si é gratuita. O uso tem uma camada grátis nos modelos de texto e leitura — os "flash" e "pro" — com limite diário. Sem cobrança cadastrada, estourar o limite bloqueia até o dia seguinte; não vira fatura sozinho. Já os modelos de geração de imagem (nome com "image", "imagen", "veo") não têm cota gratuita nenhuma e falham na primeira chamada — por isso não aparecem na lista acima.'),
+
     UI.sectHd('Instruções para o Gemini'),
     h('div', { class: 'note', style: { paddingTop: 0 } },
       'É o texto enviado junto com cada imagem. Ajuste se as notas do seu posto ou da sua oficina tiverem um formato próprio — descrever onde fica cada informação costuma resolver leitura ruim.'),

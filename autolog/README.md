@@ -202,6 +202,18 @@ manda para o modelo escolhido e confere se voltou o número certo. Um teste só
 de texto passaria com modelo que não enxerga figura, e a falha só apareceria na
 frente da bomba.
 
+### Custo
+
+A chave é gratuita. O **uso** tem camada grátis nos modelos de texto e leitura
+— os `flash` e `pro` — com limite diário. Sem forma de cobrança cadastrada,
+estourar o limite bloqueia até a cota renovar; não vira fatura por conta.
+
+Os modelos de **geração** de imagem são a exceção perigosa: a tabela oficial
+marca `Free Tier: Not available` para eles. Escolher um por engano faz a
+primeira chamada já voltar 429, sem nunca ter funcionado. Eles são filtrados da
+lista, e se ainda assim um for usado, a mensagem de erro explica exatamente
+isso em vez de dizer "tente daqui a pouco".
+
 ### O modelo é perguntado à API, não adivinhado
 
 Nomes de modelo entram e saem de linha, e um nome errado derruba tudo com um

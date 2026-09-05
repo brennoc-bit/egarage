@@ -171,7 +171,13 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
     if (status === 404) {
       return `Modelo "${modelo()}" não existe nesta conta. Use "buscar modelos disponíveis".`;
     }
-    if (status === 429) return 'Limite de uso atingido. Tente daqui a pouco.';
+    if (status === 429) {
+      // Geradores de imagem não têm cota gratuita: estouram na 1ª chamada.
+      if (/image|imagen|nano-banana|veo/i.test(modelo())) {
+        return `"${modelo()}" gera imagens e não tem cota gratuita. Escolha um "flash" comum na lista.`;
+      }
+      return `Cota esgotada: ${msg.slice(0, 120)}`;
+    }
     if (status >= 500) return 'O Gemini está fora do ar agora.';
     return msg ? msg.slice(0, 140) : `Erro ${status}.`;
   }
