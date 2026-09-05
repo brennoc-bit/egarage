@@ -9,7 +9,7 @@
 
    QUANDO OUTRAS PESSOAS USAREM O APP
    Chave por usuário deixa de servir. A saída é um proxy: uma função serverless
-   guarda a chave e o app chama a função. Só `endpoint()` e `cabecalhos()`
+   guarda a chave e o app chama a função. Só `endpoint()` e `CABECALHOS`
    mudam; o resto deste arquivo continua igual.
    ========================================================================== */
 'use strict';
@@ -30,29 +30,54 @@ const Gemini = (() => {
   const definirModelo = (v) => gravar(KEY_MODELO, (v || '').trim());
   const esquecer = () => { gravar(KEY_CHAVE, ''); gravar(KEY_MODELO, ''); };
 
-  /**
-   * Confere o formato antes de gastar uma chamada. Chave da API do Gemini
-   * começa com "AIza" e tem ~39 caracteres. O AI Studio também oferece
-   * "ephemeral tokens" (começam com "AQ."), que servem à Live API e não ao
-   * generateContent — confundir os dois é fácil e o erro da API não explica.
-   */
-  function avisoDeFormato(valor) {
-    const k = (valor == null ? chave() : String(valor)).trim();
-    if (!k) return null;
-    if (k.startsWith('AQ.')) {
-      return 'Isso é um token temporário do AI Studio, não a chave da API. Em aistudio.google.com/apikey use "Criar chave de API" — ela começa com AIza.';
-    }
-    if (k.startsWith('ya29.') || k.startsWith('ey')) {
-      return 'Isso parece um token OAuth, não uma chave de API. Gere a chave em aistudio.google.com/apikey.';
-    }
-    if (!/^AIza[\w-]{30,}$/.test(k)) {
-      return 'Formato incomum: chaves do Gemini começam com AIza e têm cerca de 39 caracteres.';
-    }
-    return null;
-  }
-
   const endpoint = () => `${BASE}/${modelo()}:generateContent`;
-  const cabecalhos = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': chave() });
+
+  /* Duas formas de autenticar. O Google está migrando as chaves do AI Studio
+     do formato antigo (AIza…, "traffic key") para o novo (AQ.…, "auth key"), e
+     há relatos de o novo ser recusado em `x-goog-api-key` com
+     ACCESS_TOKEN_TYPE_UNSUPPORTED. Tentamos o cabeçalho documentado e, se a
+     recusa for de tipo de credencial, repetimos como Bearer antes de desistir.
+     Nada de adivinhar pelo prefixo: o formato mudou uma vez e pode mudar de
+     novo — quem decide é a API. */
+  const CABECALHOS = [
+    (k) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': k }),
+    (k) => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${k}` }),
+  ];
+
+  const recusaDeCredencial = (status, corpo) => {
+    const msg = (corpo && corpo.error && corpo.error.message) || '';
+    const st = (corpo && corpo.error && corpo.error.status) || '';
+    return (status === 400 || status === 401 || status === 403)
+      && /API key not valid|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication|UNAUTHENTICATED/i.test(msg + ' ' + st);
+  };
+
+  let ultimoErro = null;
+  const detalheDoErro = () => ultimoErro;
+
+  /** Envia o corpo, tentando as duas formas de autenticação. */
+  async function chamar(payload) {
+    let ultimo = null;
+    for (let i = 0; i < CABECALHOS.length; i++) {
+      let resp;
+      try {
+        resp = await fetch(endpoint(), {
+          method: 'POST', headers: CABECALHOS[i](chave()), body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        ultimoErro = 'Falha de rede ao chamar ' + endpoint();
+        throw new Error('Sem conexão com o Gemini.');
+      }
+      let corpo = null;
+      try { corpo = await resp.json(); } catch (e) { /* resposta não-JSON */ }
+      if (resp.ok) { ultimoErro = null; return corpo; }
+      ultimo = { status: resp.status, corpo, modo: i === 0 ? 'x-goog-api-key' : 'Bearer' };
+      if (!recusaDeCredencial(resp.status, corpo)) break; // erro de outra natureza
+    }
+    const msg = (ultimo.corpo && ultimo.corpo.error && ultimo.corpo.error.message) || '(sem mensagem)';
+    ultimoErro = `HTTP ${ultimo.status} · ${ultimo.modo} · modelo ${modelo()}
+${msg}`;
+    throw new Error(erroLegivel(ultimo.status, ultimo.corpo));
+  }
 
   /* ── Instruções por tipo de foto ────────────────────────────────────────
      Editáveis pela pessoa, em Perfil → Leitura por foto. O padrão fica aqui e
@@ -127,11 +152,15 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
 
   function erroLegivel(status, corpo) {
     const msg = (corpo && corpo.error && corpo.error.message) || '';
-    if (status === 400 && /API key not valid/i.test(msg)) {
-      return avisoDeFormato() || 'Chave inválida. Confira em Perfil.';
+    if (/ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) {
+      return 'A API recusou o tipo desta credencial. Veja os detalhes no fim da tela.';
     }
-    if (status === 400) return `Requisição recusada: ${msg.slice(0, 120)}`;
-    if (status === 403) return 'Chave sem permissão para este modelo.';
+    if (status === 400 && /API key not valid/i.test(msg)) {
+      return 'A API não aceitou a chave. Veja os detalhes no fim da tela.';
+    }
+    if (status === 400) return `Recusado: ${msg.slice(0, 110)}`;
+    if (status === 401) return 'Não autenticado. Veja os detalhes no fim da tela.';
+    if (status === 403) return `Sem permissão: ${msg.slice(0, 110)}`;
     if (status === 404) return `Modelo "${modelo()}" não encontrado. Troque em Perfil.`;
     if (status === 429) return 'Limite de uso atingido. Tente daqui a pouco.';
     if (status >= 500) return 'O Gemini está fora do ar agora.';
@@ -156,8 +185,6 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
    */
   async function lerFoto(dataUrl, tipo) {
     if (!configurado()) throw new Error('Nenhuma chave do Gemini configurada. Veja em Perfil.');
-    const aviso = avisoDeFormato();
-    if (aviso) throw new Error(aviso);
     if (!PEDIDOS[tipo]) throw new Error('Tipo de leitura desconhecido.');
     const instrucao = prompt(tipo);
 
@@ -165,28 +192,15 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
     const mime = (dataUrl.slice(5, dataUrl.indexOf(';')) || 'image/jpeg');
     const base64 = dataUrl.slice(virgula + 1);
 
-    let resp;
-    try {
-      resp = await fetch(endpoint(), {
-        method: 'POST',
-        headers: cabecalhos(),
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: instrucao },
-              { inline_data: { mime_type: mime, data: base64 } },
-            ],
-          }],
-          generationConfig: { temperature: 0, responseMimeType: 'application/json' },
-        }),
-      });
-    } catch (e) {
-      throw new Error('Sem conexão com o Gemini.');
-    }
-
-    let corpo = null;
-    try { corpo = await resp.json(); } catch (e) { /* resposta não-JSON */ }
-    if (!resp.ok) throw new Error(erroLegivel(resp.status, corpo));
+    const corpo = await chamar({
+      contents: [{
+        parts: [
+          { text: instrucao },
+          { inline_data: { mime_type: mime, data: base64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+    });
 
     if (corpo && corpo.promptFeedback && corpo.promptFeedback.blockReason) {
       throw new Error('O Gemini recusou a imagem.');
@@ -206,26 +220,15 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
   }
 
   // Chamada mínima só para validar chave e modelo, sem imagem.
+  // Chamada mínima só para validar credencial e modelo, sem imagem.
   async function testar() {
     if (!configurado()) throw new Error('Digite a chave primeiro.');
-    const aviso = avisoDeFormato();
-    if (aviso) throw new Error(aviso);
-    let resp;
-    try {
-      resp = await fetch(endpoint(), {
-        method: 'POST',
-        headers: cabecalhos(),
-        body: JSON.stringify({ contents: [{ parts: [{ text: 'Responda apenas: ok' }] }] }),
-      });
-    } catch (e) { throw new Error('Sem conexão com o Gemini.'); }
-    let corpo = null;
-    try { corpo = await resp.json(); } catch (e) { /* ignora */ }
-    if (!resp.ok) throw new Error(erroLegivel(resp.status, corpo));
+    await chamar({ contents: [{ parts: [{ text: 'Responda apenas: ok' }] }] });
     return true;
   }
 
   return {
-    configurado, chave, modelo, definirChave, definirModelo, esquecer, avisoDeFormato,
+    configurado, chave, modelo, definirChave, definirModelo, esquecer, detalheDoErro,
     lerFoto, testar, MODELO_PADRAO,
     TIPOS_LEITURA, prompt, promptPadrao, promptEditado, definirPrompt, restaurarPrompt,
   };

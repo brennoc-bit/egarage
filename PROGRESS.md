@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — validação do formato da chave
+**Última atualização:** 2026-08-24 — dois formatos de chave do Gemini
 
 ---
 
@@ -166,12 +166,21 @@ público e todo o JS é baixado pelo navegador — chave no código seria chave
 vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
 exportação** da garagem.
 
-**Validação do formato da chave.** O AI Studio oferece dois credenciais
-parecidas e é fácil pegar a errada: a **chave de API** começa com `AIza`, e o
-**token temporário** (Live API) começa com `AQ.`. Com o token, a API só
-respondia "chave inválida", sem explicar. Agora o app reconhece o formato,
-avisa na tela de configuração qual é o problema e **barra o envio antes de
-gastar chamada**. Aconteceu de verdade em 2026-08-24.
+**Dois formatos de chave — e uma lição.** O Google está trocando as chaves do
+AI Studio: antigas `AIza` ("traffic keys"), novas `AQ.` ("auth keys"), com as
+antigas sendo recusadas a partir de setembro de 2026. Eu supus que `AIza` era o
+único formato válido e cheguei a **bloquear chaves `AQ.`** — que é justamente o
+único formato que o AI Studio gera hoje. Bloqueio removido.
+
+O app agora não julga a chave pelo prefixo. Envia no cabeçalho documentado
+(`x-goog-api-key`) e, se a recusa for de tipo de credencial
+(`ACCESS_TOKEN_TYPE_UNSUPPORTED`, `API key not valid`), repete como
+`Authorization: Bearer` antes de desistir. Erro de outra natureza não gera
+segunda tentativa.
+
+Falhando as duas, a tela de configuração mostra o **erro cru da API** — status,
+forma de autenticação usada, modelo e mensagem do Google — com botão de copiar.
+Diagnóstico em vez de palpite.
 
 **Limite honesto:** isso serve para uso pessoal, com a pessoa usando a própria
 chave. Não serve para app com vários usuários — ninguém cola chave de API. A

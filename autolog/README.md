@@ -186,6 +186,23 @@ fica duvidoso, a resposta traz uma observação curta que aparece no toast.
 O modelo padrão é `gemini-2.5-flash` e pode ser trocado na mesma tela — se o
 nome sair de linha, o app mostra "modelo não encontrado" em vez de falhar calado.
 
+### Dois formatos de chave, duas formas de autenticar
+
+O Google está trocando o formato das chaves do AI Studio: as antigas ("traffic
+keys") começam com `AIza`, as novas ("auth keys") começam com `AQ.`, e a partir
+de setembro de 2026 as antigas passam a ser recusadas. Há relatos de chaves
+`AQ.` sendo rejeitadas no endpoint REST com `ACCESS_TOKEN_TYPE_UNSUPPORTED`.
+
+O app **não julga a chave pelo prefixo** — essa suposição já quebrou uma vez.
+Ele envia no cabeçalho documentado (`x-goog-api-key`) e, se a recusa for
+especificamente de tipo de credencial, repete a chamada como
+`Authorization: Bearer` antes de desistir. Erro de outra natureza não gera
+segunda tentativa.
+
+Quando mesmo assim falha, a tela de configuração mostra o **erro cru da API**
+— status, qual forma de autenticação foi usada, modelo e a mensagem do Google —
+com botão de copiar. É o que permite diagnosticar em vez de adivinhar.
+
 ### Ajustando as instruções
 
 Cada um dos três tipos tem uma instrução própria, **editável em Perfil →

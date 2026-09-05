@@ -732,14 +732,21 @@ Screens.gemini = () => {
     return ref.caixa;
   };
 
-  const aviso = Gemini.avisoDeFormato();
-  const estado = aviso
-    ? h('div', { class: 'aviso-chave' },
-        h('strong', null, 'Essa chave não vai funcionar. '), aviso)
-    : h('div', { class: 'note', style: { paddingTop: 0 } },
-        Gemini.configurado()
-          ? `Ativa · modelo ${Gemini.modelo()}`
-          : 'Desligada. Cole uma chave para ativar a leitura por foto.');
+  const estado = h('div', { class: 'note', style: { paddingTop: 0 } },
+    Gemini.configurado()
+      ? `Ativa · modelo ${Gemini.modelo()}`
+      : 'Desligada. Cole uma chave para ativar a leitura por foto.');
+
+  // Erro cru da última chamada: é o que permite diagnosticar de verdade.
+  const detalhe = Gemini.detalheDoErro();
+  const blocoErro = detalhe
+    ? h('div', null,
+        UI.sectHd('Última falha'),
+        h('div', { class: 'bloco' },
+          h('pre', { class: 'erro-cru' }, detalhe),
+          h('div', { style: { marginTop: 8 } },
+            h('button', { class: 'mini', onClick: () => Acoes.copiar(detalhe, 'Detalhes copiados') }, 'copiar detalhes'))))
+    : null;
 
   // Uma caixa de instrução por tipo de leitura.
   const blocoInstrucao = (t) => {
@@ -771,13 +778,11 @@ Screens.gemini = () => {
       const area = document.querySelector('#prompt-' + t.id);
       if (area) Gemini.definirPrompt(t.id, area.value);
     });
-    const problema = Gemini.avisoDeFormato();
     if (!testando) {
       App.render();
-      UI.toast(problema || (Gemini.configurado() ? 'Configuração salva' : 'Chave removida'));
+      UI.toast(Gemini.configurado() ? 'Configuração salva' : 'Chave removida');
       return;
     }
-    if (problema) { App.render(); UI.toast(problema); return; }
     if (!Gemini.configurado()) { App.render(); UI.toast('Digite a chave primeiro'); return; }
     UI.toast('Testando…');
     try { await Gemini.testar(); App.render(); UI.toast('Conexão com o Gemini funcionando'); }
@@ -792,7 +797,7 @@ Screens.gemini = () => {
       campo({
         name: 'chave', label: 'Chave da API', valor: Gemini.chave(),
         placeholder: 'cole aqui a chave',
-        hint: 'Gere em aistudio.google.com/apikey, no botão de criar chave de API — ela começa com AIza. Token temporário (AQ.) não serve. Fica salva só neste aparelho, nunca vai para o repositório nem para o arquivo de exportação. Apague o campo para remover.',
+        hint: 'Gere em aistudio.google.com/apikey. As chaves novas começam com AQ. e as antigas com AIza — o app aceita as duas e tenta as duas formas de autenticação. Fica salva só neste aparelho, nunca vai para o repositório nem para o arquivo de exportação. Apague o campo para remover.',
       }),
       campo({
         name: 'modelo', label: 'Modelo', valor: Gemini.modelo(),
@@ -804,6 +809,8 @@ Screens.gemini = () => {
     h('div', { class: 'note', style: { paddingTop: 0 } },
       'É o texto enviado junto com cada imagem. Ajuste se as notas do seu posto ou da sua oficina tiverem um formato próprio — descrever onde fica cada informação costuma resolver leitura ruim.'),
     Gemini.TIPOS_LEITURA.map(blocoInstrucao),
+
+    blocoErro,
 
     UI.cta([
       { label: 'Voltar', icone: '‹', onClick: () => App.ir('perfil') },

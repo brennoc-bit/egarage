@@ -528,11 +528,12 @@ span.chip { cursor: default; }
   border-color: var(--color-divider);
 }
 
-/* Aviso de chave com formato errado. */
-.aviso-chave {
-  margin: 0 16px 12px; padding: 12px 14px; border-radius: var(--r-md);
+/* Erro cru da última chamada à API, para diagnóstico. */
+pre.erro-cru {
+  margin: 0; padding: 12px 14px; border-radius: var(--r-md);
   background: var(--color-accent-100); color: var(--color-accent-800);
-  font-size: 12px; line-height: 1.5;
+  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
 }
 
 /* Instruções editáveis do Gemini. */
