@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — leitura de foto pelo Gemini
+**Última atualização:** 2026-08-24 — leitura por imagem, instruções editáveis
 
 ---
 
@@ -145,8 +145,20 @@ que devolve os campos separados, e o app **preenche o formulário para a pessoa
 conferir**. Nada é salvo automaticamente — OCR erra, e aqui é dinheiro e
 quilometragem. Campo preenchido pela IA fica destacado.
 
-Arquivo novo: `js/gemini.js` (prompts por tipo, extração do JSON, tradução dos
-erros da API). Liga em Perfil → Leitura por foto.
+Arquivo novo: `js/gemini.js` (instruções por tipo, extração do JSON, tradução
+dos erros da API). Configuração em rota própria (`gemini`), por Perfil.
+
+**Câmera e galeria, separados.** São dois botões, não um. O momento de
+fotografar e o de lançar raramente coincidem: dá para fotografar o cupom no
+posto e registrar em casa pela galeria. `UI.pedirFoto` aceita `origem`, que
+liga ou não o `capture` do input — sem isso o aparelho decide sozinho e o
+comportamento varia.
+
+**Instruções editáveis.** Cada um dos três tipos tem sua instrução ajustável em
+Perfil → Leitura por foto, com os campos esperados documentados na tela e botão
+de restaurar padrão. É o caminho para corrigir leitura ruim de nota específica.
+Salvar um texto igual ao padrão não cria override, para não congelar melhorias
+futuras. Instrução editada ganha selo, e o erro de JSON sugere restaurar.
 
 **A chave da API fica só no aparelho** (`localStorage`, entrada
 `autolog-gemini-chave`), digitada dentro do app. Motivo: o repositório é
@@ -162,7 +174,9 @@ já está isolado para que só `endpoint()` e `cabecalhos()` mudem.
 **O que foi verificado:** que a API aceita chamada direta do navegador (o CORS
 passa — com chave falsa a resposta é 400 "chave inválida", não erro de rede);
 que os três mapeamentos preenchem os campos certos; que os erros viram mensagem
-legível; que a chave não vaza na exportação. **O que falta:** uma leitura real,
+legível; que a chave não vaza na exportação; que a instrução editada realmente
+chega à API; que a chave viaja no cabeçalho `x-goog-api-key` e não na URL, onde
+vazaria em log de servidor. **O que falta:** uma leitura real,
 com chave de verdade e foto de verdade — só o dono da chave pode fazer.
 
 ### Ajustes de interface ✅

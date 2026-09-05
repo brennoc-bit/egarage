@@ -231,43 +231,67 @@ const UI = (() => {
    * Nunca salva sozinho: o objetivo é poupar digitação, não confiar cego numa
    * leitura de OCR sobre dinheiro e quilometragem.
    */
+  const SVG_GALERIA = `
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="15" rx="2"/>
+      <circle cx="8.5" cy="9.5" r="1.6"/>
+      <path d="M21 15.5l-4.6-4.3a1.4 1.4 0 0 0-1.9 0L6 19.5"/>
+    </svg>`;
+
   function botaoLeitura({ tipo, api, mapear, rotulo }) {
     if (!Gemini.configurado()) {
       return h('button', {
         class: 'ler-foto desligado', type: 'button',
-        onClick: () => { fecharSheet(); Acoes.configurarGemini(); },
+        onClick: () => { fecharSheet(); App.ir('gemini'); },
       }, h('span', { class: 'ler-ic', html: SVG_CAMERA }),
         h('span', null, 'Ativar leitura por foto'));
     }
 
-    const label = h('span', null, rotulo || 'Ler por foto');
-    const botao = h('button', { class: 'ler-foto', type: 'button' },
-      h('span', { class: 'ler-ic', html: SVG_CAMERA }), label);
+    const linha = h('div', { class: 'ler-linha' });
 
-    botao.addEventListener('click', () => {
-      UI.pedirFoto(async (dataUrl) => {
-        botao.disabled = true;
-        botao.classList.add('lendo');
-        label.textContent = 'Lendo a foto…';
-        try {
-          const dados = await Gemini.lerFoto(dataUrl, tipo);
-          const n = api.preencher(mapear(dados));
-          if (n) {
-            toast(dados.observacao ? `${n} campo(s) · ${dados.observacao}` : `${n} campo(s) preenchido(s) · confira`);
-          } else {
-            toast(dados.observacao || 'Nada legível na foto');
-          }
-        } catch (e) {
-          toast(e.message || 'Falha ao ler a foto');
-        } finally {
-          botao.disabled = false;
-          botao.classList.remove('lendo');
-          label.textContent = rotulo || 'Ler por foto';
+    const processar = async (dataUrl, botao, label, textoOriginal) => {
+      linha.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      botao.classList.add('lendo');
+      label.textContent = 'Lendo…';
+      try {
+        const dados = await Gemini.lerFoto(dataUrl, tipo);
+        const n = api.preencher(mapear(dados));
+        if (n) {
+          toast(dados.observacao ? `${n} campo(s) · ${dados.observacao}` : `${n} campo(s) preenchido(s) · confira`);
+        } else {
+          toast(dados.observacao || 'Nada legível na imagem');
         }
-      }, { larguraMax: 1400, qualidade: 0.85 }); // mais nitidez: a foto só trafega
-    });
+      } catch (e) {
+        toast(e.message || 'Falha ao ler a imagem');
+      } finally {
+        linha.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        botao.classList.remove('lendo');
+        label.textContent = textoOriginal;
+      }
+    };
 
-    return botao;
+    const criar = (texto, svg, origem, principal) => {
+      const label = h('span', null, texto);
+      const botao = h('button', {
+        class: 'ler-foto' + (principal ? '' : ' secundario'), type: 'button',
+      }, h('span', { class: 'ler-ic', html: svg }), label);
+      botao.addEventListener('click', () => {
+        // Mais nitidez que a foto do veículo: esta imagem só trafega, não fica
+        // guardada, e dígito de bomba é pequeno.
+        UI.pedirFoto((dataUrl) => processar(dataUrl, botao, label, texto),
+          { larguraMax: 1400, qualidade: 0.85, origem });
+      });
+      return botao;
+    };
+
+    linha.append(
+      criar('Câmera', SVG_CAMERA, 'camera', true),
+      criar('Galeria', SVG_GALERIA, 'galeria', false));
+
+    return h('div', null,
+      h('div', { class: 'ler-titulo' }, rotulo || 'Preencher por imagem'),
+      linha);
   }
 
   const confirmar = ({ titulo, texto, acao = 'Confirmar', onOk }) =>
@@ -280,8 +304,14 @@ const UI = (() => {
    * Para leitura por IA vale usar mais resolução (`larguraMax` maior), porque
    * a imagem só trafega — não fica guardada.
    */
-  function pedirFoto(onPronto, { larguraMax = 900, qualidade = 0.72 } = {}) {
-    const input = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+  function pedirFoto(onPronto, { larguraMax = 900, qualidade = 0.72, origem } = {}) {
+    // Sem `capture`, o Android abre o seletor (câmera ou galeria). Com
+    // `capture`, vai direto para a câmera. Deixar explícito evita o aparelho
+    // decidir por conta — e permite fotografar no posto e lançar depois.
+    const input = h('input', {
+      type: 'file', accept: 'image/*', style: { display: 'none' },
+      capture: origem === 'camera' ? 'environment' : null,
+    });
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
       if (!file) return;

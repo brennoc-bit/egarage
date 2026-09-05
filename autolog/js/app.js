@@ -13,7 +13,7 @@ const NAV = [
 // Telas sem aba própria herdam o destaque de outra.
 const NAV_PAI = {
   manutencao: 'garagem', veiculo: 'garagem',
-  seguro: 'docs', 'seguro-editar': 'docs',
+  seguro: 'docs', 'seguro-editar': 'docs', gemini: 'perfil',
 };
 
 const App = {
@@ -134,7 +134,7 @@ const App = {
 
     // Abastecer é a ação mais repetida do app: fica flutuando, sempre à mão.
     // Fora do cadastro, onde ela atrapalharia o formulário.
-    if (this.rota !== 'veiculo' && this.rota !== 'seguro-editar') {
+    if (!['veiculo', 'seguro-editar', 'gemini'].includes(this.rota)) {
       tela.append(UI.fab(() => Acoes.registrarAbastecimento(Store.atual()), 'Registrar abastecimento'));
     }
 
@@ -343,34 +343,7 @@ const Acoes = {
 
   /* — leitura por foto — */
 
-  configurarGemini() {
-    UI.sheet({
-      titulo: 'Leitura por foto',
-      sub: 'Google Gemini',
-      texto: 'Fotografe a nota, a bomba ou o painel e o Gemini preenche os campos. Você confere antes de salvar — a leitura erra às vezes.',
-      campos: [
-        {
-          name: 'chave', label: 'Chave da API', valor: Gemini.chave(),
-          placeholder: 'cole aqui a chave',
-          hint: 'Gere em aistudio.google.com/apikey. Fica salva só neste aparelho, nunca vai para o repositório nem para o arquivo de exportação. Apague o campo para remover.',
-        },
-        {
-          name: 'modelo', label: 'Modelo', valor: Gemini.modelo(),
-          hint: `Padrão: ${Gemini.MODELO_PADRAO}. Se der erro de modelo não encontrado, veja os nomes disponíveis no Google AI Studio.`,
-        },
-      ],
-      acao: 'Salvar e testar',
-      onSubmit: async (d) => {
-        Gemini.definirChave(d.chave);
-        Gemini.definirModelo(d.modelo);
-        App.render();
-        if (!Gemini.configurado()) { UI.toast('Chave removida'); return; }
-        UI.toast('Testando a chave…');
-        try { await Gemini.testar(); UI.toast('Leitura por foto pronta'); }
-        catch (e) { UI.toast(e.message || 'Falha no teste'); }
-      },
-    });
-  },
+  configurarGemini() { App.ir('gemini'); },
 
   copiar(texto, mensagem) {
     const avisar = () => UI.toast(mensagem || 'Copiado');

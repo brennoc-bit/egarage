@@ -33,7 +33,12 @@ const Gemini = (() => {
   const endpoint = () => `${BASE}/${modelo()}:generateContent`;
   const cabecalhos = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': chave() });
 
-  /* ── O que pedir para cada tipo de foto ─────────────────────────────── */
+  /* ── Instruções por tipo de foto ────────────────────────────────────────
+     Editáveis pela pessoa, em Perfil → Leitura por foto. O padrão fica aqui e
+     pode ser restaurado a qualquer momento. Quem editar precisa manter o
+     pedido de JSON e os nomes dos campos: é por eles que o app preenche o
+     formulário. `campos` documenta esse contrato na tela de edição.
+     ──────────────────────────────────────────────────────────────────────── */
 
   const REGRAS = `Você lê fotos de documentos de veículo no Brasil e devolve SOMENTE JSON válido.
 Regras:
@@ -44,8 +49,9 @@ Regras:
 
   const PEDIDOS = {
     abastecimento: {
-      titulo: 'Nota de abastecimento',
-      prompt: `${REGRAS}
+      titulo: 'Nota ou bomba de combustível',
+      campos: 'data, litros, valor, precoLitro, local, combustivel, odometro, observacao',
+      padrao: `${REGRAS}
 A imagem é um cupom fiscal, nota ou display de bomba de combustível.
 Devolva: {"data":..., "litros":..., "valor":..., "precoLitro":..., "local":..., "combustivel":..., "odometro":..., "observacao":...}
 - valor = total pago em reais.
@@ -58,7 +64,8 @@ Devolva: {"data":..., "litros":..., "valor":..., "precoLitro":..., "local":..., 
     },
     odometro: {
       titulo: 'Painel do veículo',
-      prompt: `${REGRAS}
+      campos: 'km, observacao',
+      padrao: `${REGRAS}
 A imagem é o painel de um carro ou moto.
 Devolva: {"km":..., "observacao":...}
 - km = leitura do hodômetro total (não o parcial/trip), só os dígitos.
@@ -67,7 +74,8 @@ Devolva: {"km":..., "observacao":...}
     },
     lancamento: {
       titulo: 'Nota de serviço ou peça',
-      prompt: `${REGRAS}
+      campos: 'data, valor, titulo, local, categoria, odometro, observacao',
+      padrao: `${REGRAS}
 A imagem é uma nota, cupom ou orçamento de serviço ou peça de veículo.
 Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "odometro":..., "observacao":...}
 - valor = total pago em reais.
@@ -78,6 +86,21 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
 - observacao = frase curta sobre o que ficou ilegível, ou null.`,
     },
   };
+
+  const TIPOS_LEITURA = Object.keys(PEDIDOS).map((id) => ({
+    id, titulo: PEDIDOS[id].titulo, campos: PEDIDOS[id].campos,
+  }));
+
+  const chavePrompt = (tipo) => `autolog-gemini-prompt-${tipo}`;
+  const promptPadrao = (tipo) => (PEDIDOS[tipo] ? PEDIDOS[tipo].padrao : '');
+  const prompt = (tipo) => ler(chavePrompt(tipo)) || promptPadrao(tipo);
+  const promptEditado = (tipo) => !!ler(chavePrompt(tipo));
+  const definirPrompt = (tipo, texto) => {
+    const limpo = (texto || '').trim();
+    // Igual ao padrão não vira override: evita congelar melhorias futuras.
+    gravar(chavePrompt(tipo), !limpo || limpo === promptPadrao(tipo).trim() ? '' : limpo);
+  };
+  const restaurarPrompt = (tipo) => gravar(chavePrompt(tipo), '');
 
   /* ── Chamada ────────────────────────────────────────────────────────── */
 
@@ -110,8 +133,8 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
    */
   async function lerFoto(dataUrl, tipo) {
     if (!configurado()) throw new Error('Nenhuma chave do Gemini configurada. Veja em Perfil.');
-    const pedido = PEDIDOS[tipo];
-    if (!pedido) throw new Error('Tipo de leitura desconhecido.');
+    if (!PEDIDOS[tipo]) throw new Error('Tipo de leitura desconhecido.');
+    const instrucao = prompt(tipo);
 
     const virgula = dataUrl.indexOf(',');
     const mime = (dataUrl.slice(5, dataUrl.indexOf(';')) || 'image/jpeg');
@@ -125,7 +148,7 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: pedido.prompt },
+              { text: instrucao },
               { inline_data: { mime_type: mime, data: base64 } },
             ],
           }],
@@ -149,7 +172,11 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
       && corpo.candidates[0].content.parts[0] && corpo.candidates[0].content.parts[0].text;
 
     const dados = extrairJSON(texto);
-    if (!dados) throw new Error('Não consegui entender a resposta do Gemini.');
+    if (!dados) {
+      throw new Error(promptEditado(tipo)
+        ? 'A resposta não veio em JSON. Confira a instrução ou restaure o padrão.'
+        : 'Não consegui entender a resposta do Gemini.');
+    }
     return dados;
   }
 
@@ -173,5 +200,6 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
   return {
     configurado, chave, modelo, definirChave, definirModelo, esquecer,
     lerFoto, testar, MODELO_PADRAO,
+    TIPOS_LEITURA, prompt, promptPadrao, promptEditado, definirPrompt, restaurarPrompt,
   };
 })();

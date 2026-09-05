@@ -516,7 +516,32 @@ span.chip { cursor: default; }
   padding-top: 16px;
 }
 
-/* ── Botão de leitura por foto ─────────────────────────────────────────── */
+/* ── Botões de leitura por imagem ──────────────────────────────────────── */
+.ler-titulo {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.ler-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.ler-linha .ler-foto { margin-bottom: 0; }
+.ler-foto.secundario {
+  background: var(--color-surface); color: var(--color-text);
+  border-color: var(--color-divider);
+}
+
+/* Instruções editáveis do Gemini. */
+textarea.instrucao {
+  width: 100%; padding: 12px 14px; font-family: var(--mono);
+  font-size: 12px; line-height: 1.5; color: var(--color-text);
+  background: var(--color-bg); border: 1px solid var(--color-divider);
+  border-radius: var(--r-md); resize: vertical;
+}
+textarea.instrucao:focus-visible { border-color: var(--color-accent); outline: none; }
+.marca-editada {
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--color-bg);
+  background: var(--color-accent); padding: 3px 8px; border-radius: 100px;
+}
+
 .ler-foto {
   width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 10px;

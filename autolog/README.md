@@ -131,11 +131,15 @@ intervalo do tipo de veículo — e sem preço associado.
 
 ## Leitura por foto (Google Gemini)
 
-Nas telas de **abastecimento**, **odômetro** e **lançamento** há um botão para
-fotografar a nota, o display da bomba ou o painel. A imagem vai para o Gemini,
-que devolve os campos já separados, e o app **preenche o formulário para você
-conferir**. Nada é salvo automaticamente: leitura de OCR erra, e aqui se trata
-de dinheiro e quilometragem. Os campos preenchidos pela IA ficam destacados.
+Nas telas de **abastecimento**, **odômetro** e **lançamento** há dois botões:
+**Câmera** e **Galeria**. A imagem vai para o Gemini, que devolve os campos já
+separados, e o app **preenche o formulário para você conferir**. Nada é salvo
+automaticamente: leitura de OCR erra, e aqui se trata de dinheiro e
+quilometragem. Os campos preenchidos pela IA ficam destacados.
+
+Os dois caminhos existem porque o momento de fotografar e o de lançar
+raramente são o mesmo: dá para fotografar o cupom no posto, com o celular na
+mão, e registrar em casa escolhendo a imagem da galeria.
 
 Ligar em **Perfil → Leitura por foto**, colando uma chave gerada em
 [aistudio.google.com/apikey](https://aistudio.google.com/apikey). O app testa a
@@ -181,6 +185,19 @@ fica duvidoso, a resposta traz uma observação curta que aparece no toast.
 
 O modelo padrão é `gemini-2.5-flash` e pode ser trocado na mesma tela — se o
 nome sair de linha, o app mostra "modelo não encontrado" em vez de falhar calado.
+
+### Ajustando as instruções
+
+Cada um dos três tipos tem uma instrução própria, **editável em Perfil →
+Leitura por foto**. É o texto que viaja junto com a imagem, e é por ele que se
+corrige leitura ruim: nota de posto brasileiro varia muito, e descrever onde
+fica cada informação costuma resolver mais do que trocar de modelo.
+
+Cada caixa mostra os campos que o app espera de volta e tem **restaurar
+padrão**. A regra é uma só: manter o pedido de JSON e os nomes dos campos, que
+são o contrato usado para preencher o formulário. Uma instrução editada ganha
+o selo "editada"; se a resposta parar de vir em JSON, a mensagem de erro sugere
+restaurar o padrão.
 
 ## O que é calculado (nada é estático)
 

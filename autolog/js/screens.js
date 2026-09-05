@@ -722,6 +722,89 @@ Screens['seguro-editar'] = (v) => {
   return { kicker: 'Editando', titulo: 'Dados do seguro', corpo, voltar: 'seguro' };
 };
 
+/* ── Leitura por foto: chave, modelo e instruções ──────────────────────── */
+
+Screens.gemini = () => {
+  const refs = {};
+  const campo = (def) => {
+    const ref = UI.campo(def);
+    refs[def.name] = ref;
+    return ref.caixa;
+  };
+
+  const estado = h('div', { class: 'note', style: { paddingTop: 0 } },
+    Gemini.configurado()
+      ? `Ativa · modelo ${Gemini.modelo()}`
+      : 'Desligada. Cole uma chave para ativar a leitura por foto.');
+
+  // Uma caixa de instrução por tipo de leitura.
+  const blocoInstrucao = (t) => {
+    const area = h('textarea', { id: 'prompt-' + t.id, rows: 12, class: 'instrucao' }, Gemini.prompt(t.id));
+    const marca = h('span', { class: 'marca-editada', style: { display: Gemini.promptEditado(t.id) ? '' : 'none' } }, 'editada');
+    return h('div', { class: 'bloco' },
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 6 } },
+        h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 15 } }, t.titulo),
+        marca),
+      area,
+      h('div', { class: 'hint' },
+        'Campos que o app espera de volta: ', h('code', null, t.campos),
+        '. Mudar os nomes ou tirar o pedido de JSON quebra o preenchimento.'),
+      h('div', { style: { marginTop: 8 } },
+        h('button', {
+          class: 'mini',
+          onClick: () => {
+            area.value = Gemini.promptPadrao(t.id);
+            marca.style.display = 'none';
+            UI.toast('Instrução padrão restaurada · salve para valer');
+          },
+        }, 'restaurar padrão')));
+  };
+
+  const salvar = async ({ testando } = {}) => {
+    Gemini.definirChave(UI.valorDoCampo(refs.chave));
+    Gemini.definirModelo(UI.valorDoCampo(refs.modelo));
+    Gemini.TIPOS_LEITURA.forEach((t) => {
+      const area = document.querySelector('#prompt-' + t.id);
+      if (area) Gemini.definirPrompt(t.id, area.value);
+    });
+    if (!testando) { App.render(); UI.toast(Gemini.configurado() ? 'Configuração salva' : 'Chave removida'); return; }
+    if (!Gemini.configurado()) { App.render(); UI.toast('Digite a chave primeiro'); return; }
+    UI.toast('Testando…');
+    try { await Gemini.testar(); App.render(); UI.toast('Conexão com o Gemini funcionando'); }
+    catch (e) { App.render(); UI.toast(e.message || 'Falha no teste'); }
+  };
+
+  const corpo = h('div', { class: 'form-veiculo' },
+    estado,
+
+    UI.sectHd('Acesso'),
+    h('div', { class: 'bloco' },
+      campo({
+        name: 'chave', label: 'Chave da API', valor: Gemini.chave(),
+        placeholder: 'cole aqui a chave',
+        hint: 'Gere em aistudio.google.com/apikey. Fica salva só neste aparelho, nunca vai para o repositório nem para o arquivo de exportação. Apague o campo para remover.',
+      }),
+      campo({
+        name: 'modelo', label: 'Modelo', valor: Gemini.modelo(),
+        hint: `Padrão: ${Gemini.MODELO_PADRAO}. Se der "modelo não encontrado", veja os nomes disponíveis no Google AI Studio.`,
+      }),
+      h('button', { class: 'mini', onClick: () => salvar({ testando: true }) }, 'salvar e testar conexão')),
+
+    UI.sectHd('Instruções para o Gemini'),
+    h('div', { class: 'note', style: { paddingTop: 0 } },
+      'É o texto enviado junto com cada imagem. Ajuste se as notas do seu posto ou da sua oficina tiverem um formato próprio — descrever onde fica cada informação costuma resolver leitura ruim.'),
+    Gemini.TIPOS_LEITURA.map(blocoInstrucao),
+
+    UI.cta([
+      { label: 'Voltar', icone: '‹', onClick: () => App.ir('perfil') },
+      { label: 'Salvar', icone: '✓', pri: true, onClick: () => salvar() },
+    ]),
+    h('div', { class: 'note', style: { paddingBottom: 24 } },
+      'A leitura nunca salva sozinha: ela preenche o formulário e você confere antes de confirmar.'));
+
+  return { kicker: 'Google Gemini', titulo: 'Leitura por foto', corpo, voltar: 'perfil' };
+};
+
 /* ── Cadastro / edição do veículo ──────────────────────────────────────── */
 
 Screens.veiculo = (atual) => {
@@ -936,7 +1019,7 @@ Screens.perfil = () => {
       v: Gemini.configurado() ? 'Ativa' : 'Desligada',
       cor: Gemini.configurado() ? COR.ok : null,
       sub: Gemini.configurado() ? Gemini.modelo() : 'toque para configurar',
-      onClick: () => Acoes.configurarGemini(),
+      onClick: () => App.ir('gemini'),
     })),
     h('div', { class: 'note' },
       'Com a chave configurada, as telas de abastecimento, odômetro e lançamento ganham um botão para fotografar a nota, a bomba ou o painel — o Gemini lê e preenche os campos, e você confere antes de salvar. A chave fica só neste aparelho e não entra no arquivo de exportação.'),
