@@ -17,20 +17,27 @@
 const Gemini = (() => {
   const KEY_CHAVE = 'autolog-gemini-chave';
   const KEY_MODELO = 'autolog-gemini-modelo';
+  const KEY_VERSAO = 'autolog-gemini-versao';
   const MODELO_PADRAO = 'gemini-2.5-flash';
-  const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+  const VERSAO_PADRAO = 'v1beta';
+  const VERSOES = ['v1beta', 'v1'];
+  const HOST = 'https://generativelanguage.googleapis.com';
 
   const ler = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
   const gravar = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* modo privado */ } };
 
   const chave = () => ler(KEY_CHAVE);
   const modelo = () => ler(KEY_MODELO) || MODELO_PADRAO;
+  const versao = () => ler(KEY_VERSAO) || VERSAO_PADRAO;
   const configurado = () => !!chave();
   const definirChave = (v) => gravar(KEY_CHAVE, (v || '').trim());
-  const definirModelo = (v) => gravar(KEY_MODELO, (v || '').trim());
-  const esquecer = () => { gravar(KEY_CHAVE, ''); gravar(KEY_MODELO, ''); };
+  const definirModelo = (v, ver) => {
+    gravar(KEY_MODELO, (v || '').trim().replace(/^models\//, ''));
+    if (ver) gravar(KEY_VERSAO, ver);
+  };
+  const esquecer = () => { gravar(KEY_CHAVE, ''); gravar(KEY_MODELO, ''); gravar(KEY_VERSAO, ''); };
 
-  const endpoint = () => `${BASE}/${modelo()}:generateContent`;
+  const endpoint = () => `${HOST}/${versao()}/models/${modelo()}:generateContent`;
 
   /* Duas formas de autenticar. O Google está migrando as chaves do AI Studio
      do formato antigo (AIza…, "traffic key") para o novo (AQ.…, "auth key"), e
@@ -74,7 +81,7 @@ const Gemini = (() => {
       if (!recusaDeCredencial(resp.status, corpo)) break; // erro de outra natureza
     }
     const msg = (ultimo.corpo && ultimo.corpo.error && ultimo.corpo.error.message) || '(sem mensagem)';
-    ultimoErro = `HTTP ${ultimo.status} · ${ultimo.modo} · modelo ${modelo()}
+    ultimoErro = `HTTP ${ultimo.status} · ${ultimo.modo} · ${versao()}/${modelo()}
 ${msg}`;
     throw new Error(erroLegivel(ultimo.status, ultimo.corpo));
   }
@@ -161,7 +168,9 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
     if (status === 400) return `Recusado: ${msg.slice(0, 110)}`;
     if (status === 401) return 'Não autenticado. Veja os detalhes no fim da tela.';
     if (status === 403) return `Sem permissão: ${msg.slice(0, 110)}`;
-    if (status === 404) return `Modelo "${modelo()}" não encontrado. Troque em Perfil.`;
+    if (status === 404) {
+      return `Modelo "${modelo()}" não existe nesta conta. Use "buscar modelos disponíveis".`;
+    }
     if (status === 429) return 'Limite de uso atingido. Tente daqui a pouco.';
     if (status >= 500) return 'O Gemini está fora do ar agora.';
     return msg ? msg.slice(0, 140) : `Erro ${status}.`;
@@ -220,6 +229,58 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
   }
 
   // Chamada mínima só para validar chave e modelo, sem imagem.
+  /**
+   * Pergunta à API quais modelos a chave pode usar. Nomes de modelo mudam com
+   * o tempo — chutar um e errar foi o que travou a primeira configuração.
+   * Varre as versões da API e devolve só o que aceita generateContent.
+   */
+  async function listarModelos() {
+    if (!configurado()) throw new Error('Digite a chave primeiro.');
+    const achados = [];
+    const problemas = [];
+
+    for (const v of VERSOES) {
+      let ok = false;
+      for (const montar of CABECALHOS) {
+        let resp, corpo = null;
+        try {
+          resp = await fetch(`${HOST}/${v}/models?pageSize=200`, { headers: montar(chave()) });
+          corpo = await resp.json();
+        } catch (e) { problemas.push(`${v}: falha de rede`); break; }
+
+        if (resp.ok) {
+          (corpo.models || []).forEach((m) => {
+            if ((m.supportedGenerationMethods || []).includes('generateContent')) {
+              achados.push({
+                id: String(m.name || '').replace(/^models\//, ''),
+                versao: v,
+                titulo: m.displayName || '',
+              });
+            }
+          });
+          ok = true;
+          break;
+        }
+        const msg = (corpo && corpo.error && corpo.error.message) || '';
+        problemas.push(`${v} · HTTP ${resp.status} — ${msg.slice(0, 90)}`);
+        if (!recusaDeCredencial(resp.status, corpo)) break;
+      }
+      if (ok && achados.length) break; // a primeira versão que responder basta
+    }
+
+    if (!achados.length) {
+      ultimoErro = problemas.join('\n') || 'Nenhum modelo retornado.';
+      throw new Error('Não consegui listar os modelos. Veja os detalhes no fim da tela.');
+    }
+    ultimoErro = null;
+    // Flash primeiro: é o mais barato e rápido para leitura de imagem.
+    achados.sort((a, b) => {
+      const peso = (x) => (/flash/i.test(x.id) ? 0 : 1);
+      return peso(a) - peso(b) || a.id.localeCompare(b.id);
+    });
+    return achados;
+  }
+
   // Chamada mínima só para validar credencial e modelo, sem imagem.
   async function testar() {
     if (!configurado()) throw new Error('Digite a chave primeiro.');
@@ -228,7 +289,8 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
   }
 
   return {
-    configurado, chave, modelo, definirChave, definirModelo, esquecer, detalheDoErro,
+    configurado, chave, modelo, versao, definirChave, definirModelo, esquecer, detalheDoErro,
+    listarModelos,
     lerFoto, testar, MODELO_PADRAO,
     TIPOS_LEITURA, prompt, promptPadrao, promptEditado, definirPrompt, restaurarPrompt,
   };

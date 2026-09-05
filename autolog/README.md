@@ -186,6 +186,18 @@ fica duvidoso, a resposta traz uma observação curta que aparece no toast.
 O modelo padrão é `gemini-2.5-flash` e pode ser trocado na mesma tela — se o
 nome sair de linha, o app mostra "modelo não encontrado" em vez de falhar calado.
 
+### O modelo é perguntado à API, não adivinhado
+
+Nomes de modelo entram e saem de linha, e um nome errado derruba tudo com um
+404. Em vez de fixar um palpite, a tela tem **buscar modelos disponíveis**: o
+app chama o `ListModels` da API, filtra os que aceitam `generateContent` e
+mostra em botões — um toque escolhe. Modelos *flash* aparecem primeiro, por
+serem os mais baratos e rápidos para leitura de imagem.
+
+A escolha guarda também **a versão da API** (`v1beta` ou `v1`) em que aquele
+modelo apareceu, porque nem todo modelo existe nas duas. A busca tenta as duas
+versões, em ordem.
+
 ### Dois formatos de chave, duas formas de autenticar
 
 O Google está trocando o formato das chaves do AI Studio: as antigas ("traffic

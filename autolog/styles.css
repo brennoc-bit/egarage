@@ -528,6 +528,10 @@ span.chip { cursor: default; }
   border-color: var(--color-divider);
 }
 
+/* Lista de modelos devolvida pela API. */
+.modelos { margin-top: 12px; }
+.modelos .chip { font-family: var(--mono); font-size: 11px; }
+
 /* Erro cru da última chamada à API, para diagnóstico. */
 pre.erro-cru {
   margin: 0; padding: 12px 14px; border-radius: var(--r-md);

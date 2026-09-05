@@ -771,6 +771,37 @@ Screens.gemini = () => {
         }, 'restaurar padrão')));
   };
 
+  // Lista de modelos que a própria chave enxerga, para escolher com um toque.
+  const listaModelos = h('div', { class: 'modelos' });
+
+  const buscarModelos = async () => {
+    Gemini.definirChave(UI.valorDoCampo(refs.chave));
+    if (!Gemini.configurado()) { UI.toast('Digite a chave primeiro'); return; }
+    clear(listaModelos);
+    listaModelos.append(h('div', { class: 'hint' }, 'Perguntando à API…'));
+    try {
+      const modelos = await Gemini.listarModelos();
+      clear(listaModelos);
+      listaModelos.append(
+        h('div', { class: 'hint', style: { marginBottom: 8 } },
+          `${modelos.length} modelo(s) disponíveis para esta chave. Toque para usar:`),
+        h('div', { class: 'chips' },
+          modelos.map((m) => h('button', {
+            class: 'chip' + (m.id === Gemini.modelo() ? ' on' : ''),
+            title: m.titulo || m.id,
+            onClick: () => {
+              Gemini.definirModelo(m.id, m.versao);
+              App.ir('gemini');
+              UI.toast(`Modelo ${m.id}`);
+            },
+          }, m.id))));
+    } catch (e) {
+      clear(listaModelos);
+      listaModelos.append(h('div', { class: 'hint', style: { color: 'var(--color-accent)' } }, e.message));
+      App.render();
+    }
+  };
+
   const salvar = async ({ testando } = {}) => {
     Gemini.definirChave(UI.valorDoCampo(refs.chave));
     Gemini.definirModelo(UI.valorDoCampo(refs.modelo));
@@ -801,9 +832,12 @@ Screens.gemini = () => {
       }),
       campo({
         name: 'modelo', label: 'Modelo', valor: Gemini.modelo(),
-        hint: `Padrão: ${Gemini.MODELO_PADRAO}. Se der "modelo não encontrado", veja os nomes disponíveis no Google AI Studio.`,
+        hint: `Em uso: ${Gemini.versao()}/${Gemini.modelo()}. Os nomes mudam com o tempo — em vez de adivinhar, peça a lista à API no botão abaixo.`,
       }),
-      h('button', { class: 'mini', onClick: () => salvar({ testando: true }) }, 'salvar e testar conexão')),
+      h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+        h('button', { class: 'mini', onClick: () => salvar({ testando: true }) }, 'salvar e testar conexão'),
+        h('button', { class: 'mini', onClick: () => buscarModelos() }, 'buscar modelos disponíveis')),
+      listaModelos),
 
     UI.sectHd('Instruções para o Gemini'),
     h('div', { class: 'note', style: { paddingTop: 0 } },

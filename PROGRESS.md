@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — dois formatos de chave do Gemini
+**Última atualização:** 2026-08-24 — descoberta de modelos pela API
 
 ---
 
@@ -165,6 +165,13 @@ futuras. Instrução editada ganha selo, e o erro de JSON sugere restaurar.
 público e todo o JS é baixado pelo navegador — chave no código seria chave
 vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
 exportação** da garagem.
+
+**O modelo passou a ser perguntado à API.** Com a chave aceita, a leitura ainda
+falhava com 404: `gemini-2.5-flash` não existia naquela conta. Em vez de trocar
+por outro palpite, a tela ganhou **buscar modelos disponíveis**, que chama o
+`ListModels`, filtra os que aceitam `generateContent` e lista em botões — um
+toque escolhe. Guarda também a versão da API (`v1beta` ou `v1`) em que o modelo
+apareceu, e a busca tenta as duas.
 
 **Dois formatos de chave — e uma lição.** O Google está trocando as chaves do
 AI Studio: antigas `AIza` ("traffic keys"), novas `AQ.` ("auth keys"), com as
