@@ -129,6 +129,48 @@ const UI = (() => {
     return { caixa, input, def };
   }
 
+  /**
+   * Campo de texto com sugestões — marca e modelo do veículo.
+   * `sugestoes(termo)` devolve [{ texto, sub, aoEscolher }]. Filtrar é por
+   * conta de quem fornece: só ele sabe se vale buscar por marca ou global.
+   * O campo NUNCA restringe: o catálogo envelhece, o que a pessoa digita vale.
+   */
+  function campoSugerido(def) {
+    const base = campo(def);
+    base.caixa.classList.add('com-sugestao');
+    const lista = h('div', { class: 'sugestoes', hidden: true });
+    base.caixa.append(lista);
+
+    const fechar = () => { lista.hidden = true; clear(lista); };
+
+    const abrir = () => {
+      const itens = (def.sugestoes ? def.sugestoes(base.input.value.trim()) : []) || [];
+      clear(lista);
+      if (!itens.length) { lista.hidden = true; return; }
+      itens.forEach((s) => {
+        const opcao = h('button', { type: 'button', class: 'sugestao' },
+          h('span', null, s.texto),
+          s.sub ? h('span', { class: 'sug-sub' }, s.sub) : null);
+        // mousedown antes do blur: sem isso o clique se perde ao fechar.
+        opcao.addEventListener('mousedown', (ev) => ev.preventDefault());
+        opcao.addEventListener('click', () => {
+          base.input.value = s.texto;
+          base.input.dispatchEvent(new Event('input'));
+          if (s.aoEscolher) s.aoEscolher(s);
+          fechar();
+        });
+        lista.append(opcao);
+      });
+      lista.hidden = false;
+    };
+
+    base.input.setAttribute('autocomplete', 'off');
+    base.input.addEventListener('focus', abrir);
+    base.input.addEventListener('input', abrir);
+    base.input.addEventListener('blur', () => setTimeout(fechar, 150));
+    return base;
+  }
+
   const valorDoCampo = (ref) => {
     const bruto = ref.input.value.trim();
     return (ref.def.tipo === 'dinheiro' || ref.def.tipo === 'number') ? parseNum(bruto) : bruto;
@@ -348,7 +390,7 @@ const UI = (() => {
 
   return {
     dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras, fab,
-    campo, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
+    campo, campoSugerido, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
     botaoLeitura,
   };
 })();

@@ -528,6 +528,27 @@ span.chip { cursor: default; }
   border-color: var(--color-divider);
 }
 
+/* Sugestões de marca e modelo. */
+.campo.com-sugestao { position: relative; }
+.sugestoes {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 30;
+  margin-top: 4px; max-height: 260px; overflow-y: auto;
+  background: var(--color-bg); border: 1px solid var(--color-divider);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+}
+.sugestao {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  width: 100%; padding: 13px 14px; cursor: pointer; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--color-divider);
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--color-text);
+}
+.sugestao:last-child { border-bottom: 0; }
+.sugestao:hover, .sugestao:active { background: var(--color-accent-100); }
+.sug-sub {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); font-weight: 400; flex: none;
+}
+
 /* Lista de modelos devolvida pela API. */
 .modelos { margin-top: 12px; }
 .modelos .chip { font-family: var(--mono); font-size: 11px; }

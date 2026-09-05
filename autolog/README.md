@@ -129,6 +129,46 @@ arquivo de exportação ficaria carregando dado sensível à toa.
 A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
 intervalo do tipo de veículo — e sem preço associado.
 
+## Autocompletar de marca e modelo
+
+Os campos **Marca** e **Modelo** do cadastro sugerem enquanto você digita, no
+estilo do Webmotors. Tocar abre a lista; digitar filtra sem acento e sem caixa
+(`citro` acha `Citroën`). Escolher a marca restringe os modelos àquela marca.
+
+E se você digitar só o modelo, sem saber a marca, ele procura em todas e mostra
+`Civic · Honda` — ao tocar, **preenche os dois campos de uma vez**.
+
+**O campo nunca restringe.** Catálogo envelhece e não cobre importado nem
+modelo do ano que vem: o que você digitar sempre vale, a sugestão só poupa
+digitação.
+
+### De onde vêm os dados
+
+`dados/veiculos.json` (23 KB) traz 106 marcas e 1.214 modelos de carro, 103
+marcas e 1.111 modelos de moto. É gerado por `ferramentas/gerar-veiculos.py`
+a partir da **API pública da tabela FIPE** — não escrito à mão.
+
+O arquivo é estático e embarcado de propósito. Consultar a API a cada tecla
+seria lento, quebraria o uso offline do PWA e dependeria de um serviço
+comunitário estar no ar. Para atualizar, rode o script de novo; leva alguns
+minutos, porque são ~200 marcas com pausa entre as chamadas.
+
+A FIPE devolve **versões**, não modelos — `"Civic Sedan LXR 2.0 Flexone 16V
+Aut. 4p"` é uma das 117 entradas de Honda. O script corta a versão e guarda o
+nome, com três regras calibradas:
+
+| FIPE | vira |
+| --- | --- |
+| `Civic Sedan LXR 2.0 Flexone 16V Aut. 4p` | `Civic` |
+| `Compass Longitude 2.0 4x2 Flex 16V Aut.` | `Compass` |
+| `Grand Siena ESSENCE 1.6 Flex 16V` | `Grand Siena` |
+| `CG 160 Titan` | `CG 160` |
+| `CB 500F ABS` | `CB 500F` |
+
+A regra do meio é a que exige cuidado: em moto o número é parte do nome
+(`CG 160`), em carro é a versão (`Civic 2.0`). O script distingue pelo formato —
+`160` é cilindrada, `2.0` é motor.
+
 ## Leitura por foto (Google Gemini)
 
 Nas telas de **abastecimento**, **odômetro** e **lançamento** há dois botões:

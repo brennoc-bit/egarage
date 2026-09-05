@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — cota e custo do Gemini explicados
+**Última atualização:** 2026-09-05 — autocompletar de marca e modelo
 
 ---
 
@@ -136,6 +136,26 @@ própria (`seguro`), desenhada para o momento de aperto:
 Campo vazio não aparece na tela. **Não há campo de CPF nem documento pessoal**,
 de propósito: não é necessário para o app ser útil e sujaria o arquivo de
 exportação com dado sensível.
+
+### Autocompletar de marca e modelo ✅
+
+Os campos Marca e Modelo do cadastro sugerem enquanto se digita, no estilo do
+Webmotors. Filtro sem acento e sem caixa; escolher a marca restringe os
+modelos. Digitando só o modelo, procura em todas as marcas e mostra
+`Civic · Honda` — ao tocar, preenche os dois campos.
+
+**O campo nunca restringe**: catálogo envelhece, então texto livre sempre vale.
+
+`dados/veiculos.json` (23 KB): 106 marcas e 1.214 modelos de carro, 103 marcas
+e 1.111 de moto. Gerado por `ferramentas/gerar-veiculos.py` a partir da API
+pública da FIPE — **não escrito de memória**, que foi a lição das rodadas do
+Gemini. Estático de propósito: consultar API a cada tecla seria lento,
+quebraria o offline e dependeria de terceiro no ar.
+
+O trabalho fino foi extrair modelo de versão: a FIPE devolve `"Civic Sedan LXR
+2.0 Flexone 16V Aut. 4p"`. O script corta carroceria, câmbio e acabamento, e
+distingue número de cilindrada (`CG 160`, parte do nome) de motor (`Civic 2.0`,
+versão).
 
 ### Leitura por foto com o Gemini ✅ código pronto, falta chave real
 

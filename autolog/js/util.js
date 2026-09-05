@@ -100,5 +100,10 @@ const chaveMes = (iso) => String(iso).slice(0, 7);
 
 /* ── Diversos ──────────────────────────────────────────────────────────── */
 
+// Para comparar texto digitado com catálogo: sem acento, sem caixa.
+const normalizar = (t) => String(t || '')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().trim();
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

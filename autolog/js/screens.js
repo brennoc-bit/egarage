@@ -880,11 +880,41 @@ Screens.veiculo = (atual) => {
     h('div', { class: 'bloco' }, campos));
 
   const campo = (def) => {
-    const ref = UI.campo(Object.assign({}, def, { valor: r[def.name] != null ? r[def.name] : def.valor }));
+    const cfg = Object.assign({}, def, { valor: r[def.name] != null ? r[def.name] : def.valor });
+    const ref = def.sugestoes ? UI.campoSugerido(cfg) : UI.campo(cfg);
     ref.input.addEventListener('input', () => { r[def.name] = ref.input.value; erroGeral.style.display = 'none'; });
     ref.input.addEventListener('change', () => { r[def.name] = ref.input.value; });
     refs[def.name] = ref;
     return ref.caixa;
+  };
+
+  /* Sugestões de marca e modelo, do catálogo FIPE embarcado. Nunca restringem:
+     modelo fora da lista continua válido, é só digitar. */
+  const sugerirMarca = (termo) => {
+    const alvo = normalizar(termo);
+    return Dados.marcas(r.tipo)
+      .filter((m) => !alvo || normalizar(m).includes(alvo))
+      .slice(0, 40)
+      .map((m) => ({ texto: m }));
+  };
+
+  const sugerirModelo = (termo) => {
+    const alvo = normalizar(termo);
+    const daMarca = Dados.modelos(r.tipo, r.marca);
+    if (daMarca.length) {
+      return daMarca
+        .filter((m) => !alvo || normalizar(m).includes(alvo))
+        .slice(0, 40)
+        .map((m) => ({ texto: m }));
+    }
+    // Sem marca escolhida: procura em todas e preenche a marca junto.
+    return Dados.buscarModelo(r.tipo, termo).map((x) => ({
+      texto: x.modelo, sub: x.marca,
+      aoEscolher: () => {
+        r.marca = x.marca;
+        if (refs.marca) refs.marca.input.value = x.marca;
+      },
+    }));
   };
 
   const dupla = (a, b) => h('div', { class: 'grid2' }, campo(a), campo(b));
@@ -919,8 +949,8 @@ Screens.veiculo = (atual) => {
       }, h('span', { class: 'ic' }, t.icone), h('span', { class: 'nm' }, t.label)))),
 
     grupo('Identificação',
-      dupla({ name: 'marca', label: 'Marca', placeholder: r.tipo === 'moto' ? 'Honda' : 'Chevrolet' },
-            { name: 'modelo', label: 'Modelo', placeholder: r.tipo === 'moto' ? 'CB 300F' : 'Onix 1.0', obrigatorio: true }),
+      dupla({ name: 'marca', label: 'Marca', placeholder: r.tipo === 'moto' ? 'Honda' : 'Chevrolet', sugestoes: sugerirMarca },
+            { name: 'modelo', label: 'Modelo', placeholder: r.tipo === 'moto' ? 'CG 160' : 'Onix', obrigatorio: true, sugestoes: sugerirModelo }),
       campo({ name: 'apelido', label: 'Apelido', placeholder: 'como você chama ele', hint: 'Aparece no seletor da garagem. Se ficar vazio, usamos o modelo.' }),
       dupla({ name: 'ano', label: 'Ano', tipo: 'number', placeholder: String(new Date().getFullYear()) },
             { name: 'cor', label: 'Cor', placeholder: 'Prata' }),

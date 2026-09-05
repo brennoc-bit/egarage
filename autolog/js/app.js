@@ -488,3 +488,7 @@ const Acoes = {
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') UI.fecharSheet(); });
 App.render({ topo: true });
+
+// Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
+// tela de cadastro já estiver aberta esperando por ele.
+Dados.carregar().then(() => { if (App.rota === 'veiculo') App.render(); });
