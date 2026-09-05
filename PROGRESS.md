@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — leitura por imagem, instruções editáveis
+**Última atualização:** 2026-08-24 — validação do formato da chave
 
 ---
 
@@ -165,6 +165,13 @@ futuras. Instrução editada ganha selo, e o erro de JSON sugere restaurar.
 público e todo o JS é baixado pelo navegador — chave no código seria chave
 vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
 exportação** da garagem.
+
+**Validação do formato da chave.** O AI Studio oferece dois credenciais
+parecidas e é fácil pegar a errada: a **chave de API** começa com `AIza`, e o
+**token temporário** (Live API) começa com `AQ.`. Com o token, a API só
+respondia "chave inválida", sem explicar. Agora o app reconhece o formato,
+avisa na tela de configuração qual é o problema e **barra o envio antes de
+gastar chamada**. Aconteceu de verdade em 2026-08-24.
 
 **Limite honesto:** isso serve para uso pessoal, com a pessoa usando a própria
 chave. Não serve para app com vários usuários — ninguém cola chave de API. A

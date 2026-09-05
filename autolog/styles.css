@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Motoreiro — estilos do app.
+   Autolog — estilos do app.
    Portados de Garagem.dc.html (canvas de design) para uma tela real.
    Tokens vêm de ds/modernist.css — não redefinir cores aqui.
    ========================================================================== */
@@ -526,6 +526,13 @@ span.chip { cursor: default; }
 .ler-foto.secundario {
   background: var(--color-surface); color: var(--color-text);
   border-color: var(--color-divider);
+}
+
+/* Aviso de chave com formato errado. */
+.aviso-chave {
+  margin: 0 16px 12px; padding: 12px 14px; border-radius: var(--r-md);
+  background: var(--color-accent-100); color: var(--color-accent-800);
+  font-size: 12px; line-height: 1.5;
 }
 
 /* Instruções editáveis do Gemini. */
