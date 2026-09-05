@@ -1,0 +1,39 @@
+{
+  "_leia": "Tabela mantida À MÃO, revisada uma vez por ano em janeiro. Não existe API de alíquota de IPVA: são 27 legislações estaduais publicadas em PDF. Os valores abaixo vieram de fontes secundárias e foram cruzados entre duas delas; onde as duas divergiram, o campo 'conferir' está marcado. O app SEMPRE mostra o resultado como estimativa e leva ao site da Sefaz. Se você for atualizar isto, troque também 'vigencia' e 'atualizadoEm'.",
+  "vigencia": 2026,
+  "atualizadoEm": "2026-09-05",
+  "fontes": [
+    "https://www.serasa.com.br/blog/confira-o-ipva/",
+    "https://www.zuldigital.com.br/blog/ipva-2026-aliquota-valor-estado/",
+    "https://gringo.com.vc/blog/taxa-de-licenciamento/"
+  ],
+  "estados": {
+    "AC": { "nome": "Acre", "carro": 2.0, "moto": 1.0, "licenciamento": 194.14, "sefaz": "https://www.sefaz.ac.gov.br/" },
+    "AL": { "nome": "Alagoas", "carro": 3.0, "moto": 2.0, "licenciamento": 155.41, "sefaz": "https://www.sefaz.al.gov.br/", "conferir": true },
+    "AP": { "nome": "Amapá", "carro": 3.0, "moto": 1.5, "licenciamento": 128.54, "sefaz": "https://www.sefaz.ap.gov.br/" },
+    "AM": { "nome": "Amazonas", "carro": 3.0, "moto": 2.0, "licenciamento": 110.00, "sefaz": "https://www.sefaz.am.gov.br/", "conferir": true },
+    "BA": { "nome": "Bahia", "carro": 2.5, "moto": 1.0, "licenciamento": 181.13, "sefaz": "https://www.sefaz.ba.gov.br/", "conferir": true },
+    "CE": { "nome": "Ceará", "carro": 3.0, "moto": 2.0, "licenciamento": 220.46, "licenciamentoMoto": 188.96, "sefaz": "https://www.sefaz.ce.gov.br/", "conferir": true },
+    "DF": { "nome": "Distrito Federal", "carro": 3.0, "moto": 2.0, "licenciamento": 106.26, "sefaz": "https://www.economia.df.gov.br/", "conferir": true },
+    "ES": { "nome": "Espírito Santo", "carro": 2.0, "moto": 1.0, "licenciamento": 237.04, "sefaz": "https://sefaz.es.gov.br/" },
+    "GO": { "nome": "Goiás", "carro": 3.75, "moto": 3.0, "licenciamento": 273.16, "sefaz": "https://www.economia.go.gov.br/" },
+    "MA": { "nome": "Maranhão", "carro": 2.5, "moto": 1.0, "licenciamento": 95.87, "sefaz": "https://sistemas1.sefaz.ma.gov.br/", "conferir": true },
+    "MT": { "nome": "Mato Grosso", "carro": 3.0, "moto": 2.75, "licenciamento": 197.79, "sefaz": "https://www.sefaz.mt.gov.br/", "conferir": true },
+    "MS": { "nome": "Mato Grosso do Sul", "carro": 3.5, "moto": 2.0, "licenciamento": 240.50, "sefaz": "https://www.sefaz.ms.gov.br/", "conferir": true },
+    "MG": { "nome": "Minas Gerais", "carro": 4.0, "moto": 2.0, "licenciamento": 39.36, "sefaz": "https://www.fazenda.mg.gov.br/", "obs": "4% para gasolina e flex; alíquota menor para álcool, GNV e elétrico." },
+    "PA": { "nome": "Pará", "carro": 2.5, "moto": 1.0, "licenciamento": 214.51, "sefaz": "https://www.sefa.pa.gov.br/" },
+    "PB": { "nome": "Paraíba", "carro": 2.5, "moto": 1.0, "licenciamento": 206.55, "sefaz": "https://www.sefaz.pb.gov.br/", "conferir": true },
+    "PR": { "nome": "Paraná", "carro": 1.9, "moto": 1.9, "licenciamento": 94.65, "sefaz": "https://www.fazenda.pr.gov.br/" },
+    "PE": { "nome": "Pernambuco", "carro": 2.4, "moto": 1.5, "licenciamento": 158.00, "sefaz": "https://www.sefaz.pe.gov.br/", "conferir": true },
+    "PI": { "nome": "Piauí", "carro": 3.0, "moto": 2.0, "licenciamento": 168.50, "licenciamentoMoto": 47.55, "sefaz": "https://portal.sefaz.pi.gov.br/", "obs": "Licenciamento de moto reduzido vale até 170 cilindradas." },
+    "RJ": { "nome": "Rio de Janeiro", "carro": 4.0, "moto": 2.0, "licenciamento": 293.71, "sefaz": "https://portal.fazenda.rj.gov.br/" },
+    "RN": { "nome": "Rio Grande do Norte", "carro": 3.0, "moto": 2.0, "licenciamento": 90.00, "sefaz": "https://www.set.rn.gov.br/" },
+    "RS": { "nome": "Rio Grande do Sul", "carro": 3.0, "moto": 2.0, "licenciamento": 114.09, "sefaz": "https://receita.fazenda.rs.gov.br/", "obs": "O RS dá desconto por bom histórico de condutor (Bom Motorista / Bom Cidadão)." },
+    "RO": { "nome": "Rondônia", "carro": 3.0, "moto": 2.0, "licenciamento": 220.41, "sefaz": "https://sefin.ro.gov.br/" },
+    "RR": { "nome": "Roraima", "carro": 3.0, "moto": 2.0, "licenciamento": 98.47, "sefaz": "https://www.sefaz.rr.gov.br/" },
+    "SC": { "nome": "Santa Catarina", "carro": 2.0, "moto": 1.0, "licenciamento": 142.69, "sefaz": "https://www.sef.sc.gov.br/" },
+    "SP": { "nome": "São Paulo", "carro": 4.0, "moto": 2.0, "licenciamento": 167.74, "sefaz": "https://portal.fazenda.sp.gov.br/" },
+    "SE": { "nome": "Sergipe", "carro": 2.5, "moto": 2.0, "licenciamento": 250.14, "sefaz": "https://www.sefaz.se.gov.br/", "conferir": true },
+    "TO": { "nome": "Tocantins", "carro": 2.0, "moto": 2.0, "licenciamento": 79.63, "sefaz": "https://www.sefaz.to.gov.br/" }
+  }
+}

@@ -317,6 +317,9 @@ Screens.docs = (v) => {
 
     cartaoFinanciamento(v),
 
+    UI.sectHd('Estimativa pela sua região'),
+    blocoImpostos(v),
+
     visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
         h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), s.tag),
@@ -722,6 +725,129 @@ Screens['seguro-editar'] = (v) => {
   return { kicker: 'Editando', titulo: 'Dados do seguro', corpo, voltar: 'seguro' };
 };
 
+/* Oferece a média da ANP para o combustível escolhido, sem impor: o preço que
+   a pessoa paga de fato é melhor que qualquer média. */
+function mediaDaRegiao(r, refs) {
+  const p = Regiao.preco(r.combustivel || 'Gasolina');
+  if (!p) return null;
+  return h('div', { class: 'hint', style: { marginTop: -6 } },
+    `${Regiao.descricaoDoNivel(p)}: `,
+    h('button', {
+      style: {
+        background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer',
+        color: 'var(--color-accent)', fontWeight: 700, textDecoration: 'underline',
+      },
+      onClick: () => {
+        r.precoComb = String(p.valor).replace('.', ',');
+        if (refs.precoComb) refs.precoComb.input.value = r.precoComb;
+        UI.toast(`Preço do litro: ${brl(p.valor)}`);
+      },
+    }, `${brl(p.valor)}/L — usar este`),
+    ` · ANP, semana de ${fmtData(p.semana[0])}`);
+}
+
+/* Onde a pessoa dirige. Uma informação, três contas destravadas: preço médio
+   do combustível, alíquota de IPVA e taxa de licenciamento. */
+function blocoRegiao() {
+  const onde = Regiao.local();
+  const regra = onde && Regiao.regra(onde.uf);
+  const gas = Regiao.preco('Gasolina');
+  const ORIGEM = { gps: 'pelo GPS', cep: 'pelo CEP', lista: 'escolhido na lista' };
+
+  const linha = (k, v, sub) => UI.row(UI.kv({ k, v, sub }));
+
+  return h('div', null,
+    UI.row(UI.kv({
+      k: 'Sua região',
+      v: onde ? (onde.municipio ? `${onde.municipio} · ${onde.uf}` : onde.uf) : '—',
+      cor: onde ? COR.ok : null,
+      sub: onde
+        ? `informado ${ORIGEM[onde.origem] || ''} em ${fmtData(onde.em)}`
+        : 'sem isso o app não sabe o preço do combustível nem a alíquota do seu estado',
+    })),
+
+    UI.cta([
+      { label: 'Usar GPS', icone: '⌖', pri: !onde, onClick: () => Acoes.regiaoPorGPS() },
+      { label: 'Usar CEP', icone: '⌗', onClick: () => Acoes.regiaoPorCEP() },
+    ]),
+    UI.cta([
+      { label: onde ? 'Trocar de estado' : 'Escolher na lista', icone: '☰', onClick: () => Acoes.regiaoPorLista() },
+    ]),
+
+    onde && regra ? h('div', null,
+      UI.sectHd('O que isso destrava'),
+      gas ? linha('Gasolina', brl(gas.valor) + '/L',
+        `${Regiao.descricaoDoNivel(gas)} · ANP, semana de ${fmtData(gas.semana[0])}`) : null,
+      linha('IPVA · carro', regra.carro != null ? `${num(regra.carro, 2).replace(',00', '')}%` : '—',
+        `alíquota de ${regra.vigencia} em ${regra.nome}`),
+      linha('IPVA · moto', regra.moto != null ? `${num(regra.moto, 2).replace(',00', '')}%` : '—',
+        `alíquota de ${regra.vigencia} em ${regra.nome}`),
+      linha('Licenciamento', regra.licenciamento != null ? brl(regra.licenciamento) : '—',
+        `taxa anual de ${regra.vigencia}`),
+      regra.obs ? h('div', { class: 'note' }, regra.obs) : null) : null,
+
+    h('div', { class: 'note' },
+      'O preço do combustível é a ', h('strong', null, 'média da pesquisa semanal da ANP'),
+      ', não o preço do posto da esquina — a pesquisa cobre menos de 400 municípios, e fora deles o app usa a média do estado, sempre dizendo qual está mostrando. ',
+      'As alíquotas de IPVA e a taxa de licenciamento vêm de uma tabela revisada uma vez por ano: servem para planejar, e a conta oficial é sempre a da Sefaz.'));
+}
+
+/* Estimativa de IPVA e licenciamento a partir da região e do valor FIPE.
+   Tudo aqui é ESTIMATIVA, e a tela precisa dizer isso sem rodeio: o IPVA de um
+   ano é calculado sobre a tabela FIPE do ano anterior, e ainda existe desconto
+   à vista, isenção por idade e alíquota diferente para álcool e GNV. */
+function blocoImpostos(v) {
+  const onde = Regiao.local();
+  if (!onde) {
+    return h('div', null,
+      h('div', { class: 'note' },
+        'Informe sua região no Perfil e o app estima o IPVA e o licenciamento do seu estado.'),
+      UI.cta([{ label: 'Informar região', icone: '⌖', onClick: () => App.ir('perfil') }]));
+  }
+
+  const regra = Regiao.regra(onde.uf);
+  if (!regra) return h('div', { class: 'note' }, `Sem tabela de IPVA para ${onde.uf}.`);
+
+  const est = Regiao.estimarIPVA(v.tipo, v.fipe, onde.uf);
+  const lic = Regiao.licenciamento(v.tipo, onde.uf);
+  const aliquota = v.tipo === 'moto' ? regra.moto : regra.carro;
+
+  return h('div', null,
+    UI.row(
+      UI.kv({
+        k: 'Valor FIPE', v: v.fipe > 0 ? brl0(v.fipe) : '—',
+        sub: v.fipeRef ? `${v.fipeRef.referencia} · ${v.fipeRef.codigoFipe}` : 'toque para consultar',
+        onClick: () => Acoes.consultarFipeDoVeiculo(v),
+      }),
+      UI.kv({
+        k: `IPVA ${regra.vigencia}`, v: est ? brl0(est.valor) : '—',
+        cor: est ? 'var(--color-accent)' : null,
+        sub: aliquota != null ? `${num(aliquota, 2).replace(',00', '')}% em ${regra.nome}` : 'alíquota não cadastrada',
+      })),
+
+    UI.row(UI.kv({
+      k: 'Licenciamento', v: lic ? brl(lic.valor) : '—',
+      sub: `taxa anual de ${regra.vigencia} · ${regra.nome}`,
+    })),
+
+    !v.fipe ? h('div', { class: 'note' },
+      'Sem o valor FIPE não dá para estimar o IPVA — a conta é o valor do veículo vezes a alíquota. Toque em "Valor FIPE" para consultar.') : null,
+
+    regra.conferir ? h('div', { class: 'note', style: { borderLeft: '3px solid var(--color-accent)' } },
+      h('strong', null, 'Alíquota a conferir. '),
+      `As fontes que consultei divergem sobre ${regra.nome}. Confirme na Sefaz antes de contar com este número.`) : null,
+
+    regra.obs ? h('div', { class: 'note' }, regra.obs) : null,
+
+    h('div', { class: 'note' },
+      h('strong', null, 'Isto é estimativa, não é a guia. '),
+      `O IPVA de um ano usa a tabela FIPE do ano anterior, e ainda há desconto à vista, isenção por idade do veículo e alíquota menor para álcool e GNV em vários estados. O valor oficial é o da Sefaz.`),
+
+    UI.cta([
+      { label: `Sefaz de ${regra.nome}`, icone: '↗', onClick: () => window.open(regra.sefaz, '_blank', 'noopener') },
+    ]));
+}
+
 /* Avisos de vencimento: o que dá para fazer sem servidor, dito com clareza. */
 function blocoAvisos() {
   const cfg = Avisos.config();
@@ -1012,6 +1138,19 @@ Screens.veiculo = (atual) => {
             { name: 'cor', label: 'Cor', sugestoes: sugerirCor }),
       campo({ name: 'combustivel', label: 'Combustível', tipo: 'select', opcoes: COMBUSTIVEIS.map((c) => ({ value: c, label: c })) })),
 
+    // — valor de mercado: base do IPVA, e ninguém sabe de cabeça —
+    UI.sectHd('Valor de mercado'),
+    h('div', { class: 'bloco' },
+      campo({ name: 'fipe', label: 'Valor FIPE', tipo: 'dinheiro', placeholder: '0,00' }),
+      h('div', { class: 'hint', style: { marginTop: -6 } },
+        r.fipeRef
+          ? `${r.fipeRef.nome} · ${r.fipeRef.referencia}`
+          : 'Preencha marca, modelo e ano acima e consulte — é com este valor que o app estima o IPVA.'),
+      UI.cta([{
+        label: 'Consultar tabela FIPE', icone: '↯',
+        onClick: () => Acoes.consultarFipe(r, refs),
+      }])),
+
     grupo('Documentos',
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
             { name: 'renavam', label: 'Renavam', tipo: 'number', placeholder: '000000000' }),
@@ -1021,7 +1160,8 @@ Screens.veiculo = (atual) => {
       dupla({ name: 'odometro', label: 'Km atual', tipo: 'number', placeholder: '0', obrigatorio: true },
             { name: 'consumo', label: 'Consumo (km/L)', tipo: 'dinheiro' }),
       dupla({ name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro' },
-            { name: 'compra', label: 'Data da compra', tipo: 'date' })),
+            { name: 'compra', label: 'Data da compra', tipo: 'date' }),
+      mediaDaRegiao(r, refs)),
 
     // — financiamento —
     UI.sectHd('Financiamento'),
@@ -1123,6 +1263,8 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
       odometro: Math.max(editando.odometro, Math.round(parseNum(dados.odometro))),
       consumo: parseNum(dados.consumo) || editando.consumo,
       precoComb: parseNum(dados.precoComb) || editando.precoComb,
+      fipe: parseNum(dados.fipe) || editando.fipe,
+      fipeRef: dados.fipeRef || editando.fipeRef || null,
       compra: dados.compra || editando.compra, foto: dados.foto,
     });
     Store.atualizarDocsEFinanciamento(editando.id, dados);
@@ -1158,6 +1300,9 @@ Screens.perfil = () => {
       st.veiculos.length > 1
         ? h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir')
         : null)),
+
+    UI.sectHd('Onde você dirige'),
+    blocoRegiao(),
 
     UI.sectHd('Avisos de vencimento'),
     blocoAvisos(),

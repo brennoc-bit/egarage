@@ -48,10 +48,15 @@ segura. Para testar o comportamento de app instalado, use o endereço do Pages.
 | `js/calc.js` | Cálculos derivados: km, custo/km, diagnóstico, documentos, financiamento |
 | `js/ui.js` | Peças visuais reutilizáveis, campos, folha de formulário, toast, foto |
 | `js/auth.js` | Porteira de acesso do protótipo (**não é autenticação real**) |
+| `js/regiao.js` | Onde a pessoa dirige (GPS, CEP ou lista) e o que isso destrava |
+| `js/fipe.js` | Consulta o valor do veículo na tabela FIPE, com cache mensal |
 | `js/screens.js` | As telas, incluindo o cadastro de veículo |
 | `js/app.js` | Roteador + ações |
 | `sw.js` | Service worker: rede primeiro, cache como reserva |
 | `ferramentas/gerar-icones.py` | Gera os ícones PWA em Python puro |
+| `ferramentas/gerar-veiculos.py` | Gera o catálogo de marcas e modelos a partir da FIPE |
+| `ferramentas/gerar-precos.py` | Gera o preço médio de combustível a partir da planilha da ANP |
+| `dados/ipva.json` | Alíquotas de IPVA e taxa de licenciamento por estado — **mantido à mão** |
 
 ## Carro e moto
 
@@ -157,6 +162,80 @@ dois caminhos, e o app oferece os dois:
 O segundo é o que resolve; o primeiro é complemento. O arquivo leva os
 compromissos dos próximos 12 meses, cada um como evento de dia inteiro com
 `VALARM` na antecedência escolhida.
+
+## Sua região: combustível, IPVA e licenciamento
+
+Informar onde você dirige destrava três contas que antes eram chute ou
+pergunta. **Perfil → Onde você dirige**, por três caminhos que gravam a mesma
+coisa (`{ uf, municipio }`):
+
+| Caminho | Como funciona | Quando falha |
+| --- | --- | --- |
+| **GPS** | `navigator.geolocation` + Nominatim (OpenStreetMap) para virar cidade | Permissão negada, ou fora do Brasil |
+| **CEP** | BrasilAPI, com ViaCEP como reserva | CEP inexistente |
+| **Lista** | As 27 UFs num seletor | Nunca — é o caminho que não depende de nada |
+
+Nenhum é obrigatório. Se o GPS for negado e os serviços de CEP caírem, a lista
+continua ali.
+
+### Preço do combustível — o que o número é, e o que não é
+
+Vem do **Levantamento de Preços de Combustíveis da ANP**, a pesquisa semanal
+oficial. `ferramentas/gerar-precos.py` baixa a planilha `.xlsx` do gov.br e gera
+`dados/combustiveis.json` (43 KB): 386 municípios, 27 estados, 5 regiões e a
+média nacional, com gasolina, aditivada, etanol, diesel, S10 e GNV.
+
+**Por que embarcado, e não ao vivo:** o gov.br não manda cabeçalho CORS — o
+navegador simplesmente não consegue baixar a planilha. Sem servidor próprio,
+embarcar é o único caminho. Para atualizar, rode o script e dê push.
+
+**A pesquisa cobre 386 municípios, não os 5.570 do país.** Por isso o app cai de
+nível — município → estado → região → Brasil — e **diz na tela qual está
+mostrando**: "média de Curitiba" é uma informação diferente de "média do
+Paraná", e quem lê precisa saber qual das duas está vendo.
+
+É a média de postos pesquisados, nunca o preço do posto da esquina. No cadastro
+ela aparece como sugestão com um link "usar este" — o preço que você paga de
+fato continua valendo mais.
+
+### IPVA e licenciamento — tabela mantida à mão
+
+**Não existe API de alíquota de IPVA.** São 27 legislações estaduais publicadas
+em PDF. `dados/ipva.json` é escrito e revisado à mão, uma vez por ano em
+janeiro, com alíquota de carro e moto, taxa de licenciamento e o link da Sefaz
+de cada estado.
+
+Os valores foram cruzados entre duas fontes secundárias. **Onde as duas
+divergiram, o estado leva `"conferir": true`** e a tela mostra um aviso
+nomeando o problema em vez de fingir certeza.
+
+### Valor FIPE — ao vivo, com duas redes de proteção
+
+O IPVA é o valor do veículo vezes a alíquota, então o app precisa saber quanto
+o veículo vale. `js/fipe.js` consulta a API comunitária da FIPE a partir do
+próprio aparelho: **500 consultas por dia sem cadastro**, e como a chamada sai
+do celular de cada pessoa, essa cota é individual — não ter servidor, aqui,
+joga a favor.
+
+Serviço grátis não tem contrato, então:
+
+1. O resultado fica guardado com o mês de referência. A FIPE muda uma vez por
+   mês; uma consulta mensal por veículo basta.
+2. **O valor é sempre editável.** Se a API sumir amanhã, você digita e o app
+   continua calculando.
+
+O catálogo do app guarda o modelo curto (`CB 300F`); a FIPE guarda a versão
+inteira (`CB 300F Twister Flex`, `CB 300F Twister S`) e cada uma vale um valor
+diferente. Adivinhar seria errar o IPVA de alguém — quando há mais de uma, o
+app **pergunta**, uma vez só, e guarda os códigos.
+
+### O aviso que a tela nunca esconde
+
+O IPVA de um ano é calculado sobre a tabela FIPE do **ano anterior**, e ainda
+existe desconto à vista, isenção por idade do veículo e alíquota menor para
+álcool e GNV em vários estados. O número do app é **estimativa para planejar**,
+e cada tela diz isso e leva à Sefaz do estado. Errar imposto para menos é pior
+do que não calcular.
 
 ## Autocompletar de marca e modelo
 

@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — limpeza dos textos de formulário e correção do cache que travava a atualização no celular
+**Última atualização:** 2026-09-05 — região do usuário: preço da ANP, alíquota de IPVA, licenciamento e valor FIPE
 
 ---
 
@@ -136,6 +136,45 @@ própria (`seguro`), desenhada para o momento de aperto:
 Campo vazio não aparece na tela. **Não há campo de CPF nem documento pessoal**,
 de propósito: não é necessário para o app ser útil e sujaria o arquivo de
 exportação com dado sensível.
+
+### Região: combustível, IPVA e licenciamento ✅ a maior entrega até aqui
+
+O usuário informa onde dirige — **GPS, CEP ou lista de estados**, os três
+gravando o mesmo `{ uf, municipio }` — e isso destrava três contas.
+
+**Preço do combustível.** `ferramentas/gerar-precos.py` baixa a planilha semanal
+da ANP e gera `dados/combustiveis.json` (43 KB): 386 municípios, 27 estados,
+5 regiões, média nacional. Embarcado porque o gov.br não manda CORS — o
+navegador não consegue buscar direto. **Rodar o script é manual, por escolha do
+usuário** (nada de GitHub Actions). A pesquisa cobre 386 dos 5.570 municípios,
+então o app cai município → estado → região → Brasil e **diz na tela qual nível
+está mostrando**.
+
+**IPVA e licenciamento.** `dados/ipva.json`, mantido à mão, revisar em janeiro:
+alíquota de carro e moto, taxa de licenciamento e link da Sefaz para as 27 UFs.
+Não existe API — são 27 legislações em PDF. Os números foram cruzados entre duas
+fontes secundárias e, onde divergiram, o estado leva `"conferir": true` e a tela
+avisa em vez de fingir certeza (AL, AM, BA, CE, DF, MA, MT, MS, PB, PE, SE).
+
+**Valor FIPE.** `js/fipe.js` consulta ao vivo do aparelho do usuário: 500/dia por
+IP, ou seja, cota individual. Cache com o mês de referência e campo sempre
+editável, porque serviço comunitário não tem contrato. Quando o modelo tem mais
+de uma versão na FIPE (`CB 300F Twister Flex` × `Twister S`), o app **pergunta**
+em vez de adivinhar — adivinhar seria errar o IPVA de alguém.
+
+**O aviso que não sai da tela:** o IPVA de um ano usa a tabela FIPE do ano
+anterior, e há desconto à vista, isenção por idade e alíquota menor para álcool
+e GNV. É estimativa para planejar, com link para a Sefaz.
+
+Verificado no navegador: queda de nível de preço (Curitiba → município;
+município inexistente no PR → média do estado), CEP válido e inválido, GPS
+negado com mensagem clara, IPVA SP 4%/2% e PR 1,9%, licenciamento diferenciado
+de moto no CE, consulta FIPE completa (escolha de versão → ano → R$ 24.168,
+referência setembro de 2026) e cache na segunda chamada. Nove rotas sem erro de
+console, sem estouro horizontal a 375 px.
+
+**Não verificado:** GPS real (aqui a permissão é sempre negada) e o
+comportamento com a cota de 500 consultas estourada.
 
 ### Editor de foto ✅
 
@@ -398,6 +437,12 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
   erro de cota e só escreve no console: a gravação falha em silêncio. Com o uso
   atual não acontece, mas passaria a ser plausível com anexos.
 - **Mostrar o consumo no Perfil** ("garagem: 19 KB de ~5 MB").
+- **Atualizar o preço do combustível** rodando `ferramentas/gerar-precos.py`
+  quando o número ficar velho. A ANP publica toda sexta; o app mostra a semana
+  de referência na tela, então dá para saber quando vale a pena.
+- **Revisar `dados/ipva.json` em janeiro**, quando as leis estaduais de 2027
+  saírem — e, de preferência, confirmar na Sefaz os 11 estados marcados com
+  `"conferir": true`.
 - **Trocar a senha do protótipo** se `2047` for um PIN usado em outro lugar —
   ela fica visível no código de um repositório público.
 

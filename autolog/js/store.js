@@ -388,11 +388,12 @@ const Store = (() => {
       chassi: (dados.chassi || '').toUpperCase().trim(),
       combustivel: dados.combustivel || (tipo === 'moto' ? 'Gasolina' : 'Flex'),
       fipe: parseNum(dados.fipe),
+      fipeRef: dados.fipeRef || null,
       foto: dados.foto || null,
       compra: dados.compra || today(),
       odometro,
       consumo: parseNum(dados.consumo) || (tipo === 'moto' ? 30 : 11),
-      precoComb: parseNum(dados.precoComb) || 5.89,
+      precoComb: parseNum(dados.precoComb) || precoPadrao(dados.combustivel),
       manutencao: manutencaoPadrao(tipo, odometro, today()),
       // Nada de valor inventado: só entra o que o usuário informou.
       docs: docsInformados(dados, Math.ceil((odometro + 1) / intervaloRevisao) * intervaloRevisao),
@@ -407,6 +408,16 @@ const Store = (() => {
   }
 
   const normalizarPlaca = (p) => (p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  /* Sem preço informado, a média da ANP para a região é um chute muito melhor
+     que um número fixo no código. Se a tabela não carregou, cai no fixo. */
+  function precoPadrao(combustivel) {
+    try {
+      const p = Regiao.preco(combustivel || 'Gasolina');
+      if (p && p.valor > 0) return p.valor;
+    } catch (e) { /* tabela ainda não carregada */ }
+    return 5.89;
+  }
 
   /* ── Documentos e financiamento vindos do cadastro ──────────────────── */
 

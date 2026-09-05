@@ -47,6 +47,7 @@ const App = {
         renavam: texto(base.renavam), chassi: texto(base.chassi),
         odometro: texto(base.odometro), consumo: texto(base.consumo),
         precoComb: texto(base.precoComb), compra: texto(base.compra),
+        fipe: texto(base.fipe), fipeRef: base.fipeRef || null,
         foto: base.foto || null,
         quitado: extras.quitado !== false,
         parcela: texto(extras.parcela), parcelasRestantes: texto(extras.parcelasRestantes),
@@ -162,6 +163,67 @@ function renderSemVeiculo(hd, tela, nav) {
 /* ══════════════════════════════════════════════════════════════════════
    Ações — cada uma abre uma folha, grava pelo Store e redesenha.
    ══════════════════════════════════════════════════════════════════════ */
+
+/* Consulta à FIPE em três passos, perguntando só o que não dá para deduzir.
+
+   O catálogo do app guarda o modelo curto ("CB 300F"); a FIPE guarda a versão
+   inteira ("CB 300F Twister Flex", "CB 300F Twister S"), e cada versão tem
+   preço diferente. Adivinhar qual é seria errar o IPVA de alguém, então
+   quando há mais de uma o app pergunta — uma vez só, e guarda os códigos. */
+async function consultaFipe(tipo, dados, aoAchar) {
+  const marca = String(dados.marca || '').trim();
+  const modelo = String(dados.modelo || '').trim();
+  const ano = Number(dados.ano) || 0;
+
+  if (!marca || !modelo) { UI.toast('Preencha marca e modelo antes de consultar'); return; }
+
+  const pegarValor = async (v, a) => {
+    UI.toast('Buscando o valor…');
+    try { aoAchar(await Fipe.valor(tipo, v.marcaCod, v.modeloCod, a.codigo)); }
+    catch (e) { UI.toast(e.message || 'A FIPE não respondeu'); }
+  };
+
+  const escolherAno = (v, lista) => UI.sheet({
+    titulo: 'Qual ano?',
+    sub: v.nome,
+    campos: [{
+      name: 'i', label: 'Ano do modelo', tipo: 'select',
+      opcoes: lista.map((a, i) => ({ value: String(i), label: a.rotulo })),
+    }],
+    acao: 'Consultar',
+    onSubmit: (d) => pegarValor(v, lista[Number(d.i) || 0]),
+  });
+
+  const seguir = async (v) => {
+    UI.toast('Vendo os anos disponíveis…');
+    let lista;
+    try { lista = await Fipe.anos(tipo, v.marcaCod, v.modeloCod); }
+    catch (e) { UI.toast(e.message || 'A FIPE não respondeu'); return; }
+    if (!lista.length) { UI.toast('A FIPE não tem anos para essa versão'); return; }
+
+    const doAno = ano ? lista.find((a) => a.ano === ano) : null;
+    if (doAno) return pegarValor(v, doAno);
+    escolherAno(v, lista);
+  };
+
+  UI.toast('Consultando a tabela FIPE…');
+  let versoes;
+  try { versoes = await Fipe.versoes(tipo, marca, modelo); }
+  catch (e) { UI.toast(e.message || 'A FIPE não respondeu'); return; }
+
+  if (versoes.length === 1) return seguir(versoes[0]);
+
+  UI.sheet({
+    titulo: 'Qual versão?',
+    sub: `A FIPE tem ${versoes.length} versões de ${modelo}. Cada uma vale um valor diferente.`,
+    campos: [{
+      name: 'i', label: 'Versão', tipo: 'select',
+      opcoes: versoes.map((v, i) => ({ value: String(i), label: v.nome })),
+    }],
+    acao: 'Continuar',
+    onSubmit: (d) => seguir(versoes[Number(d.i) || 0]),
+  });
+}
 
 const Acoes = {
 
@@ -369,6 +431,80 @@ const Acoes = {
     UI.toast(n ? `${n} compromisso(s) no arquivo · abra para importar` : 'Nada para exportar');
   },
 
+  /* — região: GPS, CEP ou lista — */
+
+  async regiaoPorGPS() {
+    UI.toast('Procurando sua localização…');
+    try {
+      const onde = await Regiao.porGPS();
+      App.render();
+      UI.toast(`${onde.municipio || onde.uf} · ${onde.uf}`);
+    } catch (e) {
+      UI.toast(e.message || 'Não foi possível usar o GPS');
+    }
+  },
+
+  regiaoPorCEP() {
+    UI.sheet({
+      titulo: 'Informar CEP',
+      sub: 'Só a cidade e o estado são usados — o endereço não é guardado.',
+      campos: [{ name: 'cep', label: 'CEP', tipo: 'number', placeholder: '00000000', obrigatorio: true }],
+      acao: 'Buscar',
+      onSubmit: async (d) => {
+        try {
+          const onde = await Regiao.porCEP(d.cep);
+          App.render();
+          UI.toast(`${onde.municipio || onde.uf} · ${onde.uf}`);
+        } catch (e) {
+          UI.toast(e.message || 'CEP não encontrado');
+        }
+      },
+    });
+  },
+
+  regiaoPorLista() {
+    const atual = Regiao.local();
+    UI.sheet({
+      titulo: 'Escolher estado',
+      sub: 'Basta a UF para o IPVA e o licenciamento. O município refina o preço do combustível.',
+      campos: [
+        {
+          name: 'uf', label: 'Estado', tipo: 'select', valor: atual ? atual.uf : '',
+          opcoes: Regiao.estados().map((e) => ({ value: e.uf, label: `${e.nome} (${e.uf})` })),
+        },
+        { name: 'municipio', label: 'Cidade', valor: atual ? atual.municipio : '' },
+      ],
+      onSubmit: (d) => {
+        if (!d.uf) { UI.toast('Escolha o estado'); return; }
+        Regiao.definir({ uf: d.uf, municipio: d.municipio, origem: 'lista' });
+        App.render();
+        UI.toast('Região atualizada');
+      },
+    });
+  },
+
+  /* — tabela FIPE — */
+
+  /* Do formulário de cadastro: preenche o campo de valor. */
+  consultarFipe(r, refs) {
+    consultaFipe(r.tipo, r, (resultado) => {
+      r.fipe = num(resultado.valor, 2);
+      r.fipeRef = resultado;
+      if (refs.fipe) refs.fipe.input.value = r.fipe;
+      App.render();
+      UI.toast(`FIPE ${resultado.referencia}: ${brl(resultado.valor)}`);
+    });
+  },
+
+  /* Da tela de documentos: grava direto no veículo. */
+  consultarFipeDoVeiculo(v) {
+    consultaFipe(v.tipo, v, (resultado) => {
+      Store.atualizarVeiculo(v.id, { fipe: resultado.valor, fipeRef: resultado });
+      App.render();
+      UI.toast(`FIPE ${resultado.referencia}: ${brl(resultado.valor)}`);
+    });
+  },
+
   /* — leitura por foto — */
 
   configurarGemini() { App.ir('gemini'); },
@@ -520,6 +656,10 @@ App.render({ topo: true });
 // Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
 // tela de cadastro já estiver aberta esperando por ele.
 Dados.carregar().then(() => { if (App.rota === 'veiculo') App.render(); });
+
+// Preço de combustível da ANP e alíquotas de IPVA: arquivos pequenos, mas o
+// app precisa abrir sem esperar por eles. Redesenha quando chegarem.
+Regiao.carregar().then(() => App.render());
 
 // Avisos de vencimento: o app não acorda o celular, então o momento possível
 // de avisar é este — quando ele é aberto.
