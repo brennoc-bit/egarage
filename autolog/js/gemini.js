@@ -250,13 +250,12 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
 
         if (resp.ok) {
           (corpo.models || []).forEach((m) => {
-            if ((m.supportedGenerationMethods || []).includes('generateContent')) {
-              achados.push({
-                id: String(m.name || '').replace(/^models\//, ''),
-                versao: v,
-                titulo: m.displayName || '',
-              });
-            }
+            const id = String(m.name || '').replace(/^models\//, '');
+            if (!(m.supportedGenerationMethods || []).includes('generateContent')) return;
+            // Geradores de imagem/vídeo/voz também aceitam generateContent, mas
+            // não servem para ler um cupom e devolver JSON.
+            if (/-image|imagen|nano-banana|veo|tts|audio|live|transcribe|embedding|aqa/i.test(id)) return;
+            achados.push({ id, versao: v, titulo: m.displayName || '' });
           });
           ok = true;
           break;
@@ -281,11 +280,47 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
     return achados;
   }
 
-  // Chamada mínima só para validar credencial e modelo, sem imagem.
+  /* Imagem sintética com um número grande, para provar que o modelo lê figura.
+     O número muda a cada teste: acertar por acaso não conta. */
+  function imagemDeTeste() {
+    const numero = String(Math.floor(1000 + Math.random() * 9000));
+    const cv = document.createElement('canvas');
+    cv.width = 320; cv.height = 140;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#000000';
+    c.font = 'bold 86px system-ui, Arial, sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(numero, cv.width / 2, cv.height / 2 + 4);
+    return { numero, dataUrl: cv.toDataURL('image/jpeg', 0.92) };
+  }
+
+  /**
+   * Testa o que o app realmente precisa: que o modelo aceite IMAGEM e devolva
+   * o que está escrito nela. Um teste só de texto passaria com modelo que não
+   * enxerga figura — e a falha só apareceria na frente da bomba.
+   */
   async function testar() {
     if (!configurado()) throw new Error('Digite a chave primeiro.');
-    await chamar({ contents: [{ parts: [{ text: 'Responda apenas: ok' }] }] });
-    return true;
+    const { numero, dataUrl } = imagemDeTeste();
+    const corpo = await chamar({
+      contents: [{
+        parts: [
+          { text: 'Responda apenas com os dígitos que aparecem na imagem, sem mais nada.' },
+          { inline_data: { mime_type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) } },
+        ],
+      }],
+      generationConfig: { temperature: 0 },
+    });
+    const texto = (corpo && corpo.candidates && corpo.candidates[0]
+      && corpo.candidates[0].content && corpo.candidates[0].content.parts
+      && corpo.candidates[0].content.parts[0] && corpo.candidates[0].content.parts[0].text) || '';
+    const leu = texto.replace(/\D/g, '').includes(numero);
+    if (!leu) {
+      ultimoErro = `O modelo ${versao()}/${modelo()} respondeu "${texto.trim().slice(0, 60)}" `
+        + `para uma imagem com o número ${numero}. Ele aceitou a chamada, mas não leu a figura.`;
+    }
+    return { leu, numero, resposta: texto.trim().slice(0, 60) };
   }
 
   return {

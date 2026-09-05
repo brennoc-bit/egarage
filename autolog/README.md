@@ -186,6 +186,22 @@ fica duvidoso, a resposta traz uma observação curta que aparece no toast.
 O modelo padrão é `gemini-2.5-flash` e pode ser trocado na mesma tela — se o
 nome sair de linha, o app mostra "modelo não encontrado" em vez de falhar calado.
 
+### Qual modelo serve
+
+Praticamente todo Gemini **Flash** e **Pro** atual é multimodal: aceita imagem
+e devolve texto. Para ler cupom, painel e bomba, um **flash** é a escolha certa
+— é o mais rápido e barato, e a tarefa é simples.
+
+Não servem, e por isso somem da lista: modelos de **embedding** (devolvem
+vetor, não texto), de **geração** de imagem ou vídeo (`-image`, `imagen`,
+`nano-banana`, `veo`), e os de **voz** (`tts`, `live`, `transcribe`).
+
+Mas a lista é só um filtro por nome. Quem dá a palavra final é o botão
+**salvar e testar com imagem**: ele gera uma figura com um número aleatório,
+manda para o modelo escolhido e confere se voltou o número certo. Um teste só
+de texto passaria com modelo que não enxerga figura, e a falha só apareceria na
+frente da bomba.
+
 ### O modelo é perguntado à API, não adivinhado
 
 Nomes de modelo entram e saem de linha, e um nome errado derruba tudo com um

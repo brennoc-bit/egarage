@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-24 — descoberta de modelos pela API
+**Última atualização:** 2026-08-24 — teste de conexão com imagem real
 
 ---
 
@@ -165,6 +165,13 @@ futuras. Instrução editada ganha selo, e o erro de JSON sugere restaurar.
 público e todo o JS é baixado pelo navegador — chave no código seria chave
 vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
 exportação** da garagem.
+
+**O teste de conexão passou a usar imagem.** Ele mandava só texto — então
+passaria com um modelo que não enxerga figura, e a falha apareceria só na
+frente da bomba. Agora gera uma imagem com número aleatório, manda para o
+modelo e confere se voltou o número certo. A lista de modelos também filtra o
+que não serve: embeddings, geradores de imagem e vídeo (`-image`, `imagen`,
+`nano-banana`, `veo`) e modelos de voz (`tts`, `live`, `transcribe`).
 
 **O modelo passou a ser perguntado à API.** Com a chave aceita, a leitura ainda
 falhava com 404: `gemini-2.5-flash` não existia naquela conta. Em vez de trocar

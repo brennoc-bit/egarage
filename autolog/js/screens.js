@@ -784,7 +784,7 @@ Screens.gemini = () => {
       clear(listaModelos);
       listaModelos.append(
         h('div', { class: 'hint', style: { marginBottom: 8 } },
-          `${modelos.length} modelo(s) disponíveis para esta chave. Toque para usar:`),
+          `${modelos.length} modelo(s) que servem para ler imagem nesta chave. Toque para usar — os "flash" são os mais rápidos e baratos:`),
         h('div', { class: 'chips' },
           modelos.map((m) => h('button', {
             class: 'chip' + (m.id === Gemini.modelo() ? ' on' : ''),
@@ -815,9 +815,14 @@ Screens.gemini = () => {
       return;
     }
     if (!Gemini.configurado()) { App.render(); UI.toast('Digite a chave primeiro'); return; }
-    UI.toast('Testando…');
-    try { await Gemini.testar(); App.render(); UI.toast('Conexão com o Gemini funcionando'); }
-    catch (e) { App.render(); UI.toast(e.message || 'Falha no teste'); }
+    UI.toast('Testando com uma imagem…');
+    try {
+      const r = await Gemini.testar();
+      App.render();
+      UI.toast(r.leu
+        ? `Funcionando · o modelo leu a imagem de teste (${r.numero})`
+        : `Este modelo não leu a imagem. Escolha outro na lista.`);
+    } catch (e) { App.render(); UI.toast(e.message || 'Falha no teste'); }
   };
 
   const corpo = h('div', { class: 'form-veiculo' },
@@ -835,7 +840,7 @@ Screens.gemini = () => {
         hint: `Em uso: ${Gemini.versao()}/${Gemini.modelo()}. Os nomes mudam com o tempo — em vez de adivinhar, peça a lista à API no botão abaixo.`,
       }),
       h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-        h('button', { class: 'mini', onClick: () => salvar({ testando: true }) }, 'salvar e testar conexão'),
+        h('button', { class: 'mini', onClick: () => salvar({ testando: true }) }, 'salvar e testar com imagem'),
         h('button', { class: 'mini', onClick: () => buscarModelos() }, 'buscar modelos disponíveis')),
       listaModelos),
 
