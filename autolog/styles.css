@@ -516,6 +516,33 @@ span.chip { cursor: default; }
   padding-top: 16px;
 }
 
+/* ── Botão de leitura por foto ─────────────────────────────────────────── */
+.ler-foto {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px 16px; margin-bottom: 18px;
+  border-radius: var(--r-md); cursor: pointer;
+  background: var(--color-accent); color: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  font-family: var(--font-heading); font-weight: 800; font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.ler-foto:active { transform: scale(.99); }
+.ler-foto:disabled { opacity: .7; cursor: progress; }
+.ler-foto.desligado {
+  background: var(--color-bg); color: var(--color-text);
+  border: 1px dashed var(--color-neutral-500);
+}
+.ler-ic { display: grid; place-items: center; }
+.ler-foto.lendo .ler-ic { animation: pulsa 1s ease-in-out infinite; }
+@keyframes pulsa { 50% { opacity: .35 } }
+
+/* Campo preenchido pela leitura: destaque leve, para a pessoa conferir. */
+.campo.preenchido input, .campo.preenchido select {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+}
+
 /* ── Toast ─────────────────────────────────────────────────────────────── */
 .toast-host { position: absolute; left: 0; right: 0; bottom: 92px; z-index: 30; display: flex; justify-content: center; pointer-events: none; }
 .toast {

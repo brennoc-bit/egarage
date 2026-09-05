@@ -197,6 +197,10 @@ const Acoes = {
   atualizarOdometro(v) {
     UI.sheet({
       titulo: 'Odômetro', sub: 'Quilometragem atual',
+      topo: (api) => UI.botaoLeitura({
+        tipo: 'odometro', api, rotulo: 'Fotografar o painel',
+        mapear: (d) => ({ km: d.km != null ? String(Math.round(parseNum(d.km))) : null }),
+      }),
       campos: [{ name: 'km', label: 'Km no painel', tipo: 'number', valor: v.odometro, obrigatorio: true }],
       onSubmit: (d) => {
         const km = Math.round(d.km);
@@ -217,6 +221,16 @@ const Acoes = {
     const ultimo = Calc.ordenados(v).filter((l) => l.tipo === 'combustivel' && l.odometro).pop();
     UI.sheet({
       titulo: 'Abastecimento', sub: v.apelido || v.modelo,
+      topo: (api) => UI.botaoLeitura({
+        tipo: 'abastecimento', api, rotulo: 'Fotografar nota ou bomba',
+        mapear: (d) => ({
+          data: d.data || null,
+          litros: d.litros != null ? String(d.litros) : null,
+          valor: d.valor != null ? String(d.valor) : null,
+          local: d.local || null,
+          odometro: d.odometro != null ? String(Math.round(parseNum(d.odometro))) : null,
+        }),
+      }),
       campos: [
         { name: 'data', label: 'Data', tipo: 'date', valor: today(), meio: true },
         { name: 'odometro', label: 'Km no painel', tipo: 'number', valor: v.odometro, obrigatorio: true, meio: true },
@@ -242,6 +256,17 @@ const Acoes = {
   registrarLancamento(v, tipoPadrao) {
     UI.sheet({
       titulo: 'Novo lançamento', sub: 'Peça, serviço ou taxa',
+      topo: (api) => UI.botaoLeitura({
+        tipo: 'lancamento', api, rotulo: 'Fotografar a nota',
+        mapear: (d) => ({
+          data: d.data || null,
+          titulo: d.titulo || null,
+          local: d.local || null,
+          valor: d.valor != null ? String(d.valor) : null,
+          odometro: d.odometro != null ? String(Math.round(parseNum(d.odometro))) : null,
+          tipo: CATEGORIAS.some((c) => c.id === d.categoria) ? d.categoria : null,
+        }),
+      }),
       campos: [
         { name: 'data', label: 'Data', tipo: 'date', valor: today(), meio: true },
         { name: 'tipo', label: 'Categoria', tipo: 'select', valor: tipoPadrao || 'manutencao', opcoes: CATEGORIAS.map((c) => ({ value: c.id, label: c.label })), meio: true },
@@ -315,6 +340,37 @@ const Acoes = {
   },
 
   /* — documentos — */
+
+  /* — leitura por foto — */
+
+  configurarGemini() {
+    UI.sheet({
+      titulo: 'Leitura por foto',
+      sub: 'Google Gemini',
+      texto: 'Fotografe a nota, a bomba ou o painel e o Gemini preenche os campos. Você confere antes de salvar — a leitura erra às vezes.',
+      campos: [
+        {
+          name: 'chave', label: 'Chave da API', valor: Gemini.chave(),
+          placeholder: 'cole aqui a chave',
+          hint: 'Gere em aistudio.google.com/apikey. Fica salva só neste aparelho, nunca vai para o repositório nem para o arquivo de exportação. Apague o campo para remover.',
+        },
+        {
+          name: 'modelo', label: 'Modelo', valor: Gemini.modelo(),
+          hint: `Padrão: ${Gemini.MODELO_PADRAO}. Se der erro de modelo não encontrado, veja os nomes disponíveis no Google AI Studio.`,
+        },
+      ],
+      acao: 'Salvar e testar',
+      onSubmit: async (d) => {
+        Gemini.definirChave(d.chave);
+        Gemini.definirModelo(d.modelo);
+        App.render();
+        if (!Gemini.configurado()) { UI.toast('Chave removida'); return; }
+        UI.toast('Testando a chave…');
+        try { await Gemini.testar(); UI.toast('Leitura por foto pronta'); }
+        catch (e) { UI.toast(e.message || 'Falha no teste'); }
+      },
+    });
+  },
 
   copiar(texto, mensagem) {
     const avisar = () => UI.toast(mensagem || 'Copiado');

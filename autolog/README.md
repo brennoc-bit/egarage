@@ -129,6 +129,59 @@ arquivo de exportação ficaria carregando dado sensível à toa.
 A única coisa derivada é a próxima revisão, calculada pelo odômetro e pelo
 intervalo do tipo de veículo — e sem preço associado.
 
+## Leitura por foto (Google Gemini)
+
+Nas telas de **abastecimento**, **odômetro** e **lançamento** há um botão para
+fotografar a nota, o display da bomba ou o painel. A imagem vai para o Gemini,
+que devolve os campos já separados, e o app **preenche o formulário para você
+conferir**. Nada é salvo automaticamente: leitura de OCR erra, e aqui se trata
+de dinheiro e quilometragem. Os campos preenchidos pela IA ficam destacados.
+
+Ligar em **Perfil → Leitura por foto**, colando uma chave gerada em
+[aistudio.google.com/apikey](https://aistudio.google.com/apikey). O app testa a
+chave na hora de salvar.
+
+### Onde a chave mora, e por quê
+
+O Autolog é um site estático em um repositório **público**: todo o JavaScript é
+baixado pelo navegador. Chave de API no código seria chave vazada — qualquer
+pessoa leria no GitHub e gastaria na conta do dono.
+
+Por isso a chave é **digitada dentro do app e guardada só no aparelho**, em
+`localStorage` (`autolog-gemini-chave`). Ela nunca é commitada e **não entra no
+arquivo de exportação da garagem** — a exportação só serializa o estado do
+`Store`, e a chave vive fora dele.
+
+A contrapartida honesta: isso serve para uso pessoal, em que cada pessoa usa a
+própria chave e paga o próprio consumo. **Não serve para um app com vários
+usuários** — ninguém instala um app e cola uma chave de API.
+
+### O caminho para vários usuários
+
+Quando for a hora, a chave sai do aparelho e vai para um servidor intermediário:
+uma função serverless (Cloudflare Workers, Vercel, Netlify) recebe a imagem,
+chama o Gemini com a chave que só ela conhece, e devolve o JSON. O app continua
+estático.
+
+`js/gemini.js` já está preparado: só `endpoint()` e `cabecalhos()` mudam. O
+resto do arquivo — prompts, extração do JSON, tradução dos erros — continua
+igual.
+
+### Como cada tipo é lido
+
+| Botão | O que a foto mostra | Campos que voltam |
+| --- | --- | --- |
+| Fotografar nota ou bomba | Cupom fiscal ou display da bomba | data, litros, valor, preço/litro, posto, combustível, km |
+| Fotografar o painel | Painel do carro ou moto | km (o hodômetro **total**, não o parcial) |
+| Fotografar a nota | Nota de serviço ou peça | data, valor, descrição, oficina, categoria, km |
+
+O prompt manda devolver `null` no campo ilegível em vez de inventar, e pede os
+números já convertidos do formato brasileiro (1.234,56 → 1234.56). Quando algo
+fica duvidoso, a resposta traz uma observação curta que aparece no toast.
+
+O modelo padrão é `gemini-2.5-flash` e pode ser trocado na mesma tela — se o
+nome sair de linha, o app mostra "modelo não encontrado" em vez de falhar calado.
+
 ## O que é calculado (nada é estático)
 
 - **Odômetro / km rodado** — a partir das leituras registradas em cada lançamento.

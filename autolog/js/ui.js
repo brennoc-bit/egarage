@@ -146,7 +146,7 @@ const UI = (() => {
    * tipo: text | number | dinheiro | date | select | textarea
    * meio: true → ocupa metade da linha (pareado com o campo seguinte marcado igual)
    */
-  function sheet({ titulo, sub, campos = [], acao = 'Salvar', destrutivo, texto, onSubmit }) {
+  function sheet({ titulo, sub, campos = [], acao = 'Salvar', destrutivo, texto, topo, onSubmit }) {
     fecharSheet();
     const corpo = h('div', { class: 'sheet' });
     corpo.append(h('h3', null, titulo));
@@ -154,6 +154,26 @@ const UI = (() => {
     if (texto) corpo.append(h('p', { style: { fontSize: 14, marginTop: -8 } }, texto));
 
     const refs = {};
+
+    /* Permite que um bloco no topo (ex.: leitura por foto) preencha os campos
+       depois que eles existirem. Valor nulo ou vazio não sobrescreve. */
+    const api = {
+      preencher(vals) {
+        let n = 0;
+        for (const [nome, valor] of Object.entries(vals || {})) {
+          const r = refs[nome];
+          if (!r || valor == null || valor === '') continue;
+          r.input.value = valor;
+          r.caixa.classList.remove('err');
+          r.caixa.classList.add('preenchido');
+          n++;
+        }
+        return n;
+      },
+      fechar: fecharSheet,
+    };
+    if (topo) corpo.append(typeof topo === 'function' ? topo(api) : topo);
+
     let par = null;
     for (const c of campos) {
       const ref = campo(c);
@@ -194,7 +214,60 @@ const UI = (() => {
 
     const primeiro = corpo.querySelector('input, select, textarea');
     if (primeiro && primeiro.type !== 'date') setTimeout(() => primeiro.focus(), 60);
-    return backdrop;
+    return api;
+  }
+
+  /* ── Leitura por foto (Gemini) ──────────────────────────────────────── */
+
+  const SVG_CAMERA = `
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.1-1.8a1 1 0 0 1 .86-.5h6.68a1 1 0 0 1 .86.5L17.3 7h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/>
+      <circle cx="12" cy="13" r="3.4"/>
+    </svg>`;
+
+  /**
+   * Botão que fotografa, manda para o Gemini e preenche a folha.
+   * Nunca salva sozinho: o objetivo é poupar digitação, não confiar cego numa
+   * leitura de OCR sobre dinheiro e quilometragem.
+   */
+  function botaoLeitura({ tipo, api, mapear, rotulo }) {
+    if (!Gemini.configurado()) {
+      return h('button', {
+        class: 'ler-foto desligado', type: 'button',
+        onClick: () => { fecharSheet(); Acoes.configurarGemini(); },
+      }, h('span', { class: 'ler-ic', html: SVG_CAMERA }),
+        h('span', null, 'Ativar leitura por foto'));
+    }
+
+    const label = h('span', null, rotulo || 'Ler por foto');
+    const botao = h('button', { class: 'ler-foto', type: 'button' },
+      h('span', { class: 'ler-ic', html: SVG_CAMERA }), label);
+
+    botao.addEventListener('click', () => {
+      UI.pedirFoto(async (dataUrl) => {
+        botao.disabled = true;
+        botao.classList.add('lendo');
+        label.textContent = 'Lendo a foto…';
+        try {
+          const dados = await Gemini.lerFoto(dataUrl, tipo);
+          const n = api.preencher(mapear(dados));
+          if (n) {
+            toast(dados.observacao ? `${n} campo(s) · ${dados.observacao}` : `${n} campo(s) preenchido(s) · confira`);
+          } else {
+            toast(dados.observacao || 'Nada legível na foto');
+          }
+        } catch (e) {
+          toast(e.message || 'Falha ao ler a foto');
+        } finally {
+          botao.disabled = false;
+          botao.classList.remove('lendo');
+          label.textContent = rotulo || 'Ler por foto';
+        }
+      }, { larguraMax: 1400, qualidade: 0.85 }); // mais nitidez: a foto só trafega
+    });
+
+    return botao;
   }
 
   const confirmar = ({ titulo, texto, acao = 'Confirmar', onOk }) =>
@@ -202,8 +275,12 @@ const UI = (() => {
 
   /* ── Foto do veículo ────────────────────────────────────────────────── */
 
-  // Redimensiona no cliente: localStorage não aguenta a foto original.
-  function pedirFoto(onPronto) {
+  /**
+   * Redimensiona no cliente: localStorage não aguenta a foto original.
+   * Para leitura por IA vale usar mais resolução (`larguraMax` maior), porque
+   * a imagem só trafega — não fica guardada.
+   */
+  function pedirFoto(onPronto, { larguraMax = 900, qualidade = 0.72 } = {}) {
     const input = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
@@ -212,13 +289,12 @@ const UI = (() => {
       fr.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const larguraMax = 900;
           const escala = Math.min(1, larguraMax / img.width);
           const cv = h('canvas');
           cv.width = Math.round(img.width * escala);
           cv.height = Math.round(img.height * escala);
           cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-          onPronto(cv.toDataURL('image/jpeg', 0.72));
+          onPronto(cv.toDataURL('image/jpeg', qualidade));
         };
         img.onerror = () => toast('Não foi possível ler a imagem');
         img.src = fr.result;
@@ -243,5 +319,6 @@ const UI = (() => {
   return {
     dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras, fab,
     campo, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
+    botaoLeitura,
   };
 })();

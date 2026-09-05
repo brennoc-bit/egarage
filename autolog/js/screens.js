@@ -930,6 +930,17 @@ Screens.perfil = () => {
         ? h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir')
         : null)),
 
+    UI.sectHd('Leitura por foto'),
+    UI.row(UI.kv({
+      k: 'Google Gemini',
+      v: Gemini.configurado() ? 'Ativa' : 'Desligada',
+      cor: Gemini.configurado() ? COR.ok : null,
+      sub: Gemini.configurado() ? Gemini.modelo() : 'toque para configurar',
+      onClick: () => Acoes.configurarGemini(),
+    })),
+    h('div', { class: 'note' },
+      'Com a chave configurada, as telas de abastecimento, odômetro e lançamento ganham um botão para fotografar a nota, a bomba ou o painel — o Gemini lê e preenche os campos, e você confere antes de salvar. A chave fica só neste aparelho e não entra no arquivo de exportação.'),
+
     UI.sectHd('Dados'),
     h('div', { class: 'note' },
       'Tudo fica salvo apenas neste navegador (localStorage). Exporte um arquivo .json para levar a garagem para outro aparelho.'),

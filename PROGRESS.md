@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-08-23 — fim do ciclo de testes e ajustes
+**Última atualização:** 2026-08-24 — leitura de foto pelo Gemini
 
 ---
 
@@ -137,6 +137,34 @@ Campo vazio não aparece na tela. **Não há campo de CPF nem documento pessoal*
 de propósito: não é necessário para o app ser útil e sujaria o arquivo de
 exportação com dado sensível.
 
+### Leitura por foto com o Gemini ✅ código pronto, falta chave real
+
+As telas de abastecimento, odômetro e lançamento ganharam um botão para
+fotografar a nota, o display da bomba ou o painel: a imagem vai para o Gemini,
+que devolve os campos separados, e o app **preenche o formulário para a pessoa
+conferir**. Nada é salvo automaticamente — OCR erra, e aqui é dinheiro e
+quilometragem. Campo preenchido pela IA fica destacado.
+
+Arquivo novo: `js/gemini.js` (prompts por tipo, extração do JSON, tradução dos
+erros da API). Liga em Perfil → Leitura por foto.
+
+**A chave da API fica só no aparelho** (`localStorage`, entrada
+`autolog-gemini-chave`), digitada dentro do app. Motivo: o repositório é
+público e todo o JS é baixado pelo navegador — chave no código seria chave
+vazada, cobrada na conta do dono. Verificado que ela **não entra no arquivo de
+exportação** da garagem.
+
+**Limite honesto:** isso serve para uso pessoal, com a pessoa usando a própria
+chave. Não serve para app com vários usuários — ninguém cola chave de API. A
+saída, quando for a hora, é um proxy serverless guardando a chave; `gemini.js`
+já está isolado para que só `endpoint()` e `cabecalhos()` mudem.
+
+**O que foi verificado:** que a API aceita chamada direta do navegador (o CORS
+passa — com chave falsa a resposta é 400 "chave inválida", não erro de rede);
+que os três mapeamentos preenchem os campos certos; que os erros viram mensagem
+legível; que a chave não vaza na exportação. **O que falta:** uma leitura real,
+com chave de verdade e foto de verdade — só o dono da chave pode fazer.
+
 ### Ajustes de interface ✅
 
 - **Fotos saem coloridas.** O canvas previa `.grayscale`; o veículo é do dono,
@@ -263,6 +291,8 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 
 ### Grandes
 
+- **Proxy para a leitura por foto**, quando o app tiver outros usuários: função
+  serverless com a chave do Gemini, para ninguém precisar colar chave própria.
 - **Anexar apólice e CRLV.** Medido em 2026-08-23: `localStorage` tem teto de
   ~5 MB por origem, a garagem inteira ocupa 19 KB e cada foto do app custa de
   80 a 176 KB — folgado para fotos de veículo, mas um PDF de apólice (1 a 5 MB,
