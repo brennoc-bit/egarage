@@ -756,22 +756,29 @@ const Store = (() => {
        valores. Quem já pagou duas parcelas não quer perder isso. */
     if (est) {
       const atual = v.docs.find((d) => d.id === 'ipva');
+      const cal = Regiao.vencimento('ipva', v.placa);
       if (podeEscrever(atual)) {
         if (atual && atual.parcelas && atual.parcelas.length) {
           const n = atual.parcelas.length;
-          atual.parcelas = atual.parcelas.map((p) => Object.assign({}, p, {
+          // Datas só são mexidas se nenhuma parcela foi paga: parcela paga tem
+          // data real, e reescrever isso apagaria o histórico da pessoa.
+          const intocado = atual.parcelas.every((p) => !p.pago);
+          atual.parcelas = atual.parcelas.map((p, i) => Object.assign({}, p, {
             valor: Math.round((est.valor / n) * 100) / 100,
+            venc: (cal && intocado) ? toISO(addMonths(fromISO(cal.data), i)) : p.venc,
           }));
           atual.estimado = true;
           atual.sub = `estimado · ${est.aliquota}% em ${est.estado}`;
         } else {
-          const base = new Date();
           v.docs.unshift({
             id: 'ipva', tag: 'IPVA',
             titulo: `IPVA ${est.vigencia} · cota única`,
             sub: `estimado · ${est.aliquota}% em ${est.estado}`,
             tipo: 'parcelas', estimado: true,
-            parcelas: [{ n: 1, valor: Math.round(est.valor * 100) / 100, venc: toISO(base), pago: false }],
+            parcelas: [{
+              n: 1, valor: Math.round(est.valor * 100) / 100,
+              venc: cal ? cal.data : today(), pago: false,
+            }],
           });
         }
         mudou.push(`IPVA ${brl(est.valor)}`);
@@ -780,17 +787,19 @@ const Store = (() => {
 
     if (lic) {
       const atual = v.docs.find((d) => d.id === 'licenciamento');
+      const cal = Regiao.vencimento('licenciamento', v.placa);
       if (podeEscrever(atual)) {
         if (atual) {
           atual.valor = lic.valor;
           atual.estimado = true;
           atual.sub = `estimado · taxa de ${lic.vigencia} em ${lic.estado}`;
+          if (cal && !atual.pago) atual.venc = cal.data;
         } else {
           v.docs.push({
             id: 'licenciamento', tag: 'LICENC.', titulo: 'Licenciamento anual',
             sub: `estimado · taxa de ${lic.vigencia} em ${lic.estado}`,
             tipo: 'unico', valor: lic.valor, estimado: true,
-            venc: toISO(addMonths(new Date(), 6)), pago: false,
+            venc: cal ? cal.data : toISO(addMonths(new Date(), 6)), pago: false,
           });
         }
         mudou.push(`licenciamento ${brl(lic.valor)}`);

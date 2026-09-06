@@ -240,6 +240,57 @@ const Regiao = (() => {
     return { valor, uf: r.uf, estado: r.nome, vigencia: r.vigencia, sefaz: r.sefaz, obs: r.obs || '' };
   }
 
+  /* ── Vencimento pelo final da placa ─────────────────────────────────── */
+
+  /** Último dígito da placa. "ABC1D23" → "3". Sem placa, não há calendário. */
+  function finalDaPlaca(placa) {
+    const digitos = String(placa || '').replace(/\D/g, '');
+    return digitos ? digitos[digitos.length - 1] : null;
+  }
+
+  const temCalendario = (uf, tipo) => {
+    const c = ipva && ipva.calendario && ipva.calendario[uf];
+    return !!(c && c[tipo]);
+  };
+
+  /**
+   * Próximo vencimento de IPVA ou licenciamento pelo final da placa.
+   *
+   * Duas ressalvas que a tela precisa repassar:
+   *
+   * 1. Só existem no arquivo os estados cujo calendário deu para confirmar.
+   *    Para os demais isto devolve `null` — e não inventar data de imposto é
+   *    melhor que acertar por sorte.
+   * 2. O calendário é publicado ano a ano e as datas mudam. Quando a data do
+   *    ano vigente já passou, projetamos o mesmo dia no ano seguinte e
+   *    marcamos `projetado` — é previsão para planejar, não a data oficial,
+   *    que só sai quando o estado publicar.
+   */
+  function vencimento(tipo, placa, uf) {
+    const sigla = uf || (local() && local().uf);
+    const cal = ipva && ipva.calendario;
+    const doEstado = cal && sigla && cal[sigla];
+    if (!doEstado || !doEstado[tipo]) return null;
+
+    const digito = finalDaPlaca(placa);
+    if (!digito) return null;
+
+    const md = doEstado[tipo][digito];
+    if (!md) return null;
+
+    const anoAtual = new Date().getFullYear();
+    let data = `${anoAtual}-${md}`;
+    if (daysUntil(data) < 0) data = `${anoAtual + 1}-${md}`;
+
+    return {
+      data,
+      digito,
+      vigencia: cal.vigencia,
+      projetado: Number(data.slice(0, 4)) !== cal.vigencia,
+      conferir: !!doEstado[tipo === 'ipva' ? 'conferirIpva' : 'conferirLicenciamento'],
+    };
+  }
+
   const pronto = () => !!(combustiveis || ipva);
 
   return {
@@ -248,5 +299,6 @@ const Regiao = (() => {
     porGPS, porCEP,
     preco, descricaoDoNivel, fonteCombustivel,
     regra, estimarIPVA, licenciamento,
+    vencimento, finalDaPlaca, temCalendario,
   };
 })();

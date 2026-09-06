@@ -5,8 +5,46 @@
   "fontes": [
     "https://www.serasa.com.br/blog/confira-o-ipva/",
     "https://www.zuldigital.com.br/blog/ipva-2026-aliquota-valor-estado/",
-    "https://gringo.com.vc/blog/taxa-de-licenciamento/"
+    "https://gringo.com.vc/blog/taxa-de-licenciamento/",
+    "https://exame.com/brasil/ipva-2026-confira-o-calendario-de-vencimento-de-cada-estado-do-brasil/",
+    "https://meutudo.com.br/blog/tabelas/calendario-vencimentos-ipva/",
+    "https://www.despachantedok.com.br/blog/licenciamento/vencimento-de-licenciamento/"
   ],
+  "_leiaCalendario": "Vencimento por final de placa. Cada estado publica o seu, todo ano, e a data muda de um ano para o outro. Só entram aqui os estados cujo calendário eu consegui confirmar; para os demais o app diz que não sabe e manda para a Sefaz — melhor que inventar data de imposto. Formato MM-DD. Onde a fonte dava só o mês, usei o último dia dele. Ao revisar em janeiro, troque 'vigencia' junto.",
+  "calendario": {
+    "vigencia": 2026,
+    "SP": {
+      "ipva": { "1": "01-12", "2": "01-13", "3": "01-14", "4": "01-15", "5": "01-16", "6": "01-19", "7": "01-20", "8": "01-21", "9": "01-22", "0": "01-23" },
+      "licenciamento": { "1": "07-31", "2": "07-31", "3": "08-31", "4": "08-31", "5": "09-30", "6": "09-30", "7": "10-31", "8": "10-31", "9": "11-30", "0": "12-31" }
+    },
+    "RJ": {
+      "ipva": { "0": "01-21", "1": "01-22", "2": "01-23", "3": "01-26", "4": "01-27", "5": "01-28", "6": "01-29", "7": "01-30", "8": "02-02", "9": "02-03" },
+      "licenciamento": { "0": "05-31", "1": "05-31", "2": "05-31", "3": "06-30", "4": "06-30", "5": "06-30", "6": "07-31", "7": "07-31", "8": "07-31", "9": "07-31" },
+      "conferirLicenciamento": true
+    },
+    "MG": {
+      "ipva": { "1": "02-09", "2": "02-09", "3": "02-10", "4": "02-10", "5": "02-11", "6": "02-11", "7": "02-12", "8": "02-12", "9": "02-13", "0": "02-13" },
+      "licenciamento": { "1": "03-31", "2": "03-31", "3": "03-31", "4": "03-31", "5": "03-31", "6": "03-31", "7": "03-31", "8": "03-31", "9": "03-31", "0": "03-31" }
+    },
+    "PR": {
+      "ipva": { "1": "01-09", "2": "01-09", "3": "01-12", "4": "01-12", "5": "01-13", "6": "01-13", "7": "01-14", "8": "01-14", "9": "01-15", "0": "01-15" },
+      "licenciamento": { "1": "08-31", "2": "08-31", "3": "09-30", "4": "09-30", "5": "09-30", "6": "10-31", "7": "10-31", "8": "10-31", "9": "11-30", "0": "11-30" }
+    },
+    "SC": {
+      "ipva": { "1": "01-31", "2": "02-28", "3": "03-31", "4": "04-30", "5": "05-31", "6": "06-30", "7": "07-31", "8": "08-31", "9": "09-30", "0": "10-31" },
+      "licenciamento": { "1": "03-31", "2": "04-30", "3": "05-31", "4": "06-30", "5": "07-31", "6": "08-31", "7": "09-30", "8": "10-31", "9": "11-30", "0": "12-31" }
+    },
+    "RS": {
+      "licenciamento": { "1": "04-30", "2": "04-30", "3": "04-30", "4": "04-30", "5": "04-30", "6": "04-30", "7": "04-30", "8": "04-30", "9": "04-30", "0": "04-30" }
+    },
+    "BA": {
+      "licenciamento": { "1": "07-30", "2": "07-31", "3": "08-28", "4": "08-29", "5": "09-29", "6": "09-30", "7": "10-30", "8": "10-31", "9": "11-27", "0": "11-28" }
+    },
+    "AL": {
+      "ipva": { "1": "02-27", "2": "02-27", "3": "03-31", "4": "03-31", "5": "04-30", "6": "04-30", "7": "05-29", "8": "05-29", "9": "06-30", "0": "06-30" },
+      "conferirIpva": true
+    }
+  },
   "estados": {
     "AC": { "nome": "Acre", "carro": 2.0, "moto": 1.0, "licenciamento": 194.14, "sefaz": "https://www.sefaz.ac.gov.br/" },
     "AL": { "nome": "Alagoas", "carro": 3.0, "moto": 2.0, "licenciamento": 155.41, "sefaz": "https://www.sefaz.al.gov.br/", "conferir": true },
@@ -20,7 +58,7 @@
     "MA": { "nome": "Maranhão", "carro": 2.5, "moto": 1.0, "licenciamento": 95.87, "sefaz": "https://sistemas1.sefaz.ma.gov.br/", "conferir": true },
     "MT": { "nome": "Mato Grosso", "carro": 3.0, "moto": 2.75, "licenciamento": 197.79, "sefaz": "https://www.sefaz.mt.gov.br/", "conferir": true },
     "MS": { "nome": "Mato Grosso do Sul", "carro": 3.5, "moto": 2.0, "licenciamento": 240.50, "sefaz": "https://www.sefaz.ms.gov.br/", "conferir": true },
-    "MG": { "nome": "Minas Gerais", "carro": 4.0, "moto": 2.0, "licenciamento": 39.36, "sefaz": "https://www.fazenda.mg.gov.br/", "obs": "4% para gasolina e flex; alíquota menor para álcool, GNV e elétrico." },
+    "MG": { "nome": "Minas Gerais", "carro": 4.0, "moto": 2.0, "licenciamento": 39.36, "sefaz": "https://www.fazenda.mg.gov.br/", "conferir": true, "obs": "4% para gasolina e flex; alíquota menor para álcool, GNV e elétrico." },
     "PA": { "nome": "Pará", "carro": 2.5, "moto": 1.0, "licenciamento": 214.51, "sefaz": "https://www.sefa.pa.gov.br/" },
     "PB": { "nome": "Paraíba", "carro": 2.5, "moto": 1.0, "licenciamento": 206.55, "sefaz": "https://www.sefaz.pb.gov.br/", "conferir": true },
     "PR": { "nome": "Paraná", "carro": 1.9, "moto": 1.9, "licenciamento": 94.65, "sefaz": "https://www.fazenda.pr.gov.br/" },

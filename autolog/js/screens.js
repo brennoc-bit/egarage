@@ -746,6 +746,17 @@ function estimarNoRascunho(r) {
       r.ipvaValor = v; r._ipvaAuto = v;
     }
   }
+
+  // Datas pelo final da placa, quando o estado tem calendário confirmado.
+  const venc = (tipo, campo, flag) => {
+    const x = Regiao.vencimento(tipo, r.placa);
+    if (!x) return;
+    if (!String(r[campo] || '').trim() || r[campo] === r[flag]) {
+      r[campo] = x.data; r[flag] = x.data;
+    }
+  };
+  venc('ipva', 'ipvaVenc', '_ipvaVencAuto');
+  venc('licenciamento', 'licVenc', '_licVencAuto');
 }
 
 /* Diz de onde veio o número que já está no campo — ou o que falta para ele
@@ -766,7 +777,73 @@ function avisoEstimativa(r) {
 
   return h('div', { class: 'hint', style: { marginBottom: 14 } },
     partes.length ? h('span', null, 'Preenchido pela sua região: ', partes.join(' · '), '. ') : null,
-    'É estimativa — a guia real pode ter desconto à vista ou isenção. Digite por cima quando souber o valor certo.');
+    'É estimativa — a guia real pode ter desconto à vista ou isenção. Digite por cima quando souber o valor certo.',
+    avisoVencimento(r, onde));
+}
+
+/* Vencimentos pelo final da placa, na tela de documentos. */
+function linhaVencimentos(v, onde) {
+  const digito = Regiao.finalDaPlaca(v.placa);
+  const temAlgum = Regiao.temCalendario(onde.uf, 'ipva') || Regiao.temCalendario(onde.uf, 'licenciamento');
+
+  if (!temAlgum) {
+    return h('div', { class: 'note' },
+      `${onde.uf} escalona o vencimento por final de placa, mas esse calendário ainda não está no app. As datas dos documentos ficam por sua conta.`);
+  }
+  if (!digito) {
+    return h('div', { class: 'note' },
+      'Cadastre a placa do veículo e o app calcula os vencimentos pelo final dela.');
+  }
+
+  const vIpva = Regiao.vencimento('ipva', v.placa, onde.uf);
+  const vLic = Regiao.vencimento('licenciamento', v.placa, onde.uf);
+  const algum = vIpva || vLic;
+
+  return h('div', null,
+    UI.row(
+      UI.kv({
+        k: 'IPVA vence', v: vIpva ? fmtData(vIpva.data) : '—',
+        sub: vIpva ? `placa final ${digito}` : 'calendário não cadastrado',
+      }),
+      UI.kv({
+        k: 'Licenc. vence', v: vLic ? fmtData(vLic.data) : '—',
+        sub: vLic ? `placa final ${digito}` : 'calendário não cadastrado',
+      })),
+    algum && algum.projetado ? h('div', { class: 'note' },
+      `Datas projetadas a partir do calendário de ${algum.vigencia}: o do ano que vem só sai quando ${onde.uf} publicar, e costuma mudar alguns dias.`) : null,
+    (vIpva && vIpva.conferir) || (vLic && vLic.conferir) ? h('div', { class: 'note' },
+      'Esse calendário veio de uma fonte só — confirme na Sefaz.') : null);
+}
+
+/* As datas vêm do calendário do estado por final de placa — e esse calendário
+   nem sempre existe no app, nem vale para sempre. Dizer qual dos casos é. */
+function avisoVencimento(r, onde) {
+  const temIpva = Regiao.temCalendario(onde.uf, 'ipva');
+  const temLic = Regiao.temCalendario(onde.uf, 'licenciamento');
+  if (!temIpva && !temLic) {
+    return h('div', { style: { marginTop: 8 } },
+      `${onde.uf} publica o vencimento por final de placa, mas esse calendário ainda não está no app — as datas ficam com você.`);
+  }
+
+  const digito = Regiao.finalDaPlaca(r.placa);
+  if (!digito) {
+    return h('div', { style: { marginTop: 8 } },
+      'Preencha a placa e as datas de vencimento se ajustam sozinhas ao final dela.');
+  }
+
+  const vIpva = Regiao.vencimento('ipva', r.placa, onde.uf);
+  const vLic = Regiao.vencimento('licenciamento', r.placa, onde.uf);
+  const quais = [];
+  if (vIpva) quais.push(`IPVA em ${fmtData(vIpva.data)}`);
+  if (vLic) quais.push(`licenciamento em ${fmtData(vLic.data)}`);
+
+  const projetado = (vIpva && vIpva.projetado) || (vLic && vLic.projetado);
+  const conferir = (vIpva && vIpva.conferir) || (vLic && vLic.conferir);
+
+  return h('div', { style: { marginTop: 8 } },
+    h('strong', null, `Placa final ${digito}: `), quais.join(' · '), '. ',
+    projetado ? `Previsão pelo calendário de ${(vIpva || vLic).vigencia} — o do próximo ano só sai quando ${onde.uf} publicar. ` : '',
+    conferir ? 'Esse calendário veio de uma fonte só; confirme na Sefaz. ' : '');
 }
 
 /* Oferece a média da ANP para o combustível escolhido, sem impor:/* Oferece a média da ANP para o combustível escolhido, sem impor: o preço que
@@ -873,6 +950,8 @@ function blocoImpostos(v) {
       k: 'Licenciamento', v: lic ? brl(lic.valor) : '—',
       sub: `taxa anual de ${regra.vigencia} · ${regra.nome}`,
     })),
+
+    linhaVencimentos(v, onde),
 
     !v.fipe ? h('div', { class: 'note' },
       'Sem o valor FIPE não dá para estimar o IPVA — a conta é o valor do veículo vezes a alíquota. Toque em "Valor FIPE" para consultar.') : null,
@@ -1103,6 +1182,11 @@ Screens.veiculo = (atual) => {
   // Região e valor FIPE preenchem IPVA e licenciamento antes de desenhar.
   estimarNoRascunho(r);
 
+  /* O aviso muda conforme placa e valor FIPE. Redesenhar só esta caixa evita
+     refazer o formulário inteiro e roubar o foco de quem está digitando. */
+  const avisoBox = h('div');
+  const atualizarAviso = () => { clear(avisoBox).append(avisoEstimativa(r)); };
+
   const grupo = (titulo, ...campos) => h('div', null,
     UI.sectHd(titulo),
     h('div', { class: 'bloco' }, campos));
@@ -1114,9 +1198,12 @@ Screens.veiculo = (atual) => {
     ref.input.addEventListener('change', () => {
       r[def.name] = ref.input.value;
       // Mexer no valor FIPE muda o IPVA estimado — atualiza sem esperar redesenho.
-      if (def.name === 'fipe') {
+      if (def.name === 'fipe' || def.name === 'placa') {
         estimarNoRascunho(r);
         if (refs.ipvaValor) refs.ipvaValor.input.value = r.ipvaValor || '';
+        if (refs.ipvaVenc) refs.ipvaVenc.input.value = r.ipvaVenc || '';
+        if (refs.licVenc) refs.licVenc.input.value = r.licVenc || '';
+        atualizarAviso();
       }
     });
     refs[def.name] = ref;
@@ -1174,6 +1261,8 @@ Screens.veiculo = (atual) => {
     : h('div', { class: 'vazia' },
         h('span', { class: 'mais' }, '+'),
         h('span', null, 'foto do veículo')));
+
+  atualizarAviso();
 
   const corpo = h('div', { class: 'form-veiculo' },
     slotFoto,
@@ -1265,7 +1354,7 @@ Screens.veiculo = (atual) => {
     // — IPVA e licenciamento: calculados pela região, não chutados —
     UI.sectHd('IPVA e licenciamento'),
     h('div', { class: 'bloco' },
-      avisoEstimativa(r),
+      avisoBox,
       dupla({ name: 'ipvaValor', label: 'IPVA · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
             { name: 'ipvaParcelas', label: 'Em quantas parcelas', tipo: 'number', placeholder: '1' }),
       campo({ name: 'ipvaVenc', label: 'Vencimento da 1ª parcela', tipo: 'date' }),

@@ -255,6 +255,28 @@ Isso não contradiz a regra de **não inventar valor**. Chute era escrever
 "IPVA: R$ 1.200" sem base nenhuma. Aqui é conta: valor FIPE vezes a alíquota do
 estado, e a taxa que o Detran publicou.
 
+### Vencimento pelo final da placa — com um buraco declarado
+
+O app lê o último dígito da placa e preenche as datas de IPVA e licenciamento.
+O calendário mora em `dados/ipva.json`, no bloco `calendario`.
+
+**Ele não cobre os 27 estados.** Cada um publica o seu todo ano, e não encontrei
+fonte confiável para todos. Estão dentro: **SP, RJ, MG, PR, SC** (IPVA e
+licenciamento), **AL** (IPVA) e **RS, BA** (licenciamento). Nos outros, a tela
+diz que o calendário não está no app e deixa a data com o usuário — inventar
+data de imposto seria pior que admitir o buraco.
+
+Duas ressalvas que a tela repassa em vez de esconder:
+
+- **Projeção.** Quando a data do ano vigente já passou, o app repete o mesmo dia
+  no ano seguinte e avisa que é previsão. O calendário verdadeiro só sai quando
+  o estado publicar, e costuma andar alguns dias.
+- **Fonte única.** RJ (licenciamento) e AL (IPVA) vieram de uma fonte só e levam
+  aviso extra para conferir na Sefaz.
+
+Datas só são reescritas em documento sem nenhuma parcela paga. Parcela paga tem
+data real; sobrescrever apagaria o histórico de quem já pagou.
+
 ### O aviso que a tela nunca esconde
 
 O IPVA de um ano é calculado sobre a tabela FIPE do **ano anterior**, e ainda

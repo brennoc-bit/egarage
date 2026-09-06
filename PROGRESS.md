@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — a estimativa da região agora preenche a ficha do veículo, não só informa
+**Última atualização:** 2026-09-05 — vencimento pelo final da placa (8 estados) e estimativa preenchendo a ficha
 
 ---
 
@@ -187,6 +187,39 @@ digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado*
 Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
+
+### Vencimento pelo final da placa ⚠️ só 8 estados
+
+`dados/ipva.json` ganhou um bloco `calendario` com o vencimento por final de
+placa. O app lê o último dígito da placa e preenche as datas de IPVA e
+licenciamento sozinho.
+
+**Cobertura parcial, e de propósito.** Cada estado publica o seu calendário todo
+ano, e não achei fonte confiável para os 27. Entraram os que deu para confirmar:
+
+| | IPVA | Licenciamento |
+| --- | --- | --- |
+| SP, RJ, MG, PR, SC | ✅ | ✅ |
+| AL | ✅ (fonte única) | — |
+| RS, BA | — | ✅ |
+| Outros 19 | — | — |
+
+Nos estados de fora, a tela diz que o calendário não está no app e devolve a
+data para o usuário. Inventar data de imposto seria pior que admitir o buraco.
+
+**Duas datas de validade, ditas na tela:**
+- Quando a data de 2026 já passou, o app projeta o mesmo dia em 2027 e avisa
+  que é previsão — o calendário real só sai quando o estado publicar.
+- RJ (licenciamento) e AL (IPVA) vieram de fonte única e levam aviso extra.
+
+Datas só são reescritas em documento sem nenhuma parcela paga: parcela paga tem
+data real, e sobrescrever apagaria o histórico.
+
+Verificado: SP final 5 → IPVA 16/01/2027 e licenciamento 30/09/2026; SP final 0
+→ licenciamento 31/12/2026 (sem projeção, ainda no futuro); BA → só
+licenciamento; GO → mensagem de calendário ausente; sem placa → pede a placa.
+O aviso do formulário se redesenha sozinho ao digitar placa ou valor FIPE, sem
+refazer o formulário e roubar o foco.
 
 Verificado no navegador: queda de nível de preço (Curitiba → município;
 município inexistente no PR → média do estado), CEP válido e inválido, GPS
