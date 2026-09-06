@@ -483,6 +483,38 @@ const Acoes = {
     });
   },
 
+  /* — estimativas da região viram dados do veículo — */
+
+  aplicarEstimativa(v) {
+    const previa = Store.previaEstimativa(v);
+    if (!previa || (!previa.ipva && !previa.licenciamento)) {
+      UI.toast('Informe sua região no Perfil primeiro');
+      return;
+    }
+    if (!previa.ipva && !v.fipe) {
+      UI.toast('Consulte o valor FIPE para estimar o IPVA');
+    }
+
+    const linhas = [];
+    if (previa.ipva) linhas.push(`IPVA ${brl(previa.ipva.valor)} (${previa.ipva.aliquota}% de ${brl0(v.fipe)})`);
+    if (previa.licenciamento) linhas.push(`Licenciamento ${brl(previa.licenciamento.valor)}`);
+    if (previa.preco) linhas.push(`Litro a ${brl(previa.preco.valor)}`);
+
+    UI.sheet({
+      titulo: 'Preencher com a estimativa',
+      sub: linhas.join(' · '),
+      texto: 'Os valores entram na ficha marcados como estimativa. Parcelas já pagas e datas '
+        + 'de vencimento continuam como estão — só os valores mudam. Você pode digitar por cima depois.',
+      campos: [],
+      acao: 'Preencher',
+      onSubmit: () => {
+        const r = Store.aplicarEstimativa(v.id, true);
+        App.render();
+        UI.toast(r && r.mudou.length ? `Preenchido: ${r.mudou.join(' · ')}` : 'Nada a preencher');
+      },
+    });
+  },
+
   /* — tabela FIPE — */
 
   /* Do formulário de cadastro: preenche o campo de valor. */
@@ -562,7 +594,9 @@ const Acoes = {
         { name: 'precoComb', label: 'Preço do litro', tipo: 'dinheiro', valor: v.precoComb, obrigatorio: true, meio: true },
       ],
       onSubmit: (d) => {
-        Store.atualizarVeiculo(v.id, { consumo: d.consumo, precoComb: d.precoComb });
+        // Preço digitado à mão vira o preço da casa: a estimativa da região
+        // não sobrescreve mais, a não ser que a pessoa peça de novo.
+        Store.atualizarVeiculo(v.id, { consumo: d.consumo, precoComb: d.precoComb, precoCombManual: true });
         App.render();
         UI.toast('Consumo de referência atualizado');
       },

@@ -328,6 +328,8 @@ Screens.docs = (v) => {
         h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-.01em', flex: 1 } }, s.titulo),
         UI.mono(s.valorTexto, { fontSize: 13, fontWeight: 600 })),
       h('div', { style: { fontSize: 11, color: 'var(--muted)', marginTop: 6 } }, s.sub),
+      s.doc.estimado ? h('div', { style: { fontSize: 11, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' } },
+        'Valor estimado pela sua região — confirme na guia oficial.') : null,
       h('div', { style: { marginTop: 12 } }, UI.meter(s.progresso, s.cor)),
       s.acao ? h('div', { style: { marginTop: 12 } },
         h('button', {
@@ -725,7 +727,49 @@ Screens['seguro-editar'] = (v) => {
   return { kicker: 'Editando', titulo: 'Dados do seguro', corpo, voltar: 'seguro' };
 };
 
-/* Oferece a média da ANP para o combustível escolhido, sem impor: o preço que
+/* Preenche IPVA e licenciamento no rascunho a partir da região e do valor
+   FIPE. Só toca em campo vazio ou em campo que ainda tem o valor que a
+   estimativa anterior pôs — o que a pessoa digitar nunca é sobrescrito. */
+function estimarNoRascunho(r) {
+  const lic = Regiao.licenciamento(r.tipo);
+  if (lic) {
+    const v = num(lic.valor, 2);
+    if (!String(r.licValor || '').trim() || r.licValor === r._licAuto) {
+      r.licValor = v; r._licAuto = v;
+    }
+  }
+
+  const est = Regiao.estimarIPVA(r.tipo, parseNum(r.fipe));
+  if (est) {
+    const v = num(est.valor, 2);
+    if (!String(r.ipvaValor || '').trim() || r.ipvaValor === r._ipvaAuto) {
+      r.ipvaValor = v; r._ipvaAuto = v;
+    }
+  }
+}
+
+/* Diz de onde veio o número que já está no campo — ou o que falta para ele
+   aparecer sozinho. */
+function avisoEstimativa(r) {
+  const onde = Regiao.local();
+  if (!onde) {
+    return h('div', { class: 'hint', style: { marginBottom: 14 } },
+      'Informe sua região no Perfil e o app preenche estes valores sozinho, pela alíquota do seu estado.');
+  }
+
+  const est = Regiao.estimarIPVA(r.tipo, parseNum(r.fipe));
+  const lic = Regiao.licenciamento(r.tipo);
+  const partes = [];
+  if (est) partes.push(`IPVA = ${brl0(parseNum(r.fipe))} × ${est.aliquota}%`);
+  else if (lic) partes.push('para o IPVA falta o valor FIPE — consulte acima');
+  if (lic) partes.push(`licenciamento de ${lic.vigencia} em ${lic.estado}`);
+
+  return h('div', { class: 'hint', style: { marginBottom: 14 } },
+    partes.length ? h('span', null, 'Preenchido pela sua região: ', partes.join(' · '), '. ') : null,
+    'É estimativa — a guia real pode ter desconto à vista ou isenção. Digite por cima quando souber o valor certo.');
+}
+
+/* Oferece a média da ANP para o combustível escolhido, sem impor:/* Oferece a média da ANP para o combustível escolhido, sem impor: o preço que
    a pessoa paga de fato é melhor que qualquer média. */
 function mediaDaRegiao(r, refs) {
   const p = Regiao.preco(r.combustivel || 'Gasolina');
@@ -844,8 +888,12 @@ function blocoImpostos(v) {
       `O IPVA de um ano usa a tabela FIPE do ano anterior, e ainda há desconto à vista, isenção por idade do veículo e alíquota menor para álcool e GNV em vários estados. O valor oficial é o da Sefaz.`),
 
     UI.cta([
-      { label: `Sefaz de ${regra.nome}`, icone: '↗', onClick: () => window.open(regra.sefaz, '_blank', 'noopener') },
-    ]));
+      est || lic ? {
+        label: 'Preencher a ficha', icone: '↧', pri: true,
+        onClick: () => Acoes.aplicarEstimativa(v),
+      } : null,
+      { label: `Sefaz do ${regra.uf}`, icone: '↗', onClick: () => window.open(regra.sefaz, '_blank', 'noopener') },
+    ].filter(Boolean)));
 }
 
 /* Avisos de vencimento: o que dá para fazer sem servidor, dito com clareza. */
@@ -1052,6 +1100,9 @@ Screens.veiculo = (atual) => {
   const r = App.rascunho(base);
   const refs = {};
 
+  // Região e valor FIPE preenchem IPVA e licenciamento antes de desenhar.
+  estimarNoRascunho(r);
+
   const grupo = (titulo, ...campos) => h('div', null,
     UI.sectHd(titulo),
     h('div', { class: 'bloco' }, campos));
@@ -1060,7 +1111,14 @@ Screens.veiculo = (atual) => {
     const cfg = Object.assign({}, def, { valor: r[def.name] != null ? r[def.name] : def.valor });
     const ref = def.sugestoes ? UI.campoSugerido(cfg) : UI.campo(cfg);
     ref.input.addEventListener('input', () => { r[def.name] = ref.input.value; erroGeral.style.display = 'none'; });
-    ref.input.addEventListener('change', () => { r[def.name] = ref.input.value; });
+    ref.input.addEventListener('change', () => {
+      r[def.name] = ref.input.value;
+      // Mexer no valor FIPE muda o IPVA estimado — atualiza sem esperar redesenho.
+      if (def.name === 'fipe') {
+        estimarNoRascunho(r);
+        if (refs.ipvaValor) refs.ipvaValor.input.value = r.ipvaValor || '';
+      }
+    });
     refs[def.name] = ref;
     return ref.caixa;
   };
@@ -1204,11 +1262,10 @@ Screens.veiculo = (atual) => {
                   h('div', { class: 'hint', style: { marginTop: -6 } },
                     'A parcela entra no custo mensal enquanto durar; a cobertura segue valendo até a data acima.')))),
 
-    // — demais despesas: só o que a pessoa informar —
+    // — IPVA e licenciamento: calculados pela região, não chutados —
     UI.sectHd('IPVA e licenciamento'),
     h('div', { class: 'bloco' },
-      h('div', { class: 'hint', style: { marginBottom: 14 } },
-        'O app não estima esses valores: eles mudam por estado e por veículo. O que você deixar em branco simplesmente não é acompanhado.'),
+      avisoEstimativa(r),
       dupla({ name: 'ipvaValor', label: 'IPVA · valor do ano', tipo: 'dinheiro', placeholder: '0,00' },
             { name: 'ipvaParcelas', label: 'Em quantas parcelas', tipo: 'number', placeholder: '1' }),
       campo({ name: 'ipvaVenc', label: 'Vencimento da 1ª parcela', tipo: 'date' }),
@@ -1252,7 +1309,13 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
     return;
   }
 
-  const dados = Object.assign({}, r, { apelido: r.apelido || r.modelo });
+  // Marca o que veio da estimativa da região, para a ficha não dizer
+  // "informado no cadastro" sobre um número que o app calculou sozinho.
+  const dados = Object.assign({}, r, {
+    apelido: r.apelido || r.modelo,
+    ipvaEstimado: !!r._ipvaAuto && r.ipvaValor === r._ipvaAuto,
+    licEstimado: !!r._licAuto && r.licValor === r._licAuto,
+  });
 
   if (editando) {
     Store.atualizarVeiculo(editando.id, {

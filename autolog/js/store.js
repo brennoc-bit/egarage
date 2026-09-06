@@ -448,7 +448,8 @@ const Store = (() => {
       docs.push({
         id: 'ipva', tag: 'IPVA',
         titulo: `IPVA ${base.getFullYear()}${n > 1 ? ` · ${n} parcelas` : ' · cota única'}`,
-        sub: 'informado no cadastro', tipo: 'parcelas', parcelas,
+        sub: d.ipvaEstimado ? 'estimado pela sua região' : 'informado no cadastro',
+        estimado: !!d.ipvaEstimado, tipo: 'parcelas', parcelas,
       });
     }
 
@@ -457,7 +458,8 @@ const Store = (() => {
       const antigo = antigos.get('licenciamento');
       docs.push({
         id: 'licenciamento', tag: 'LICENC.', titulo: 'Licenciamento anual',
-        sub: 'informado no cadastro', tipo: 'unico', valor: licValor,
+        sub: d.licEstimado ? 'estimado pela sua região' : 'informado no cadastro',
+        estimado: !!d.licEstimado, tipo: 'unico', valor: licValor,
         venc: d.licVenc || toISO(addMonths(new Date(), 6)),
         pago: antigo ? !!antigo.pago : false,
       });
@@ -723,8 +725,100 @@ const Store = (() => {
 
   const exportar = () => JSON.stringify(state, null, 2);
 
+  /* ── Estimativas da região viram dados do veículo ───────────────────── */
+
+  /**
+   * Preenche IPVA, licenciamento e preço do litro a partir da região e do
+   * valor FIPE.
+   *
+   * Isto NÃO contradiz a regra de não inventar valor. Chute era escrever
+   * "IPVA: R$ 1.200" sem base nenhuma. Aqui é conta: valor FIPE vezes a
+   * alíquota do estado, e a taxa que o Detran publicou. O que entra fica
+   * marcado como estimativa na própria ficha, e a pessoa pode sobrescrever
+   * a qualquer momento — inclusive porque a guia real vem com desconto à
+   * vista, isenção e outras regras que o app não tem como saber.
+   *
+   * `forcar` = true sobrescreve valores que a pessoa digitou; sem ele, só
+   * preenche o que está vazio ou o que a estimativa anterior tinha posto.
+   */
+  function aplicarEstimativa(id, forcar) {
+    const v = veiculo(id);
+    if (!v) return null;
+
+    const est = Regiao.estimarIPVA(v.tipo, v.fipe);
+    const lic = Regiao.licenciamento(v.tipo);
+    const preco = Regiao.preco(v.combustivel);
+    const mudou = [];
+
+    const podeEscrever = (doc) => forcar || !doc || doc.estimado;
+
+    /* IPVA: mantém o parcelamento, as datas e o que já foi pago; troca só os
+       valores. Quem já pagou duas parcelas não quer perder isso. */
+    if (est) {
+      const atual = v.docs.find((d) => d.id === 'ipva');
+      if (podeEscrever(atual)) {
+        if (atual && atual.parcelas && atual.parcelas.length) {
+          const n = atual.parcelas.length;
+          atual.parcelas = atual.parcelas.map((p) => Object.assign({}, p, {
+            valor: Math.round((est.valor / n) * 100) / 100,
+          }));
+          atual.estimado = true;
+          atual.sub = `estimado · ${est.aliquota}% em ${est.estado}`;
+        } else {
+          const base = new Date();
+          v.docs.unshift({
+            id: 'ipva', tag: 'IPVA',
+            titulo: `IPVA ${est.vigencia} · cota única`,
+            sub: `estimado · ${est.aliquota}% em ${est.estado}`,
+            tipo: 'parcelas', estimado: true,
+            parcelas: [{ n: 1, valor: Math.round(est.valor * 100) / 100, venc: toISO(base), pago: false }],
+          });
+        }
+        mudou.push(`IPVA ${brl(est.valor)}`);
+      }
+    }
+
+    if (lic) {
+      const atual = v.docs.find((d) => d.id === 'licenciamento');
+      if (podeEscrever(atual)) {
+        if (atual) {
+          atual.valor = lic.valor;
+          atual.estimado = true;
+          atual.sub = `estimado · taxa de ${lic.vigencia} em ${lic.estado}`;
+        } else {
+          v.docs.push({
+            id: 'licenciamento', tag: 'LICENC.', titulo: 'Licenciamento anual',
+            sub: `estimado · taxa de ${lic.vigencia} em ${lic.estado}`,
+            tipo: 'unico', valor: lic.valor, estimado: true,
+            venc: toISO(addMonths(new Date(), 6)), pago: false,
+          });
+        }
+        mudou.push(`licenciamento ${brl(lic.valor)}`);
+      }
+    }
+
+    if (preco && preco.valor > 0 && (forcar || !v.precoCombManual)) {
+      v.precoComb = preco.valor;
+      mudou.push(`litro a ${brl(preco.valor)}`);
+    }
+
+    if (mudou.length) salvar();
+    return { mudou, est, lic, preco };
+  }
+
+  /** O que a estimativa preencheria, sem gravar nada — para a tela avisar. */
+  function previaEstimativa(v) {
+    if (!v) return null;
+    return {
+      ipva: Regiao.estimarIPVA(v.tipo, v.fipe),
+      licenciamento: Regiao.licenciamento(v.tipo),
+      preco: Regiao.preco(v.combustivel),
+    };
+  }
+
   return {
     get, veiculos, veiculo, atual, salvar,
+    aplicarEstimativa, previaEstimativa,
     selecionar, atualizarPerfil, atualizarVeiculo, addVeiculo, removerVeiculo,
     addLancamento, removerLancamento, registrarServico, categoriaDoItem,
     pagarDocumento, agendarRevisao, salvarSimulacao,

@@ -85,9 +85,15 @@ qualquer tela — é a ação mais repetida do app.
 
 ## O que o app não inventa
 
-IPVA, seguro e licenciamento **são perguntados no cadastro**, nunca estimados:
-os valores mudam por estado, por veículo e por seguradora, e um número chutado
-seria pior que nenhum. Campo em branco simplesmente não é acompanhado.
+O **seguro** é perguntado no cadastro, nunca estimado: valor de apólice depende
+de seguradora, perfil e histórico, e um número chutado seria pior que nenhum.
+Campo em branco simplesmente não é acompanhado.
+
+**IPVA e licenciamento mudaram de status.** Desde que o app conhece a região, os
+dois passaram a ser *calculados*: valor FIPE vezes a alíquota do estado, e a taxa
+que o Detran publicou. A regra continua a mesma — o que o app não faz é **chutar**
+—, e conta com fonte declarada não é chute. O que entra assim fica marcado como
+estimativa na própria ficha. Ver *Sua região*, mais abaixo.
 
 O mesmo vale para o financiamento. O cadastro pergunta se o veículo está
 quitado; se não estiver, pede o valor da parcela, quantas faltam e o dia do
@@ -228,6 +234,26 @@ O catálogo do app guarda o modelo curto (`CB 300F`); a FIPE guarda a versão
 inteira (`CB 300F Twister Flex`, `CB 300F Twister S`) e cada uma vale um valor
 diferente. Adivinhar seria errar o IPVA de alguém — quando há mais de uma, o
 app **pergunta**, uma vez só, e guarda os códigos.
+
+### A estimativa preenche a ficha, não só informa
+
+Mostrar o número ao lado dos documentos não adiantava nada se a ficha continuava
+pedindo digitação. Então:
+
+- **No cadastro**, licenciamento e IPVA já vêm preenchidos — o primeiro assim que
+  a região é conhecida, o segundo assim que há valor FIPE. Consultar ou digitar
+  o FIPE recalcula o IPVA na hora.
+- **Em veículo já cadastrado**, o botão *Preencher a ficha* (tela de Documentos)
+  aplica IPVA, licenciamento e preço do litro de uma vez, **preservando
+  parcelamento, datas e parcelas já pagas** — troca só os valores.
+- **Campo digitado à mão nunca é sobrescrito.** A estimativa só toca em campo
+  vazio ou que ainda tem o valor que ela mesma pôs.
+- Tudo que entra assim fica marcado `estimado: true`, e a ficha diz na cara:
+  *valor estimado pela sua região — confirme na guia oficial*.
+
+Isso não contradiz a regra de **não inventar valor**. Chute era escrever
+"IPVA: R$ 1.200" sem base nenhuma. Aqui é conta: valor FIPE vezes a alíquota do
+estado, e a taxa que o Detran publicou.
 
 ### O aviso que a tela nunca esconde
 

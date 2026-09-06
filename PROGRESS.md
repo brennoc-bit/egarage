@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — região do usuário: preço da ANP, alíquota de IPVA, licenciamento e valor FIPE
+**Última atualização:** 2026-09-05 — a estimativa da região agora preenche a ficha do veículo, não só informa
 
 ---
 
@@ -165,6 +165,28 @@ em vez de adivinhar — adivinhar seria errar o IPVA de alguém.
 **O aviso que não sai da tela:** o IPVA de um ano usa a tabela FIPE do ano
 anterior, e há desconto à vista, isenção por idade e alíquota menor para álcool
 e GNV. É estimativa para planejar, com link para a Sefaz.
+
+**Correção depois do teste no aparelho.** A primeira versão só *mostrava* a
+estimativa ao lado dos documentos: a ficha do veículo continuava exigindo
+digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado**:
+
+- No cadastro, **licenciamento e IPVA já vêm preenchidos** — o licenciamento
+  assim que a região é conhecida, o IPVA assim que há valor FIPE (digitar ou
+  consultar o FIPE recalcula o IPVA na hora). Campo digitado à mão nunca é
+  sobrescrito: a estimativa só toca em campo vazio ou que ainda tem o valor que
+  ela mesma pôs.
+- Para veículo já cadastrado, o botão **"Preencher a ficha"** na tela de
+  Documentos aplica IPVA, licenciamento e preço do litro de uma vez. Mantém o
+  parcelamento, as datas e as parcelas já pagas — troca só os valores.
+- Todo valor assim gravado fica marcado `estimado: true` e a ficha diz "valor
+  estimado pela sua região — confirme na guia oficial". Isso não contradiz a
+  regra de não inventar valor: chute era escrever um número sem base; aqui é
+  conta (FIPE × alíquota, e a taxa publicada pelo Detran).
+- Preço do litro editado à mão marca `precoCombManual` e passa a ser respeitado.
+
+Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
+licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
+Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
 
 Verificado no navegador: queda de nível de preço (Curitiba → município;
 município inexistente no PR → média do estado), CEP válido e inválido, GPS
