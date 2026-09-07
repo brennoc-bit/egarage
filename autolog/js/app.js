@@ -3,22 +3,27 @@
    ========================================================================== */
 'use strict';
 
+/* A barra tinha uma aba "Garagem" que repetia o Início — mesma foto, mesmo
+   custo mensal, mesmo odômetro — enquanto a Manutenção, que é o que se olha
+   toda semana, só era alcançável por dentro de um cartão. As duas trocaram de
+   lugar: o Início virou a tela do veículo e a ficha completa saiu da barra,
+   já que é consulta ocasional. */
 const NAV = [
   { id: 'inicio', label: 'Início', ic: '⌂' },
-  { id: 'garagem', label: 'Garagem', ic: '⏣' },
+  { id: 'manutencao', label: 'Manutenção', ic: '⏣' },
   { id: 'custos', label: 'Custos', ic: '$' },
   { id: 'docs', label: 'Docs', ic: '◫' },
   { id: 'perfil', label: 'Perfil', ic: '◉' },
 ];
 // Telas sem aba própria herdam o destaque de outra.
 const NAV_PAI = {
-  manutencao: 'garagem', veiculo: 'garagem',
+  ficha: 'inicio', veiculo: 'inicio',
   seguro: 'docs', 'seguro-editar': 'docs', gemini: 'perfil',
 };
 
 const App = {
   rota: 'inicio',
-  sub: { garagem: 'resumo', docs: 'todos', custos: 'km', periodo: 30, historico: 6, veiculoId: null },
+  sub: { docs: 'todos', custos: 'km', periodo: 30, historico: 6, veiculoId: null },
   _sim: {},
   _rascunho: null,
 
@@ -90,7 +95,7 @@ const App = {
   sairDoCadastro() {
     const editando = this.sub.veiculoId;
     this.limparRascunho();
-    this.ir(editando ? 'garagem' : 'inicio');
+    this.ir(editando ? 'ficha' : 'inicio');
   },
 
   // Parâmetros da simulação, por veículo, só na sessão.

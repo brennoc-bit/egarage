@@ -1,16 +1,24 @@
 /* ==========================================================================
-   screens.js — as sete telas do canvas Garagem.dc.html, agora com dados
-   reais. Cada função devolve { kicker, titulo, acao, corpo }.
+   screens.js — as telas do app. Cada função devolve { kicker, titulo, corpo }.
+
+   Nasceram do canvas Garagem.dc.html, onde cada tela era vista sozinha e por
+   isso repetia o contexto (foto, nome do veículo, número principal). Como aba
+   não é slide — quem navega já sabe onde está —, essa repetição virou ruído e
+   foi desfeita: o Início é a tela do veículo, a Ficha saiu da barra e o
+   Histórico foi para dentro de Custos.
    ========================================================================== */
 'use strict';
 
 const Screens = {};
 
-/* ── 01 · Início · Garagem ─────────────────────────────────────────────── */
+/* ── 01 · Início — a tela do veículo ───────────────────────────────────── */
 
 Screens.inicio = (v) => {
   const p = Calc.panorama(v);
   const cpk = p.custoKm;
+  const acumulado = v.lancamentos.reduce((soma, l) => soma + l.valor, 0);
+  const primeiro = Calc.ordenados(v)[0];
+  const consumo = Calc.consumoMedio(v);
 
   const seletor = h('div', { class: 'segrow' },
     Store.veiculos().map((x) => h('button', {
@@ -25,10 +33,17 @@ Screens.inicio = (v) => {
     seletor,
     UI.foto(v, { onTrocar: () => Acoes.trocarFoto(v) }),
 
-    h('div', { class: 'headline-lockup' },
+    // O cabeçalho é a porta da ficha completa: o nome do veículo é onde a mão
+    // vai quando se quer "ver os dados dele", então não precisa de outro botão.
+    h('button', { class: 'headline-lockup', onClick: () => App.ir('ficha') },
       UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
       h('h3', null, v.modelo),
-      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' })),
+      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' }),
+      h('div', { class: 'lockup-pe' },
+        UI.mono(acumulado
+          ? `${brl0(acumulado)} acumulados desde ${fmtMesAno(primeiro ? primeiro.data : v.compra)}`
+          : 'sem lançamentos ainda'),
+        UI.mono('ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
 
     UI.row(
       UI.kv({
@@ -46,6 +61,12 @@ Screens.inicio = (v) => {
         sub: resumoDiag(p.diag),
         onClick: () => App.ir('manutencao'),
       })),
+    UI.row(
+      UI.kv({
+        k: 'Consumo médio', v: `${num(consumo.valor, 1)} km/L`,
+        sub: consumo.real ? 'medido nos abastecimentos' : 'estimado · sem histórico',
+      }),
+      UI.kv({ k: 'Preço médio', v: brl(Calc.precoMedioLitro(v)), sub: 'por litro' })),
 
     blocoCustoMensal(v),
 
@@ -125,52 +146,23 @@ const resumoDiag = (d) => {
   return partes.length ? partes.join(' · ') : 'tudo em dia';
 };
 
-/* ── 02 · Detalhe do veículo (Resumo · Ficha · Histórico) ──────────────── */
+/* ── 02 · Ficha do veículo ─────────────────────────────────────────────
 
-Screens.garagem = (v) => {
-  const aba = App.sub.garagem || 'resumo';
-  const abas = UI.seg([
-    { id: 'resumo', label: 'Resumo' },
-    { id: 'ficha', label: 'Ficha' },
-    { id: 'historico', label: 'Histórico' },
-  ], aba, (id) => App.ir('garagem', { garagem: id }));
+   A aba "Resumo" morreu aqui: foto, custo mensal e odômetro já estavam no
+   Início, e os três números que só existiam nela (custo acumulado, consumo
+   médio e preço médio por litro) foram para lá. O gráfico de gasto por mês
+   também saiu — era o mesmo do Histórico, com menos opções de janela.
 
-  const corpo = h('div', null, abas,
-    aba === 'resumo' ? abaResumo(v) : aba === 'ficha' ? abaFicha(v) : abaHistorico(v));
+   Sobrou a ficha, que é consulta ocasional e por isso não ocupa mais um
+   quinto da barra: chega-se a ela pelo cabeçalho do veículo, no Início.
+   ───────────────────────────────────────────────────────────────────────── */
 
-  return { kicker: 'Veículo selecionado', titulo: v.apelido || v.modelo, corpo };
-};
-
-function abaResumo(v) {
-  const total = v.lancamentos.reduce((s, l) => s + l.valor, 0);
-  const primeiro = Calc.ordenados(v)[0];
-  const consumo = Calc.consumoMedio(v);
-  const meses = Calc.resumoMensal(v, 6);
-  const mesAtual = chaveMes(today());
-
-  return h('div', null,
-    UI.foto(v, { grande: false, onTrocar: () => Acoes.trocarFoto(v) }),
-
-    h('div', { style: { padding: '20px 16px', borderBottom: '1px solid var(--color-divider)' } },
-      UI.mono(`Custo acumulado · desde ${primeiro ? fmtMesAno(primeiro.data) : fmtMesAno(v.compra)}`,
-        { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }),
-      h('div', { class: 'bignum' }, brl0(total), h('small', null, `/ ${num(v.odometro)} km`))),
-
-    UI.row(
-      UI.kv({ k: 'Consumo médio', v: `${num(consumo.valor, 1)} km/L`, sub: consumo.real ? 'medido nos abastecimentos' : 'estimado · sem histórico' }),
-      UI.kv({ k: 'Preço médio', v: brl(Calc.precoMedioLitro(v)), sub: 'por litro' })),
-    UI.row(
-      UI.kv({ k: 'Lançamentos', v: String(v.lancamentos.length), sub: 'registrados' }),
-      UI.kv({ k: 'Custo por mês', v: brl0(Calc.custoMensal(v).total), sub: 'fixo + combustível' })),
-
-    UI.sectHd('Gasto por mês', 'R$'),
-    UI.barras(meses.map((m) => ({ label: m.label, valor: m.gasto, on: chaveMes(m.iso) === mesAtual })),
-      (d) => `${d.label}: ${brl(d.valor)}`),
-
-    UI.cta([
-      { label: 'Registrar abastecimento', pri: true, onClick: () => Acoes.registrarAbastecimento(v) },
-    ]));
-}
+Screens.ficha = (v) => ({
+  kicker: 'Ficha do veículo',
+  titulo: v.apelido || v.modelo,
+  voltar: 'inicio',
+  corpo: abaFicha(v),
+});
 
 function abaFicha(v) {
   const linha = (a, b) => UI.row(UI.kv(a), UI.kv(b));
@@ -193,12 +185,9 @@ function abaFicha(v) {
     UI.row(UI.kv({ k: 'Odômetro', v: kmFmt(v.odometro), onClick: () => Acoes.atualizarOdometro(v) })),
     h('div', { class: 'note' }, 'Os dados da ficha alimentam o diagnóstico de manutenção e a simulação de financiamento.'),
     UI.cta([
-      { label: 'Editar ficha', icone: '✎', onClick: () => Acoes.editarVeiculo(v) },
-      { label: 'Trocar foto', icone: '◫', pri: true, onClick: () => Acoes.trocarFoto(v) },
+      { label: 'Editar ficha', icone: '✎', pri: true, onClick: () => Acoes.editarVeiculo(v) },
     ]));
 }
-
-/* ── 07 · Histórico mensal ─────────────────────────────────────────────── */
 
 function abaHistorico(v) {
   const janela = App.sub.historico || 6;
@@ -211,7 +200,7 @@ function abaHistorico(v) {
 
   return h('div', null,
     UI.seg([{ id: 6, label: '6 meses' }, { id: 12, label: '12 meses' }, { id: 24, label: '24 meses' }],
-      janela, (id) => App.ir('garagem', { garagem: 'historico', historico: id })),
+      janela, (id) => App.ir('custos', { custos: 'historico', historico: id })),
 
     UI.row(
       UI.kv({ k: `Rodado (${janela}m)`, v: kmFmt(kmTotal), sub: `média ${num(Math.round(kmTotal / janela))} km/mês` }),
@@ -289,7 +278,8 @@ Screens.manutencao = (v) => {
       { label: 'Agendar oficina', pri: true, onClick: () => Acoes.agendarOficina(v) },
     ]));
 
-  return { kicker: 'Verde · Amarelo · Vermelho', titulo: 'Diagnóstico', corpo, voltar: 'inicio' };
+  // Sem 'voltar': virou aba, quem sai daqui sai pela barra de baixo.
+  return { kicker: 'Diagnóstico · verde, amarelo, vermelho', titulo: 'Manutenção', corpo };
 };
 
 /* ── 04 · Documentos (IPVA · Seguro · Revisão) ─────────────────────────── */
@@ -410,13 +400,23 @@ function cartaoFinanciamento(v) {
 
 /* ── 05 · Custo por km  +  06 · Simulação ──────────────────────────────── */
 
+/* O Histórico entrou aqui como aba do meio: é a mesma pergunta das outras
+   duas — quanto esse veículo consome de dinheiro —, só que olhada no tempo em
+   vez de por quilômetro. Antes ele estava dentro da Garagem, longe de tudo com
+   que se parece. */
+const ABAS_CUSTOS = {
+  km: { label: 'Custo/km', kicker: 'Quanto custa cada quilômetro', titulo: 'Custo/km' },
+  historico: { label: 'Histórico', kicker: 'Km rodado e gasto, mês a mês', titulo: 'Histórico' },
+  sim: { label: 'Financiamento', kicker: 'Tabela Price ou SAC', titulo: 'Simular' },
+};
+
 Screens.custos = (v) => {
-  const aba = App.sub.custos || 'km';
+  const aba = ABAS_CUSTOS[App.sub.custos] ? App.sub.custos : 'km';
   const corpo = h('div', null,
-    UI.seg([{ id: 'km', label: 'Custo/km' }, { id: 'sim', label: 'Financiamento' }], aba,
+    UI.seg(Object.keys(ABAS_CUSTOS).map((id) => ({ id, label: ABAS_CUSTOS[id].label })), aba,
       (id) => App.ir('custos', { custos: id })),
-    aba === 'km' ? abaCustoKm(v) : abaSimulacao(v));
-  return { kicker: aba === 'km' ? 'Quanto custa cada quilômetro' : 'Tabela Price ou SAC', titulo: aba === 'km' ? 'Custo/km' : 'Simular', corpo };
+    aba === 'km' ? abaCustoKm(v) : aba === 'historico' ? abaHistorico(v) : abaSimulacao(v));
+  return { kicker: ABAS_CUSTOS[aba].kicker, titulo: ABAS_CUSTOS[aba].titulo, corpo };
 };
 
 const CORES_FATIA = ['var(--color-accent)', 'var(--color-neutral-800)', 'var(--color-neutral-600)', 'var(--color-neutral-500)', 'var(--color-neutral-400)', 'var(--color-neutral-300)', 'var(--color-neutral-200)'];
@@ -1378,7 +1378,7 @@ Screens.veiculo = (atual) => {
     kicker: editando ? 'Editando ficha' : 'Novo veículo',
     titulo: editando ? (editando.apelido || editando.modelo) : 'Cadastro',
     corpo,
-    voltar: editando ? 'garagem' : 'inicio',
+    voltar: editando ? 'ficha' : 'inicio',
   };
 };
 
@@ -1421,7 +1421,7 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
     });
     Store.atualizarDocsEFinanciamento(editando.id, dados);
     App.limparRascunho();
-    App.ir('garagem', { garagem: 'ficha' });
+    App.ir('ficha');
     UI.toast('Ficha atualizada');
     return;
   }

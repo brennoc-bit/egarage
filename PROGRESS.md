@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-05 — vencimento pelo final da placa (8 estados) e estimativa preenchendo a ficha
+**Última atualização:** 2026-09-06 — barra de navegação reorganizada: a aba Garagem, que repetia o Início, deu lugar à Manutenção
 
 ---
 
@@ -187,6 +187,56 @@ digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado*
 Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
+
+### Navegação reorganizada ✅ a aba Garagem deixou de existir
+
+O app tinha Início **e** Garagem mostrando quase a mesma coisa — seis
+sobreposições, contadas uma a uma: foto do veículo, marca/modelo/ano/placa,
+odômetro, custo por mês, gráfico de gasto por mês (esse duplicado dentro da
+própria Garagem, entre Resumo e Histórico) e custo/km. Pior: os nomes estavam
+trocados. O Início se intitulava "Sua garagem" e tinha o seletor de veículos e
+o "+ Novo" — ele *era* a garagem; a aba chamada Garagem era o detalhe de um
+veículo só.
+
+A causa está no comentário antigo de `js/screens.js`: "as sete telas do canvas
+Garagem.dc.html". Sete telas desenhadas para serem vistas em sequência, cada
+uma se bastando e por isso repetindo o contexto. Viraram cinco abas sem que a
+repetição fosse desfeita — e o que ajudava no canvas virou ruído no app.
+
+O que mudou:
+
+| Antes | Agora |
+| --- | --- |
+| Aba **Garagem** (Resumo · Ficha · Histórico) | Não existe mais |
+| Aba **Manutenção**: nenhuma, só pelo cartão "Saúde geral" | Aba própria, no lugar da Garagem |
+| **Resumo** | Absorvido pelo Início |
+| **Ficha** | Rota sem aba, aberta pelo cabeçalho do veículo no Início |
+| **Histórico** | Terceira aba de Custos (Custo/km · Histórico · Financiamento) |
+
+Barra final: **Início · Manutenção · Custos · Docs · Perfil**.
+
+Do Resumo só três números não existiam em outro lugar, e foram para o Início:
+custo acumulado (virou linha no rodapé do cabeçalho, com o mês do primeiro
+lançamento), consumo médio e preço médio por litro (viraram uma terceira dupla
+de cartões). O gráfico de barras do Resumo morreu — era o mesmo do Histórico,
+com menos opções de janela — e o CTA "Registrar abastecimento" também, porque o
+botão flutuante já faz isso de qualquer tela.
+
+O cabeçalho do veículo virou `<button>` (CSS em `styles.css`, com os resets que
+`<button>` exige) e mostra "ficha ›" no canto. A Manutenção perdeu o botão
+"‹ voltar": virou aba, quem sai dela sai pela barra.
+
+Nada foi apagado do armazenamento — é remanejamento de navegação. `sw.js` subiu
+para `autolog-v17` para o app instalado se atualizar.
+
+Verificado no navegador a 375 px: as 5 abas com os rótulos certos, as 3 abas de
+Custos, a Ficha destacando "Início" na barra (herança por `NAV_PAI`), o
+cabeçalho abrindo a Ficha, o "‹ voltar" da Ficha caindo no Início, "Editar
+ficha" indo ao cadastro e o cadastro voltando para a Ficha ao sair. Zero erro
+no console, sem estouro horizontal.
+
+**Ressalva:** muda a memória muscular de quem já usava. Como o app ainda é de
+uso pessoal, o custo é baixo — mas é o tipo de mudança que só se faz uma vez.
 
 ### Vencimento pelo final da placa ⚠️ só 8 estados
 

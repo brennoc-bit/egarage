@@ -74,11 +74,19 @@ foi registrado nos itens que existem nos dois.
 
 ## Telas
 
-Cinco abas — Início · Garagem (Resumo/Ficha/Histórico) · Custos (Custo/km +
-Financiamento) · Docs · Perfil — mais duas rotas próprias: o Diagnóstico de
-manutenção e o **Cadastro de veículo**, com foto, tipo e campos agrupados em
-Identificação, Documentos, Uso, Financiamento e despesas anuais. A mesma tela
-serve para editar a ficha depois.
+Cinco abas — Início · Manutenção · Custos (Custo/km · Histórico ·
+Financiamento) · Docs · Perfil — mais duas rotas sem aba: a **Ficha** do
+veículo, aberta ao tocar no nome dele no Início, e o **Cadastro de veículo**,
+com foto, tipo e campos agrupados em Identificação, Documentos, Uso,
+Financiamento e despesas anuais. A mesma tela serve para editar a ficha depois.
+
+**A barra já foi outra.** Havia uma aba "Garagem" que repetia o Início — mesma
+foto, mesmo custo mensal, mesmo odômetro — e um Histórico escondido dentro
+dela, enquanto a Manutenção, que é o que se olha toda semana, só era alcançável
+por dentro de um cartão. Isso vinha do canvas, onde cada tela era vista sozinha
+e precisava repetir o contexto; em aba, quem navega já sabe onde está. O Início
+virou a tela do veículo, o Histórico foi para junto das outras contas e a
+Manutenção subiu para a barra.
 
 Um **botão flutuante** no canto inferior direito registra abastecimento de
 qualquer tela — é a ação mais repetida do app.
