@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-06 — barra de navegação reorganizada: a aba Garagem, que repetia o Início, deu lugar à Manutenção
+**Última atualização:** 2026-09-06 — previsão de custo dos próximos 6 mêses e barra de navegação reorganizada
 
 ---
 
@@ -187,6 +187,68 @@ digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado*
 Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
+
+### Previsão dos próximos 6 meses ✅ fecha a ideia original do app
+
+Auditei o app contra a ideia que o originou: controle do custo do veículo,
+custo fixo mensal, média de gasolina e **saber quando o custo vai ser maior**.
+Os dois primeiros já estavam de pé; o terceiro não existia, por três motivos
+que valem registro:
+
+1. `custoMensal` **achata de propósito** — IPVA ÷ 12, licenciamento ÷ 12,
+   seguro ÷ 12. Responde "quanto custa em média", nunca "em qual mês vai doer".
+2. **Não havia projeção para frente.** `resumoMensal` monta o gráfico de trás
+   para frente e termina em hoje. Todo gráfico do app era passado.
+3. **Manutenção não tinha data nem preço.** Os itens têm `intervaloKm` e
+   `intervaloMeses`, e nenhum campo de custo. "Faltam 1.580 km" não virava mês
+   nem virava reais.
+
+`Calc.previsao(v, 6)` resolve os três. Para cada um dos 6 meses a partir do
+corrente:
+
+- **parcela do financiamento e do seguro** — e elas acabam: a parcela some do
+  mês em que a última é paga, em vez de se repetir para sempre;
+- **combustível** pela média dos 3 meses fechados;
+- **IPVA, licenciamento e renovação da apólice** no mês em que realmente
+  vencem, sem diluir. O que já venceu e não foi pago cai no mês corrente em vez
+  de sumir da conta;
+- **manutenção** posicionada pelo ritmo de uso (km dos últimos 90 dias ÷ 3).
+
+Na tela: bloco no Início com a manchete ("Outubro deve custar R$ 1.363 · R$ 987
+acima da média · renovação da apólice") e barras empilhadas — a altura diz
+quanto, a cor diz por quê, a linha tracejada é a média. Tocando em "mês a mês"
+abre `Screens.previsao`, com o detalhamento de cada mês e a origem de cada
+número. Rota sem aba, herdando o destaque do Início.
+
+**Preço de manutenção só do histórico**, como combinado. `custoTipico` procura o
+que já foi pago pelo mesmo serviço e a tela mostra de qual lançamento tirou o
+valor ("pelo último 'Corrente e coroa', 03/2025"). Sem serviço registrado, o
+item entra como data e **soma zero**, aparecendo numa lista de "sem preço no
+histórico" — não vira chute.
+
+O casamento passou a ser por `itemId`, que `registrarServico` agora grava no
+lançamento. Os lançamentos antigos não têm esse campo, então caem num
+casamento por palavra que exige que **todas** as palavras do item apareçam no
+título. Testado nos dois sentidos: "Pastilhas de freio" acha "Pastilha de freio
+dianteira" (R$ 220), e "Pneu dianteiro" **não** casa com "Pneu traseiro" — que
+é o erro caro. "Óleo do motor" também não casa com "Revisão + troca de óleo",
+e isso é intencional: aquele lançamento foi uma revisão inteira, o valor dele
+superestimaria uma troca de óleo.
+
+Dois acertos que só apareceram testando:
+
+- a manchete citava como causa do pico um item que somava R$ 0 ("renovação da
+  apólice **e filtro de ar**"). Agora só entram eventos com valor;
+- a correia dentada do Onix caía em setembro exibindo "faltam 8.130 km" — o que
+  a colocou ali foi a idade, não o km. A previsão agora guarda qual dos dois
+  mandou e a tela diz "por tempo de uso, vencido há 4 meses".
+
+Verificado a 375 px nos dois veículos de demonstração, com `Store.resetar()` no
+fim para devolver os dados originais. Sete rotas sem erro de console e sem
+estouro horizontal. `sw.js` em `autolog-v18`.
+
+**Não verificado:** nenhum mês da previsão passou por um vencimento real ainda
+— a checagem foi contra os dados de demonstração, não contra o tempo passando.
 
 ### Navegação reorganizada ✅ a aba Garagem deixou de existir
 

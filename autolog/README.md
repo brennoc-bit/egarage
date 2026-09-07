@@ -80,6 +80,45 @@ veículo, aberta ao tocar no nome dele no Início, e o **Cadastro de veículo**,
 com foto, tipo e campos agrupados em Identificação, Documentos, Uso,
 Financiamento e despesas anuais. A mesma tela serve para editar a ficha depois.
 
+### As duas contas de custo, e por que são duas
+
+O app responde a **duas perguntas diferentes** sobre a mesma despesa, e é de
+propósito que os números não batem mês a mês:
+
+| | Onde | Como trata IPVA, licenciamento e seguro |
+| --- | --- | --- |
+| **Custo por mês** | Início, bloco do meio | Diluídos em doze — responde *"quanto custa em média"* |
+| **Previsão dos 6 meses** | Início, logo abaixo · tela cheia em "mês a mês" | Cada um no mês em que vence — responde *"em qual mês vai doer"* |
+
+No ano as duas fecham parecido. O que muda é onde o dinheiro aparece, e é essa
+diferença que a média esconde: na moto de demonstração o custo médio é R$ 274
+por mês, mas outubro custa R$ 1.363 porque a apólice vence inteira nele.
+
+A previsão empilha três faixas por mês — parcela e seguro, combustível, e o que
+vence naquele mês — então a altura diz *quanto* e a cor diz *por quê*. A linha
+tracejada é a média dos seis meses.
+
+**De onde sai cada número:**
+
+- **Parcela do financiamento e do seguro**: acabam quando acabam. A parcela some
+  do mês em que a última é paga, em vez de se repetir para sempre.
+- **Combustível**: média dos 3 meses fechados; a tela avisa quando ainda é
+  estimativa.
+- **IPVA, licenciamento, renovação da apólice**: a data real de cada um, do
+  final da placa ou da apólice.
+- **Manutenção**: posicionada pelo ritmo de uso (km dos últimos 90 dias ÷ 3).
+  Um item pode vencer por km ou por idade — vale o que chegar primeiro, e a
+  tela diz qual dos dois mandou.
+- **Preço da manutenção**: só do histórico. O app procura o que já foi pago pelo
+  mesmo serviço e mostra de qual lançamento tirou o valor. **Sem serviço
+  registrado, ele entra na previsão como data e soma zero** — aparece na lista
+  de "sem preço no histórico" em vez de virar um chute.
+
+O casamento com o histórico é por `itemId` nos lançamentos novos; nos antigos,
+por palavra, exigindo que **todas** as do item apareçam no título. É o que
+separa "Filtro de ar" de "Filtro de óleo" e "Pneu dianteiro" de "Pneu traseiro"
+— um casamento frouxo poria dinheiro errado na previsão.
+
 **A barra já foi outra.** Havia uma aba "Garagem" que repetia o Início — mesma
 foto, mesmo custo mensal, mesmo odômetro — e um Histórico escondido dentro
 dela, enquanto a Manutenção, que é o que se olha toda semana, só era alcançável

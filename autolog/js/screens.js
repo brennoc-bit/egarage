@@ -69,6 +69,7 @@ Screens.inicio = (v) => {
       UI.kv({ k: 'Preço médio', v: brl(Calc.precoMedioLitro(v)), sub: 'por litro' })),
 
     blocoCustoMensal(v),
+    blocoPrevisao(v),
 
     UI.sectHd('Próximos vencimentos', 'ver todos ›', () => App.ir('docs')),
     vencimentos.length ? vencimentos.map((it) => h('button', {
@@ -137,6 +138,174 @@ function blocoCustoMensal(v) {
     fin.quitado ? null : linha('Parcela', brl(c.parcela), `${fin.restantes} restantes · dia ${fin.dia}`),
     c.itensDocs.map((i) => linha(i.label, brl(i.valor), i.detalhe)),
     linha('Combustível', brl(c.combustivel), c.combustivelReal ? 'média dos 3 meses fechados' : 'sem histórico ainda'));
+}
+
+/* ── Previsão dos próximos 6 meses ──────────────────────────────────────
+
+   O bloco de "Custo por mês" logo acima dilui IPVA, licenciamento e seguro
+   por doze — ele responde "quanto custa em média". Este responde a outra
+   pergunta, a que a média esconde: em qual mês vai doer, e por causa de quê.
+   ───────────────────────────────────────────────────────────────────────── */
+
+const FAIXAS = [
+  { chave: 'recorrente', label: 'parcela e seguro', cor: 'var(--color-text)' },
+  { chave: 'combustivel', label: 'combustível', cor: 'var(--color-neutral-400)' },
+  { chave: 'eventual', label: 'vence no mês', cor: 'var(--color-accent)' },
+];
+
+/* Barras empilhadas: a altura diz quanto, e a cor diz por quê. A linha
+   tracejada é a média dos seis meses — é dela que o pico se afasta. */
+function graficoPrevisao(p, altura) {
+  const max = Math.max(1, ...p.meses.map((m) => m.total));
+  const colunas = p.meses.map((m) => h('div', {
+    style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' },
+    title: `${m.label}: ${brl(m.total)}`,
+  },
+    h('div', {
+      style: {
+        width: '100%', maxWidth: 26, height: Math.max(3, (m.total / max) * 100) + '%',
+        display: 'flex', flexDirection: 'column-reverse',
+        borderRadius: '6px 6px 2px 2px', overflow: 'hidden',
+        opacity: m === p.pico ? 1 : .78,
+      },
+    }, FAIXAS.map((f) => (m[f.chave] > 0
+      ? h('div', { style: { height: (m[f.chave] / m.total) * 100 + '%', background: f.cor } })
+      : null)))));
+
+  return h('div', { style: { padding: '4px 4px 0' } },
+    h('div', { style: { position: 'relative', height: altura, display: 'flex', alignItems: 'flex-end', gap: 8 } },
+      colunas,
+      h('div', {
+        style: {
+          position: 'absolute', left: 0, right: 0, bottom: (p.media / max) * 100 + '%',
+          borderTop: '1px dashed var(--muted)', opacity: .55, pointerEvents: 'none',
+        },
+      })),
+    h('div', { style: { display: 'flex', gap: 8, marginTop: 6 } },
+      p.meses.map((m) => UI.mono(m.label, {
+        flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.1em',
+        color: m === p.pico ? 'var(--color-accent)' : 'var(--muted)',
+        fontWeight: m === p.pico ? 700 : 400,
+      }))));
+}
+
+/* O que puxou o mês para cima, em palavras. Só entra o que tem valor: citar um
+   serviço sem preço como causa do pico seria culpar quem não somou nada. */
+const motivos = (mes) => mes.eventos
+  .filter((e) => e.valor > 0).slice(0, 2)
+  .map((e) => e.titulo.toLowerCase()).join(' e ');
+
+const legendaPrevisao = () => h('div', {
+  style: { display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)' },
+}, FAIXAS.map((f) => legenda(f.cor, f.label)));
+
+function blocoPrevisao(v) {
+  const p = Calc.previsao(v, 6);
+  const acima = p.pico.total - p.media;
+  // Menos de 15% de diferença não é pico, é ruído: anunciar "mês caro" onde
+  // não há seria gritar à toa.
+  const temPico = acima > p.media * 0.15 && p.pico.eventual > 0;
+
+  const manchete = (texto, sub) => h('div', { style: { padding: '0 16px' } },
+    h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 17, letterSpacing: '-.01em' } }, texto),
+    UI.mono(sub, { marginTop: 4, color: 'var(--muted)' }));
+
+  return h('div', null,
+    UI.sectHd('Próximos 6 meses', 'mês a mês ›', () => App.ir('previsao')),
+    temPico
+      ? manchete(`${capitalizar(mesLongo(p.pico.iso))} deve custar ${brl0(p.pico.total)}`,
+          `${brl0(acima)} acima da média${motivos(p.pico) ? ' · ' + motivos(p.pico) : ''}`)
+      : manchete(`Seis meses parecidos, ~${brl0(p.media)} por mês`,
+          'nenhum vencimento grande à vista'),
+    graficoPrevisao(p, 110),
+    h('div', { style: { padding: '0 16px 4px' } }, legendaPrevisao()));
+}
+
+Screens.previsao = (v) => {
+  const p = Calc.previsao(v, 6);
+
+  const cartao = (m) => {
+    const linha = (rotulo, valor, detalhe, destaque) => h('div', {
+      style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginTop: 8 },
+    },
+      h('div', { style: { flex: 1 } },
+        h('div', { style: { fontSize: 13, fontWeight: destaque ? 600 : 400 } }, rotulo),
+        detalhe ? UI.mono(detalhe, { fontSize: 10, color: 'var(--muted)', marginTop: 2 }) : null),
+      UI.mono(valor, { fontSize: 13, fontWeight: 600, color: destaque ? 'var(--color-accent)' : 'inherit' }));
+
+    return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 } },
+        h('span', { class: 'status-tag' },
+          UI.dot(m === p.pico ? 'var(--color-accent)' : 'var(--muted)', 8),
+          `${capitalizar(mesLongo(m.iso))} ${m.ano}`),
+        h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 19, letterSpacing: '-.01em' } },
+          brl0(m.total))),
+
+      m.recorrente > 0 ? linha('Parcela e seguro', brl(m.recorrente), 'todo mês') : null,
+      linha('Combustível', brl(m.combustivel),
+        p.combustivelReal ? 'média dos 3 meses fechados' : 'estimado · sem histórico'),
+      m.eventos.map((e) => linha(
+        e.titulo,
+        e.semPreco ? 'sem preço' : brl(e.valor),
+        [
+          e.tag,
+          e.quando ? `vence ${fmtDia(e.quando)}` : null,
+          e.porKm != null ? (e.porKm >= 0 ? `faltam ${num(e.porKm)} km` : `vencido há ${num(-e.porKm)} km`) : null,
+          e.porMeses != null ? (e.porMeses >= 0
+            ? `por tempo de uso, faltam ${e.porMeses} ${e.porMeses === 1 ? 'mês' : 'meses'}`
+            : `por tempo de uso, vencido há ${-e.porMeses} meses`) : null,
+          e.porHistorico ? `pelo último "${e.historicoTitulo}", ${fmtMesAno(e.porHistorico)}` : null,
+          e.estimado ? 'valor estimado pela região' : null,
+        ].filter(Boolean).join(' · '),
+        true)));
+  };
+
+  const corpo = h('div', null,
+    h('div', { style: { padding: '20px 16px 4px' } },
+      UI.mono('Média dos seis meses', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }),
+      h('div', { class: 'bignum' }, brl0(p.media), h('small', null, '/ mês'))),
+
+    h('div', { style: { padding: '4px 12px 0' } }, graficoPrevisao(p, 150)),
+    h('div', { style: { padding: '10px 16px 16px' } }, legendaPrevisao()),
+
+    avisosPrevisao(p),
+    p.meses.map(cartao),
+
+    h('div', { class: 'note' },
+      'Esta conta é o contrário do "custo por mês" do Início: lá o IPVA, o '
+      + 'licenciamento e o seguro entram diluídos em doze; aqui cada um cai no '
+      + 'mês em que vence. No ano as duas fecham parecido — o que muda é onde '
+      + 'o dinheiro aparece.'),
+    h('div', { style: { height: 76 } }));
+
+  return { kicker: 'O que vem pela frente', titulo: 'Previsão', voltar: 'inicio', corpo };
+};
+
+/* Nenhum número aqui é fato consumado. Os limites vão para a tela, não ficam
+   só no código. */
+function avisosPrevisao(p) {
+  const avisos = [];
+  if (!p.combustivelReal) {
+    avisos.push('O combustível ainda é estimativa: sem abastecimento registrado '
+      + 'nos últimos 3 meses, o app usa o consumo de referência da ficha.');
+  }
+  if (!p.ritmo) {
+    avisos.push('Sem odômetro registrado nos últimos 90 dias, o app não sabe quanto '
+      + 'você roda por mês — então revisão, corrente e pneus, que são medidos em '
+      + 'km, ficaram de fora desta previsão.');
+  } else {
+    avisos.push(`Manutenção posicionada pelo seu ritmo de ${num(Math.round(p.ritmo))} km/mês. `
+      + 'Rodando mais, ela chega antes.');
+  }
+  if (p.semPreco.length) {
+    avisos.push(`Sem preço no histórico: ${p.semPreco.join(', ')}. Entram na previsão `
+      + 'como data, mas não somam valor — o app só estima custo de serviço depois '
+      + 'que você registra o primeiro.');
+  }
+  return avisos.length
+    ? h('div', { class: 'note', style: { paddingTop: 0 } },
+        avisos.map((t, i) => h('div', { style: { marginTop: i ? 8 : 0 } }, t)))
+    : null;
 }
 
 const resumoDiag = (d) => {

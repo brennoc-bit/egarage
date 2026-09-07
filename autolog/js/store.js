@@ -614,8 +614,11 @@ const Store = (() => {
     const valor = parseNum(dados.valor);
     if (valor > 0) {
       addLancamento(vid, {
+        // `itemId` amarra o gasto ao item de manutenção: é assim que a
+        // previsão sabe quanto custou a última corrente sem depender do
+        // título, que a pessoa pode reescrever.
         data: item.ultimaData, tipo: dados.tipo || categoriaDoItem(itemId),
-        titulo: item.nome, local: dados.local || '', valor, odometro: km,
+        titulo: item.nome, itemId, local: dados.local || '', valor, odometro: km,
       });
     } else { salvar(); }
   }

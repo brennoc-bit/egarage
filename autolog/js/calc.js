@@ -358,6 +358,156 @@ const Calc = (() => {
     };
   }
 
+  /* ── Previsão dos próximos meses ─────────────────────────────────────
+
+     `custoMensal` dilui IPVA, licenciamento e seguro por doze para responder
+     "quanto custa em média". Aqui é o contrário: cada compromisso cai no mês
+     em que realmente vence. As duas contas fecham parecido no ano — o que
+     muda é onde o dinheiro aparece, e é essa diferença que responde "em qual
+     mês vai doer".
+     ───────────────────────────────────────────────────────────────────── */
+
+  // Km por mês pelos últimos 90 dias. Sem histórico não há ritmo, e aí o que é
+  // medido em km (revisão, corrente, pneu) fica de fora — dizer "em novembro"
+  // sem saber quanto a pessoa roda seria adivinhação.
+  function ritmoMensal(v) {
+    const km = kmNoPeriodo(v, diasAtras(90));
+    return km > 0 ? km / 3 : null;
+  }
+
+  /* Quanto costuma custar um serviço, pelo que já foi pago por ele.
+     Só o histórico manda: sem serviço registrado, fica mudo. Chutar preço de
+     peça seria pior que admitir que ainda não dá para saber.
+     O casamento é pelo `itemId` do lançamento; os gravados antes desse campo
+     existir ainda são reconhecidos pelo título, que sempre veio do nome. */
+  const SEM_SERVICO = ['combustivel', 'documentacao', 'seguro', 'financiamento'];
+  const PALAVRINHAS = ['de', 'do', 'da', 'e', 'o', 'a', 'dos', 'das'];
+
+  /* O lançamento antigo raramente repete o nome do item ao pé da letra: o item
+     é "Pastilhas de freio" e a pessoa escreveu "Pastilha de freio dianteira".
+     Então o casamento é por palavra, exigindo que TODAS as do item apareçam no
+     título — é o que separa "Filtro de ar" de "Filtro de óleo" e "Pneu
+     dianteiro" de "Pneu traseiro", que um casamento frouxo confundiria e
+     acabaria pondo dinheiro errado na previsão. */
+  function mesmoServico(item, lanc) {
+    if (SEM_SERVICO.includes(lanc.tipo)) return false;
+    const doTitulo = normalizar(lanc.titulo).split(/[^a-z0-9]+/).filter(Boolean);
+    const doItem = normalizar(item.nome).split(/[^a-z0-9]+/)
+      .filter((w) => w && !PALAVRINHAS.includes(w));
+    if (!doItem.length) return false;
+    // Prefixo em vez de igualdade, para singular e plural caírem juntos.
+    return doItem.every((w) => {
+      const raiz = w.slice(0, 5);
+      return doTitulo.some((t) => t.startsWith(raiz) || w.startsWith(t.slice(0, 5)));
+    });
+  }
+
+  function custoTipico(v, item) {
+    const iguais = v.lancamentos
+      .filter((l) => (l.itemId ? l.itemId === item.id : mesmoServico(item, l)))
+      .sort((a, b) => (a.data < b.data ? 1 : -1));
+    if (!iguais.length) return null;
+    return { valor: iguais[0].valor, em: iguais[0].data, titulo: iguais[0].titulo, vezes: iguais.length };
+  }
+
+  function previsao(v, meses = 6) {
+    const hoje = new Date();
+    const base = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fin = financiamentoStatus(v);
+    const comb = mediaMensalCombustivel(v);
+    const ritmo = ritmoMensal(v);
+    const semPreco = [];
+
+    const linha = [];
+    for (let i = 0; i < meses; i++) {
+      const ref = addMonths(base, i);
+      linha.push({
+        iso: toISO(ref), label: MES_CURTO[ref.getMonth()], ano: ref.getFullYear(),
+        recorrente: 0, combustivel: comb.valor, eventos: [], eventual: 0, total: 0,
+      });
+    }
+
+    // Em que mês da janela cai uma data. O que já venceu e não foi pago
+    // continua sendo dívida: cai no mês corrente, não some.
+    const mesDe = (iso) => {
+      if (!iso) return -1;
+      const d = fromISO(iso);
+      const i = (d.getFullYear() - base.getFullYear()) * 12 + (d.getMonth() - base.getMonth());
+      if (i < 0) return 0;
+      return i < meses ? i : -1;
+    };
+    const evento = (i, ev) => { if (i >= 0) linha[i].eventos.push(ev); };
+
+    // Recorrentes — e eles acabam: a parcela some do mês em que o
+    // financiamento é quitado, em vez de se repetir para sempre.
+    for (let i = 0; i < meses; i++) {
+      if (!fin.quitado && i < fin.restantes) linha[i].recorrente += fin.parcela;
+    }
+
+    for (const d of v.docs) {
+      if (d.tipo === 'seguro') {
+        const pag = d.pagamento || { quitado: true };
+        if (!pag.quitado && pag.restantes > 0) {
+          for (let i = 0; i < meses && i < pag.restantes; i++) linha[i].recorrente += pag.parcela;
+        } else if (d.valor > 0) {
+          // Quitado, a próxima saída é a renovação inteira no fim da cobertura.
+          evento(mesDe(d.venc), { tag: 'SEGURO', titulo: 'Renovação da apólice', valor: d.valor, quando: d.venc });
+        }
+      } else if (d.tipo === 'parcelas') {
+        for (const p of d.parcelas) {
+          if (!p.pago) evento(mesDe(p.venc), { tag: d.tag, titulo: `${p.n}ª parcela`, valor: p.valor, quando: p.venc, estimado: !!d.estimado });
+        }
+      } else if (d.tipo === 'km') {
+        // A revisão é medida em km; o ritmo de uso diz em que mês ela cai.
+        if (!ritmo) continue;
+        const falta = (d.alvoKm || 0) - v.odometro;
+        const i = Math.max(0, Math.ceil(falta / ritmo));
+        if (i < meses) {
+          if (d.valor > 0) evento(i, { tag: d.tag, titulo: d.titulo || 'Revisão', valor: d.valor, porKm: falta });
+          else { evento(i, { tag: d.tag, titulo: d.titulo || 'Revisão', valor: 0, semPreco: true, porKm: falta }); semPreco.push(d.titulo || 'Revisão'); }
+        }
+      } else if (!d.pago && d.valor > 0) {
+        evento(mesDe(d.venc), { tag: d.tag, titulo: d.titulo || d.tag, valor: d.valor, quando: d.venc, estimado: !!d.estimado });
+      }
+    }
+
+    for (const m of v.manutencao) {
+      if (m.id === 'revisao') continue; // já entrou como documento, com preço
+      const st = statusItem(v, m);
+      // Um item pode vencer por km ou por idade — vale o que chegar primeiro.
+      // Guardamos qual dos dois mandou, senão a tela explicaria a data errada:
+      // a correia dentada vence por tempo mesmo faltando 8.000 km.
+      const porKmEmMeses = st.restanteKm != null && ritmo ? Math.ceil(st.restanteKm / ritmo) : null;
+      const porTempo = st.restanteMeses;
+      let emMeses = null, mandaOKm = false;
+      if (porKmEmMeses != null && (porTempo == null || porKmEmMeses <= porTempo)) { emMeses = porKmEmMeses; mandaOKm = true; }
+      else if (porTempo != null) emMeses = porTempo;
+      if (emMeses == null) continue;
+      const i = Math.max(0, emMeses); // vencido cai no mês corrente
+      if (i >= meses) continue;
+
+      const quanto = mandaOKm ? { porKm: st.restanteKm } : { porMeses: porTempo };
+      const tipico = custoTipico(v, m);
+      if (tipico) {
+        evento(i, Object.assign({ tag: 'MANUT.', titulo: m.nome, valor: tipico.valor, porHistorico: tipico.em, historicoTitulo: tipico.titulo }, quanto));
+      } else {
+        evento(i, Object.assign({ tag: 'MANUT.', titulo: m.nome, valor: 0, semPreco: true }, quanto));
+        semPreco.push(m.nome);
+      }
+    }
+
+    linha.forEach((m) => {
+      m.eventual = m.eventos.reduce((soma, e) => soma + e.valor, 0);
+      m.total = m.recorrente + m.combustivel + m.eventual;
+      m.eventos.sort((a, b) => b.valor - a.valor);
+    });
+
+    const media = linha.reduce((soma, m) => soma + m.total, 0) / meses;
+    const pico = linha.reduce((maior, m) => (m.total > maior.total ? m : maior), linha[0]);
+
+    return { meses: linha, media, pico, combustivelReal: comb.real, ritmo, semPreco };
+  }
+
   function financiamentoStatus(v) {
     const fin = v.financiamento || { quitado: true };
     if (fin.quitado) return { quitado: true };
@@ -395,6 +545,7 @@ const Calc = (() => {
     custoPorKm, composicao, resumoMensal,
     statusItem, diagnostico, statusDoc, docsStatus, proximosVencimentos, compromissosAnuais,
     mediaMensalCombustivel, custoMensal, financiamentoStatus,
+    ritmoMensal, custoTipico, previsao,
     financiamento, panorama,
   };
 })();

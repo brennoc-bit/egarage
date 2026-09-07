@@ -96,6 +96,10 @@ const fmtDia = (iso) => { const d = fromISO(iso); return `${pad2(d.getDate())}/$
 const fmtData = (iso) => { const d = fromISO(iso); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 const fmtMesAno = (iso) => { const d = fromISO(iso); return `${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
 const mesCurto = (iso) => MES_CURTO[fromISO(iso).getMonth()];
+const MES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const mesLongo = (iso) => MES_LONGO[fromISO(iso).getMonth()];
+const capitalizar = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
 const chaveMes = (iso) => String(iso).slice(0, 7);
 
 /* ── Diversos ──────────────────────────────────────────────────────────── */

@@ -17,7 +17,7 @@ const NAV = [
 ];
 // Telas sem aba própria herdam o destaque de outra.
 const NAV_PAI = {
-  ficha: 'inicio', veiculo: 'inicio',
+  ficha: 'inicio', veiculo: 'inicio', previsao: 'inicio',
   seguro: 'docs', 'seguro-editar': 'docs', gemini: 'perfil',
 };
 
