@@ -66,6 +66,19 @@ const Avisos = (() => {
         }
       }
 
+      // Parcela do seguro: mesma lógica da do financiamento — dia fixo do mês.
+      const seg = v.docs.find((doc) => doc.id === 'seguro');
+      const pagSeg = seg && seg.pagamento;
+      if (pagSeg && pagSeg.quitado === false && pagSeg.restantes > 0) {
+        const data = proximoDiaDoMes(pagSeg.dia || 10);
+        itens.push({
+          id: `${v.id}:seguro-parcela:${data}`, data,
+          titulo: 'Parcela do seguro',
+          sub: `${nome}${pagSeg.restantes ? ` · ${pagSeg.restantes} restantes` : ''}`,
+          valor: pagSeg.parcela,
+        });
+      }
+
       const fin = v.financiamento;
       if (fin && !fin.quitado && fin.parcela > 0) {
         const data = proximoDiaDoMes(fin.dia || 10);

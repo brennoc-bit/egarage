@@ -62,8 +62,10 @@ const App = {
         temSeguro: !!extras.temSeguro,
         seguroValor: texto(extras.seguroValor), seguroVenc: texto(extras.seguroVenc),
         seguroNome: texto(extras.seguroNome),
+        seguroCoberturas: (extras.seguroCoberturas || []).slice(),
         seguroQuitado: extras.seguroQuitado !== false,
         seguroParcela: texto(extras.seguroParcela), seguroRestantes: texto(extras.seguroRestantes),
+        seguroDia: texto(extras.seguroDia),
         licValor: texto(extras.licValor), licVenc: texto(extras.licVenc),
       };
     }

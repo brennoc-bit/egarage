@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-09 — piloto de especificações por modelo INTERROMPIDO: as fontes brasileiras são inconfiáveis (ver abaixo)
+**Última atualização:** 2026-09-10 — quatro ajustes de formulário; especificações por modelo PAUSADO por decisão do usuário
 
 ---
 
@@ -188,7 +188,65 @@ Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
 
-### Especificações por modelo ⛔ piloto interrompido no 1º de 10 — leia antes de retomar
+### Quatro ajustes pedidos depois de usar o app ✅
+
+Vieram do uso real, não de revisão de código.
+
+**1. Dia do vencimento da parcela do seguro.** O financiamento já tinha esse
+campo; o seguro não, então não dava para avisar antes. Agora existe
+`seguroDia` no cadastro (só aparece quando parcelado), vai para
+`pagamento.dia` e o `Avisos` monta a agenda como já fazia com a parcela do
+financiamento. Sem dia informado, cai no dia 10.
+
+**2. "R$ xxx acumulados desde mm/aaaa" saiu do Início.** Fui eu que pus lá na
+sessão passada, ao absorver a antiga aba Resumo — e o usuário achou fora de
+lugar. Está certo: é número de arquivo, não de decisão do dia. Foi para
+**Custos › Histórico**, ao lado das outras somas, junto com a contagem de
+lançamentos. O cabeçalho do veículo voltou a ser só identidade, com "ver ficha ›".
+
+**3. Leitura do documento do veículo (CRLV).** Placa, renavam e chassi somam 31
+caracteres para digitar errado. Novo tipo de leitura `documento` no
+`gemini.js` e um botão no grupo Documentos do cadastro. Preenche placa,
+renavam, chassi, marca, modelo, ano, cor e combustível — e como placa e FIPE
+alimentam a estimativa, `estimarNoRascunho` roda logo depois, atualizando IPVA
+e vencimentos sem redesenhar a tela (não rouba o foco de quem está digitando).
+
+O prompt **proíbe explicitamente** devolver nome, CPF, CNPJ e endereço do
+proprietário, mesmo legíveis. O app não guarda dado pessoal, e isso agora está
+escrito no pedido, não só na intenção. A tela diz isso para o usuário.
+
+**4. "Valor total da apólice" deixou de ser a pergunta principal.** No lugar
+entrou **o que está coberto** (as mesmas `COBERTURAS` que a tela da seguradora
+já usava), porque é o que a pessoa sabe de cabeça e o que precisa lembrar num
+sinistro. O valor virou opcional e desceu.
+
+Isso tinha uma armadilha: o documento de seguro só era criado com
+`segValor > 0`, então tornar o valor opcional apagaria o seguro de quem não
+soubesse o total. Corrigido em duas frentes — o doc passa a ser criado se
+houver **qualquer** sinal de seguro (cobertura, parcela, data ou seguradora), e
+o valor, quando não informado, sai de `parcela × restantes`. Verificado: 8
+parcelas de R$ 250 gravam `valor: 2000`, então o custo mensal e a previsão de
+renovação continuam funcionando.
+
+Verificado a 375 px: nove rotas sem erro de console nem estouro; o ciclo
+gravar→ler do seguro devolve cobertura, dia e parcela; o aviso novo aparece
+como "Parcela do seguro · 22/09 · R$ 250"; e o preenchimento pelo documento foi
+testado capturando a função real do formulário — os 8 campos entram no rascunho
+e nos inputs visíveis. `sw.js` em `autolog-v19`. Dados de demonstração
+restaurados ao fim.
+
+**Não verificado:** a leitura do CRLV nunca rodou contra o Gemini de verdade —
+o teste injetou um resultado. Depende de chave configurada e de uma foto de
+documento real.
+
+### Especificações por modelo ⏸️ PAUSADO por decisão do usuário — retomar depois
+
+> Pausado em 2026-09-10: "vai ser bem grande, vamos segurar de lado no momento".
+> A lista de PDFs para baixar está em `manuais/LISTA-DE-DOWNLOAD.md` (pasta
+> fora do versionamento). Os 7 links da Honda foram verificados e o caminho da
+> Yamaha está descrito. Retomar por aí.
+
+#### Piloto interrompido no 1º de 10 — leia antes de retomar
 
 Objetivo: dar ao app o que falta para ter valor no primeiro minuto (qual óleo,
 qual vela, qual pressão de pneu), inspirado no concorrente MINHAMOTO. O usuário

@@ -468,19 +468,30 @@ const Store = (() => {
     // Seguro: cobertura e pagamento são coisas separadas. A apólice vale 12
     // meses, mas pode estar sendo paga em 3 parcelas — e quem tem o seguro
     // precisa enxergar as duas datas sem confundir uma com a outra.
-    const segValor = parseNum(d.seguroValor);
-    if (d.temSeguro && segValor > 0) {
+    const parcelado = d.seguroQuitado === false;
+    const segParcela = parcelado ? parseNum(d.seguroParcela) : 0;
+    const segRestantes = parcelado ? Math.max(0, Math.round(parseNum(d.seguroRestantes))) : 0;
+    const coberturas = (d.seguroCoberturas || []).slice();
+    /* O valor da apólice deixou de ser obrigatório: quase ninguém sabe o total
+       de cabeça, mas todo mundo sabe o que está coberto e quanto é a parcela.
+       Quando o total não vem, ele sai de parcela × restantes — e se nem isso
+       houver, o seguro é acompanhado sem valor, só pela cobertura. */
+    const segValor = parseNum(d.seguroValor) || (segParcela * segRestantes);
+    const temAlgo = segValor > 0 || segParcela > 0 || coberturas.length || d.seguroVenc || d.seguroNome;
+    if (d.temSeguro && temAlgo) {
       const venc = d.seguroVenc || toISO(addMonths(new Date(), 12));
-      const parcelado = d.seguroQuitado === false;
       docs.push({
         id: 'seguro', tag: 'SEGURO',
         titulo: d.seguroNome || 'Seguro do veículo',
-        sub: 'informado no cadastro', tipo: 'seguro', valor: segValor,
+        sub: coberturas.length ? coberturas.join(' · ') : 'informado no cadastro',
+        tipo: 'seguro', valor: segValor, coberturas,
         inicio: toISO(addMonths(fromISO(venc), -12)), venc,
         pagamento: {
           quitado: !parcelado,
-          parcela: parcelado ? parseNum(d.seguroParcela) : 0,
-          restantes: parcelado ? Math.max(0, Math.round(parseNum(d.seguroRestantes))) : 0,
+          parcela: segParcela,
+          restantes: segRestantes,
+          // Dia fixo do mês em que a parcela cai — é o que permite avisar antes.
+          dia: parcelado ? clamp(Math.round(parseNum(d.seguroDia)) || 10, 1, 28) : null,
         },
       });
     }
@@ -526,9 +537,11 @@ const Store = (() => {
       seguroValor: seg ? seg.valor : '',
       seguroVenc: seg ? seg.venc : '',
       seguroNome: seg ? seg.titulo : '',
+      seguroCoberturas: (seg && seg.coberturas) || [],
       seguroQuitado: pag.quitado !== false,
       seguroParcela: pag.quitado === false ? pag.parcela : '',
       seguroRestantes: pag.quitado === false ? pag.restantes : '',
+      seguroDia: pag.quitado === false ? (pag.dia || '') : '',
       quitado: fin.quitado !== false,
       parcela: fin.quitado === false ? fin.parcela : '',
       parcelasRestantes: fin.quitado === false ? fin.restantes : '',

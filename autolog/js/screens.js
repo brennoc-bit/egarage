@@ -16,8 +16,6 @@ const Screens = {};
 Screens.inicio = (v) => {
   const p = Calc.panorama(v);
   const cpk = p.custoKm;
-  const acumulado = v.lancamentos.reduce((soma, l) => soma + l.valor, 0);
-  const primeiro = Calc.ordenados(v)[0];
   const consumo = Calc.consumoMedio(v);
 
   const seletor = h('div', { class: 'segrow' },
@@ -39,11 +37,7 @@ Screens.inicio = (v) => {
       UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
       h('h3', null, v.modelo),
       UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' }),
-      h('div', { class: 'lockup-pe' },
-        UI.mono(acumulado
-          ? `${brl0(acumulado)} acumulados desde ${fmtMesAno(primeiro ? primeiro.data : v.compra)}`
-          : 'sem lançamentos ainda'),
-        UI.mono('ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
+      h('div', { class: 'lockup-pe' }, UI.mono('ver ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
 
     UI.row(
       UI.kv({
@@ -360,6 +354,8 @@ function abaFicha(v) {
 
 function abaHistorico(v) {
   const janela = App.sub.historico || 6;
+  const acumulado = v.lancamentos.reduce((soma, l) => soma + l.valor, 0);
+  const primeiro = Calc.ordenados(v)[0];
   const meses = Calc.resumoMensal(v, janela);
   const kmTotal = meses.reduce((s, m) => s + m.km, 0);
   const gastoTotal = meses.reduce((s, m) => s + m.gasto, 0);
@@ -374,6 +370,14 @@ function abaHistorico(v) {
     UI.row(
       UI.kv({ k: `Rodado (${janela}m)`, v: kmFmt(kmTotal), sub: `média ${num(Math.round(kmTotal / janela))} km/mês` }),
       UI.kv({ k: `Gasto (${janela}m)`, v: brl0(gastoTotal), sub: `média ${brl0(gastoTotal / janela)}/mês` })),
+    // O acumulado de sempre mora aqui, e não no Início: é número de arquivo,
+    // não de decisão do dia — combina com as outras somas desta tela.
+    UI.row(
+      UI.kv({
+        k: 'Custo acumulado', v: brl0(acumulado),
+        sub: acumulado ? `desde ${fmtMesAno(primeiro ? primeiro.data : v.compra)}` : 'nenhum lançamento ainda',
+      }),
+      UI.kv({ k: 'Lançamentos', v: String(v.lancamentos.length), sub: 'registrados' })),
 
     h('div', { style: { padding: 16 } },
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: janela > 12 ? 3 : 10, height: 140 } },
@@ -1379,6 +1383,42 @@ Screens.veiculo = (atual) => {
     return ref.caixa;
   };
 
+  /* Preenche o formulário com o que o Gemini leu do documento do veículo.
+     Escreve no rascunho E no input, porque o campo já está desenhado — e não
+     redesenha a tela, para não jogar fora o que já estava digitado. */
+  function preencherDoDocumento(lido) {
+    const CAMPOS = ['placa', 'renavam', 'chassi', 'marca', 'modelo', 'ano', 'cor', 'combustivel'];
+    let n = 0;
+    for (const nome of CAMPOS) {
+      const valor = lido[nome];
+      if (valor == null || valor === '') continue;
+      r[nome] = String(valor).trim();
+      const ref = refs[nome];
+      if (ref && ref.input) ref.input.value = r[nome];
+      n += 1;
+    }
+    // Placa nova muda os vencimentos; marca/modelo/ano mudam o que a FIPE acha.
+    if (n) {
+      estimarNoRascunho(r);
+      ['ipvaValor', 'ipvaVenc', 'licVenc'].forEach((k) => {
+        if (refs[k] && refs[k].input) refs[k].input.value = r[k] || '';
+      });
+      atualizarAviso();
+    }
+    return n;
+  }
+
+  const chipsSeguro = () => h('div', { class: 'chips' },
+    COBERTURAS.map((c) => h('button', {
+      type: 'button',
+      class: 'chip' + ((r.seguroCoberturas || []).includes(c) ? ' on' : ''),
+      onClick: () => {
+        const atual = r.seguroCoberturas || [];
+        r.seguroCoberturas = atual.includes(c) ? atual.filter((x) => x !== c) : atual.concat([c]);
+        App.render();
+      },
+    }, c)));
+
   /* Sugestões de marca e modelo, do catálogo FIPE embarcado. Nunca restringem:
      modelo fora da lista continua válido, é só digitar. */
   const sugerirMarca = (termo) => {
@@ -1468,6 +1508,18 @@ Screens.veiculo = (atual) => {
       }])),
 
     grupo('Documentos',
+      // Placa, renavam e chassi são 31 caracteres para digitar errado. O
+      // documento tem todos eles impressos — fotografar é mais rápido e mais
+      // confiável que teclar. Nunca salva sozinho: preenche e você confere.
+      UI.botaoLeitura({
+        tipo: 'documento',
+        rotulo: 'Preencher pelo documento do veículo',
+        api: { preencher: preencherDoDocumento },
+        mapear: (dd) => dd,
+      }),
+      h('div', { class: 'hint', style: { marginTop: 8, marginBottom: 14 } },
+        'A foto vai para o Gemini e não fica guardada. Nome, CPF e endereço do '
+        + 'proprietário não são lidos — o app não guarda dado pessoal.'),
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
             { name: 'renavam', label: 'Renavam', tipo: 'number', placeholder: '000000000' }),
       campo({ name: 'chassi', label: 'Chassi', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
@@ -1503,20 +1555,29 @@ Screens.veiculo = (atual) => {
       !r.temSeguro
         ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Sem seguro para acompanhar.')
         : h('div', { style: { marginTop: 14 } },
-            campo({ name: 'seguroNome', label: 'Seguradora' }),
-            dupla({ name: 'seguroValor', label: 'Valor total da apólice', tipo: 'dinheiro', placeholder: '0,00' },
+            dupla({ name: 'seguroNome', label: 'Seguradora' },
                   { name: 'seguroVenc', label: 'Cobertura até', tipo: 'date' }),
             h('div', { class: 'hint', style: { marginTop: -6, marginBottom: 16 } },
               'A apólice costuma valer 12 meses. Essa data é até quando você está coberto — não tem relação com o parcelamento.'),
-            h('div', { class: 'pergunta' }, 'Já está pago?'),
+
+            // O que está coberto vem antes do preço: é o que a pessoa sabe de
+            // cabeça, e é o que ela precisa lembrar na hora do sinistro.
+            UI.mono('O que está coberto', { fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)', margin: '4px 0 8px' }),
+            chipsSeguro(),
+
+            h('div', { class: 'pergunta', style: { marginTop: 18 } }, 'Já está pago?'),
             h('div', { class: 'sim-nao' },
               h('button', { class: r.seguroQuitado ? 'on' : '', onClick: () => { r.seguroQuitado = true; App.render(); } }, 'Sim'),
               h('button', { class: !r.seguroQuitado ? 'on' : '', onClick: () => { r.seguroQuitado = false; App.render(); } }, 'Não')),
             r.seguroQuitado
-              ? h('div', { class: 'hint', style: { marginTop: 10 } }, 'Nada a pagar até a renovação.')
+              ? h('div', { style: { marginTop: 14 } },
+                  campo({ name: 'seguroValor', label: 'Valor pago na apólice', tipo: 'dinheiro', placeholder: '0,00',
+                    hint: 'Opcional. Se preencher, o app guarda 1/12 por mês como provisão para a renovação.' }))
               : h('div', { style: { marginTop: 14 } },
                   dupla({ name: 'seguroParcela', label: 'Valor da parcela', tipo: 'dinheiro', placeholder: '0,00' },
                         { name: 'seguroRestantes', label: 'Parcelas restantes', tipo: 'number', placeholder: '0' }),
+                  campo({ name: 'seguroDia', label: 'Dia do vencimento', tipo: 'number', placeholder: '10',
+                    hint: 'Em que dia do mês a parcela cai. É por aqui que o app avisa antes do vencimento.' }),
                   h('div', { class: 'hint', style: { marginTop: -6 } },
                     'A parcela entra no custo mensal enquanto durar; a cobertura segue valendo até a data acima.')))),
 

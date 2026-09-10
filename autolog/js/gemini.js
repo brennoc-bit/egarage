@@ -101,6 +101,28 @@ Regras:
 - Não escreva explicação fora do JSON.`;
 
   const PEDIDOS = {
+    /* CRLV / CRV. O documento traz nome e CPF do proprietário, e o app não
+       guarda dado pessoal por decisão de projeto — então o pedido proíbe
+       explicitamente devolver isso. A imagem só trafega; não fica salva. */
+    documento: {
+      titulo: 'Documento do veículo (CRLV)',
+      campos: 'placa, renavam, chassi, marca, modelo, ano, cor, combustivel, observacao',
+      padrao: `${REGRAS}
+A imagem é um documento de veículo brasileiro (CRLV, CRV ou CRLV-e).
+Devolva: {"placa":..., "renavam":..., "chassi":..., "marca":..., "modelo":..., "ano":..., "cor":..., "combustivel":..., "observacao":...}
+- placa = 7 caracteres, sem hífen, em maiúsculas (ABC1D23 ou ABC1234).
+- renavam = só os dígitos, sem pontos.
+- chassi = 17 caracteres, em maiúsculas.
+- marca = só a marca (o documento costuma trazer "MARCA/MODELO" numa linha só;
+  separe, e devolva em marca apenas a primeira parte).
+- modelo = o restante daquela linha, sem a marca.
+- ano = ano do MODELO, não o de fabricação, quando os dois aparecerem.
+- cor = a cor predominante, em uma palavra.
+- combustivel = um de: Gasolina, Etanol, Flex, Diesel, GNV, Elétrico, ou null.
+- NUNCA devolva nome, CPF, CNPJ, endereço ou qualquer dado do proprietário,
+  mesmo que estejam bem legíveis na imagem. Eles não fazem parte do JSON.
+- observacao = frase curta sobre o que ficou ilegível, ou null.`,
+    },
     abastecimento: {
       titulo: 'Nota ou bomba de combustível',
       campos: 'data, litros, valor, precoLitro, local, combustivel, odometro, observacao',
