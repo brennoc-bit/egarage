@@ -86,3 +86,7 @@ $RECYCLE.BIN/
 *.swp
 *.swo
 *~
+
+# Manuais do proprietário baixados para extrair especificações.
+# NÃO versionar: são PDFs das fabricantes e o repositório é público.
+manuais/
