@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-06 — previsão de custo dos próximos 6 mêses e barra de navegação reorganizada
+**Última atualização:** 2026-09-09 — piloto de especificações por modelo INTERROMPIDO: as fontes brasileiras são inconfiáveis (ver abaixo)
 
 ---
 
@@ -187,6 +187,78 @@ digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado*
 Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
+
+### Especificações por modelo ⛔ piloto interrompido no 1º de 10 — leia antes de retomar
+
+Objetivo: dar ao app o que falta para ter valor no primeiro minuto (qual óleo,
+qual vela, qual pressão de pneu), inspirado no concorrente MINHAMOTO. O usuário
+autorizou as horas e pediu 10 modelos, começando pela moto dele, uma **Kawasaki
+Ninja 400**.
+
+**Parei no primeiro modelo, de propósito.** Motivo abaixo.
+
+#### Levantamento de fontes (feito, vale para sempre)
+
+| Fonte | Veredicto |
+| --- | --- |
+| NHTSA vPIC (EUA, grátis) | Responde 200, **sem CORS**, e sem o mercado brasileiro: tem Civic e Fit, não tem Biz, Pop, CB 300, Bros, Fan nem Titan |
+| CarQuery | Não responde (timeout) |
+| FIPE | Preço e nome. Nenhuma especificação |
+| **Manuais oficiais Honda** (honda.com.br) | **Existem, em PDF, de graça** — mas o CDN devolve 403 para curl e para WebFetch, mesmo com cabeçalhos de navegador. Abrem para uma pessoa. `pdftotext` está disponível na máquina, então se o PDF chegar, dá para extrair |
+
+Conclusão: não existe API. O dado é compilado à mão, como o do IPVA.
+
+#### O achado que interrompeu tudo
+
+As fichas técnicas brasileiras mais bem ranqueadas **são geradas por IA e erram
+dados críticos, declarando procedência falsa**.
+
+`motorcyclist.com.br` estampa "Especificações técnicas oficiais extraídas do
+manual do proprietário" e "Fonte: Manual Kawasaki Ninja 400". Na mesma página:
+
+- descreve a Ninja 400 como **"monocilíndrica, refrigerada a ar"**. Ela é
+  bicilíndrica paralela refrigerada a líquido (confirmado na Wikipédia e em
+  duas fichas de manutenção independentes);
+- chama a CB 500F e a R3 de refrigeradas a ar — as duas são a líquido;
+- lista a Suzuki GSX-R150, não vendida no Brasil, como rival direta;
+- publica **2,3 L como "capacidade de cárter"** do óleo. Esse é o volume A
+  SECO. Na troca com filtro vão 2,0 L. Quem seguir a ficha enche além da marca.
+
+Sinais de conteúdo automatizado: data de atualização igual à do dia do acesso,
+prosa genérica, links de afiliado do Mercado Livre em todo canto.
+
+**Por que isso é grave para este projeto:** volume de óleo e pressão de pneu são
+números que quebram motor e afetam segurança. Compilar 10 modelos dessas fontes
+produziria um arquivo perigoso com aparência de autoridade — exatamente o que o
+app inteiro foi construído para não fazer. E levanta a suspeita (não provada) de
+que o concorrente que inspirou a ideia esteja assentado nas mesmas fontes.
+
+#### O que ficou pronto
+
+`dados/especificacoes.json`, com **a Ninja 400 completa e bem apurada** a partir
+de maintenanceschedule.com, tospec.bike e Wikipédia — três fontes que concordam
+entre si e contradizem a ficha brasileira. O arquivo carrega o contrato de
+manutenção em `_leia`, `_leiaPerigo` e `_leiaOleo` (a armadilha dos três volumes
+de óleo: a seco, com filtro, sem filtro), e um `_fontesRejeitadas` documentando
+o caso acima para ninguém cair nele de novo.
+
+Um campo já nasceu com `"conferir": true`: a pressão dos pneus, porque as fontes
+boas dão 200/225 kPa e a ficha brasileira dá 33/36 psi.
+
+**Achado secundário:** o `dados/veiculos.json` não tem **Factor** nem
+**Crosser** (Yamaha), dois dos maiores volumes do país. O catálogo de nomes tem
+buraco nos modelos mais vendidos.
+
+#### O custo, revisado
+
+A estimativa anterior era de 20 a 40 min por modelo. Ela valia para o método
+"cruzar duas fontes secundárias" — que acabou de se mostrar inseguro. Com o
+método correto (manual oficial, um por modelo, lido de verdade) o número real
+não foi medido, mas é claramente maior, e a Honda bloqueia automação.
+
+**Decisão pendente do usuário** antes de retomar: seguir mais devagar e mais
+caro pelos manuais, restringir a base ao que der para verificar com folga, ou
+deixar o usuário preencher a ficha do próprio veículo com os campos certos.
 
 ### Previsão dos próximos 6 meses ✅ fecha a ideia original do app
 
@@ -610,6 +682,8 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 - **Revisar `dados/ipva.json` em janeiro**, quando as leis estaduais de 2027
   saírem — e, de preferência, confirmar na Sefaz os 11 estados marcados com
   `"conferir": true`.
+- **Acrescentar Factor e Crosser** (Yamaha) ao `dados/veiculos.json` — faltam
+  no catálogo e estão entre as motos mais vendidas do país.
 - **Trocar a senha do protótipo** se `2047` for um PIN usado em outro lugar —
   ela fica visível no código de um repositório público.
 

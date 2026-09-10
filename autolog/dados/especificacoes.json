@@ -1,0 +1,51 @@
+{
+  "_leia": "Especificações por modelo, mantidas À MÃO. Não existe API com essas informações para o mercado brasileiro: a NHTSA vPIC não tem os modelos daqui (nem Biz, nem Pop, nem CB 300, nem Bros) e não manda CORS; a CarQuery não responde; a FIPE dá preço e nome, não especificação. O dado nasce do manual do proprietário e é conferido em pelo menos duas fontes independentes antes de entrar aqui.",
+
+  "_leiaPerigo": "ATENÇÃO AO QUE ESTE ARQUIVO GUARDA. Volume de óleo errado quebra motor e pressão de pneu errada é segurança. Por isso: (1) nenhum valor entra com fonte única; (2) onde as fontes divergem o campo ganha 'conferir': true e o app mostra o aviso; (3) o app SEMPRE manda confirmar no manual, nunca apresenta isto como palavra final. Se você for acrescentar um modelo e não achar duas fontes que concordem, deixe o campo fora — ausência é melhor que número errado.",
+
+  "_leiaOleo": "Óleo tem TRÊS números diferentes e confundi-los é o erro mais comum das fichas técnicas da internet: 'aSeco' é o volume do motor vazio (só depois de desmontar), 'comFiltro' é o da troca com filtro novo, 'semFiltro' é o da drenagem simples. Quem usa o valor a seco numa troca comum enche o motor além da marca. O app usa SEMPRE comFiltro/semFiltro e nunca aSeco.",
+
+  "atualizadoEm": "2026-09-09",
+  "cobertura": "1 de 10 modelos do piloto. Ver PROGRESS.md — a coleta foi interrompida ao descobrir que as fichas técnicas brasileiras mais bem ranqueadas são geradas por IA e erram dados críticos, mesmo declarando 'extraído do manual do proprietário'.",
+
+  "modelos": {
+    "kawasaki|ninja 400|2018-2024": {
+      "tipo": "moto",
+      "motor": "399 cc, bicilíndrico paralelo, refrigerado a líquido, DOHC 8V",
+      "oleo": {
+        "visc": "10W-40",
+        "norma": "API SG/SH/SJ/SL ou superior · JASO MA, MA1 ou MA2",
+        "comFiltro": 2.0,
+        "semFiltro": 1.6,
+        "aSeco": 2.3,
+        "_nota": "Duas fontes independentes dão 2,0 L na troca com filtro. O 2,3 L que circula em ficha técnica brasileira é o volume A SECO — usar esse número numa troca comum passa do nível."
+      },
+      "vela": { "cod": "NGK LMAR9G", "qtd": 2, "folga": "0,7-0,8 mm" },
+      "pneu": {
+        "d": "110/70R17 M/C 54H",
+        "t": "150/60R17 M/C 66H",
+        "kpaD": 200, "kpaT": 225,
+        "psiD": 29, "psiT": 33,
+        "conferir": true,
+        "_nota": "Duas fontes dão 200/225 kPa (o valor do manual é em kPa; psi é conversão). Uma ficha brasileira dá 33/36 psi no dianteiro/traseiro — diverge no dianteiro. Confirme no adesivo do balanço da sua moto, que é a fonte física."
+      },
+      "corrente": { "passo": 520, "elos": 106, "relacao": "14/41" },
+      "filtroOleo": "16097-0008 (equiv. HiFlo HF303)",
+      "filtroAr": "11013-0767 (equiv. HiFlo HFA2406)",
+      "bateria": "YTX9-BS 12V 8Ah",
+      "freio": "DOT 4",
+      "arrefecimento": { "litros": 1.3, "tipo": "etilenoglicol permanente" },
+      "tanque": 14.0,
+      "intervalos": { "oleoKm": 12000, "oleoMeses": 12, "valvulasKm": 24000 },
+      "fontes": [
+        "https://maintenanceschedule.com/kawasaki-ninja-400-ex400-maintenance/",
+        "https://tospec.bike/bikes/kawasaki-ninja400/",
+        "https://en.wikipedia.org/wiki/Kawasaki_Ninja_400"
+      ]
+    }
+  },
+
+  "_fontesRejeitadas": {
+    "motorcyclist.com.br": "REJEITADA. Declara 'especificações técnicas oficiais extraídas do manual do proprietário' e 'Fonte: Manual Kawasaki Ninja 400', mas descreve a Ninja 400 como 'monocilíndrica, refrigerada a ar' — ela é bicilíndrica paralela refrigerada a líquido (confirmado na Wikipédia e em duas fichas de manutenção). Na mesma tabela chama a CB 500F e a R3 de refrigeradas a ar, e lista a GSX-R150, que não é vendida no Brasil, como rival direta. Publica o volume de óleo A SECO como se fosse o da troca. Conteúdo aparentemente gerado por IA, com links de afiliado e data de atualização igual à do dia do acesso."
+  }
+}
