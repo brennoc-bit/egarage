@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-10 — quatro ajustes de formulário; especificações por modelo PAUSADO por decisão do usuário
+**Última atualização:** 2026-09-10 — quatro ajustes de formulário, preços da ANP atualizados e bug do gerador corrigido
 
 ---
 
@@ -187,6 +187,31 @@ digitação, o que anulava o sentido da coisa. Agora a estimativa **vira o dado*
 Verificado: cadastro novo nasce com IPVA R$ 4.000 (4% de R$ 100.000),
 licenciamento R$ 167,74 e litro a R$ 6,31, sem digitar nada; o botão na tela de
 Documentos reescreveu as 3 parcelas de IPVA preservando as 2 já pagas e as datas.
+
+### Gerador de preços consertado ✅ a ANP mudou o nome do arquivo
+
+O usuário disse que não entendeu como rodar o script — então rodei eu, e ele
+quebrou. Não era ele: era bug.
+
+A ANP parou de zerar os dígitos no nome do arquivo. Veio
+`resumo_semanal_lpc_2026-08-30-2026-09-5.xlsx`, com `09-5` em vez de `09-05`.
+A regex só aceitava dois dígitos, achou **uma** data em vez de duas, e o
+script estourou em `semana[1]`.
+
+Pior que estourar: o JSON já tinha sido gravado antes do print, com
+`"semana": ["2026-08-30"]` — lista de um item só. As telas leem `semana[0]`,
+então **nada quebraria na cara do usuário**; o app só mostraria a semana pela
+metade, calado. Bug silencioso é o pior tipo.
+
+Corrigido com `datas_do_nome()`, que aceita 1 ou 2 dígitos e normaliza para
+`AAAA-MM-DD`. A ordenação dos links passou a usar a mesma função, senão a
+escolha do arquivo mais recente erraria pelo mesmo motivo. E agora, se as duas
+datas não aparecerem, o script **para com mensagem** em vez de gravar um
+arquivo pela metade.
+
+Dados atualizados para a semana de **30/08 a 05/09/2026** (eram de 23 a 29/08):
+386 municípios, 27 estados, 5 regiões, 43,4 KB. Gasolina: Brasil R$ 6,51,
+SP R$ 6,34, PR R$ 6,61, PB R$ 6,43.
 
 ### Quatro ajustes pedidos depois de usar o app ✅
 

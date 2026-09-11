@@ -75,6 +75,14 @@ def chave(t):
     return re.sub(r"[^A-Z0-9 ]", "", sem_acento(t).upper()).strip()
 
 
+# A ANP não zera os dígitos: já veio "2026-09-5" no lugar de "2026-09-05" no
+# nome do arquivo. Aceitar 1 ou 2 dígitos e normalizar na leitura evita que a
+# semana saia pela metade — foi exatamente o que aconteceu em 2026-09-10.
+def datas_do_nome(texto):
+    achadas = re.findall(r"(\d{4})-(\d{1,2})-(\d{1,2})", str(texto))
+    return [f"{a}-{int(m):02d}-{int(d):02d}" for a, m, d in achadas]
+
+
 def ultima_planilha():
     """Descobre o link mais recente na página da ANP.
 
@@ -87,11 +95,7 @@ def ultima_planilha():
     if not links:
         raise SystemExit("Nenhum link de planilha encontrado — a página da ANP mudou de formato.")
 
-    def data_do_nome(u):
-        d = re.findall(r"(\d{4})-(\d{2})-(\d{2})", u)
-        return d[-1] if d else ("0000", "00", "00")
-
-    return sorted(links, key=data_do_nome)[-1]
+    return sorted(links, key=lambda u: datas_do_nome(u)[-1:] or ["0000-00-00"])[-1]
 
 
 # ── Leitura de .xlsx sem dependência externa ────────────────────────────────
@@ -173,7 +177,9 @@ def main():
         if len(c) > 3 and chave(c[3]) in UFS:
             regiao_da_uf[UFS[chave(c[3])]] = chave(c[2])
 
-    semana = re.findall(r"(\d{4}-\d{2}-\d{2})", url)[-2:]
+    semana = datas_do_nome(url)[-2:]
+    if len(semana) < 2:
+        raise SystemExit(f"Não achei as duas datas da semana em: {url.rsplit('/', 1)[-1]}")
 
     saida = {
         "fonte": "ANP · Levantamento de Preços de Combustíveis",
