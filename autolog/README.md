@@ -74,8 +74,8 @@ foi registrado nos itens que existem nos dois.
 
 ## Telas
 
-Cinco abas — Início · Manutenção · Custos (Custo/km · Histórico ·
-Financiamento) · Docs · Perfil — mais duas rotas sem aba: a **Ficha** do
+Cinco abas — Início · Manutenção · Custos (Custo/km · Histórico) · Docs ·
+Perfil — mais três rotas sem aba: a **Previsão** dos 6 meses, a **Ficha** do
 veículo, aberta ao tocar no nome dele no Início, e o **Cadastro de veículo**,
 com foto, tipo e campos agrupados em Identificação, Documentos, Uso,
 Financiamento e despesas anuais. A mesma tela serve para editar a ficha depois.
@@ -507,7 +507,7 @@ restaurar o padrão.
 - **Diagnóstico** — cada item cruza intervalo em km e/ou meses com o odômetro e a data do último serviço.
   Verde/amarelo/vermelho saem daí; o score é `ok + 0,65·atenção + 0,1·urgente`, limitado a 70 quando há item vencido.
 - **Documentos** — parcelas do IPVA, licenciamento, apólice anual e revisão por km, com prazo, progresso e status por proximidade.
-- **Financiamento** — Tabela Price ou SAC, com comparação de prazos e cenários salvos.
+- **Previsão dos 6 meses** — cada compromisso no mês em que vence, em vez de diluído em doze.
 
 ## Instalar como app no celular
 
@@ -532,7 +532,11 @@ Perfil, recria o exemplo — uma moto e um carro, sempre relativos à data de ho
 - **Números do mock não foram copiados.** O canvas tem valores inconsistentes entre telas
   (ex.: gasto do mês R$ 386 na tela 01 e R$ 173 na 07). Aqui tudo vem dos lançamentos.
 - **Barra de status do celular (9:41 · 5G · 100%)** foi removida: é artefato de mockup.
-- **“Enviar para banco”** virou **“Salvar simulação”**, que de fato guarda o cenário.
+- **O simulador de financiamento saiu.** O canvas previa uma tela de Tabela Price
+  e SAC (onde o “Enviar para banco” virou “Salvar simulação”). Ela existiu e foi
+  removida em 2026-09-10: simular financiamento é sobre um veículo que a pessoa
+  ainda **não tem**, e este app é sobre o que ela já tem. O código está no
+  histórico do git.
 - **Foto do veículo** é real (câmera/galeria, redimensionada no cliente e salva como data URL).
   O canvas previa tratá-las em preto e branco com o `.grayscale` do DS; aqui elas saem
   **coloridas** — é a moto ou o carro do dono, não peça de catálogo. O hachurado

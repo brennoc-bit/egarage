@@ -280,31 +280,6 @@ const Calc = (() => {
     };
   }
 
-  /* ── Financiamento ──────────────────────────────────────────────────── */
-
-  // Price: parcela fixa. SAC: amortização fixa, parcela decrescente.
-  function financiamento({ valor, entrada, meses, taxa, sistema = 'price' }) {
-    const pv = Math.max(0, parseNum(valor) - parseNum(entrada));
-    const n = Math.max(1, Math.round(parseNum(meses)));
-    const i = parseNum(taxa) / 100;
-
-    if (pv === 0) return { pv, n, i, parcela: 0, primeira: 0, ultima: 0, total: 0, juros: 0, sistema };
-    if (i === 0) {
-      const p = pv / n;
-      return { pv, n, i, parcela: p, primeira: p, ultima: p, total: pv, juros: 0, sistema };
-    }
-    if (sistema === 'sac') {
-      const amort = pv / n;
-      const primeira = amort + pv * i;
-      const ultima = amort + amort * i;
-      const juros = i * pv * (n + 1) / 2;
-      return { pv, n, i, parcela: primeira, primeira, ultima, total: pv + juros, juros, sistema };
-    }
-    const parcela = pv * i / (1 - Math.pow(1 + i, -n));
-    const total = parcela * n;
-    return { pv, n, i, parcela, primeira: parcela, ultima: parcela, total, juros: total - pv, sistema };
-  }
-
   /* ── Custo mensal: o que sai do bolso todo mês ──────────────────────── */
 
   // Média do que foi gasto com combustível nos meses fechados anteriores.
@@ -546,6 +521,6 @@ const Calc = (() => {
     statusItem, diagnostico, statusDoc, docsStatus, proximosVencimentos, compromissosAnuais,
     mediaMensalCombustivel, custoMensal, financiamentoStatus,
     ritmoMensal, custoTipico, previsao,
-    financiamento, panorama,
+    panorama,
   };
 })();

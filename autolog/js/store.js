@@ -109,7 +109,6 @@ const Store = (() => {
       if (!v.combustivel) v.combustivel = v.tipo === 'moto' ? 'Gasolina' : 'Flex';
       if (!v.cor) v.cor = '';
       if (!v.chassi) v.chassi = '';
-      if (!Array.isArray(v.simulacoes)) v.simulacoes = [];
       if (!v.financiamento) v.financiamento = { quitado: true };
       // Seguro deixou de ser uma despesa anual genérica: agora separa
       // cobertura (até quando vale) de pagamento (à vista ou parcelado).
@@ -224,7 +223,6 @@ const Store = (() => {
       docs: seedDocs(hoje, ano, 20000),  // seguro quitado
       financiamento: { quitado: true },
       lancamentos: lanc,
-      simulacoes: [],
     };
   }
 
@@ -291,7 +289,6 @@ const Store = (() => {
       // Exemplo com financiamento em aberto, para o custo fixo aparecer.
       financiamento: { quitado: false, parcela: 1180, restantes: 22, dia: 10 },
       lancamentos: lanc,
-      simulacoes: [],
     };
   }
 
@@ -399,7 +396,6 @@ const Store = (() => {
       docs: docsInformados(dados, Math.ceil((odometro + 1) / intervaloRevisao) * intervaloRevisao),
       financiamento: financiamentoInformado(dados),
       lancamentos: [],
-      simulacoes: [],
     };
     state.veiculos.push(v);
     state.selecionado = v.id;
@@ -721,14 +717,6 @@ const Store = (() => {
     salvar();
   }
 
-  function salvarSimulacao(vid, sim) {
-    const v = veiculo(vid);
-    if (!v) return;
-    v.simulacoes = v.simulacoes || [];
-    v.simulacoes.unshift(Object.assign({ id: uid(), criada: today() }, sim));
-    v.simulacoes = v.simulacoes.slice(0, 8);
-    salvar();
-  }
 
   function resetar() { state = seed(); salvar(); }
 
@@ -846,7 +834,7 @@ const Store = (() => {
     aplicarEstimativa, previaEstimativa,
     selecionar, atualizarPerfil, atualizarVeiculo, addVeiculo, removerVeiculo,
     addLancamento, removerLancamento, registrarServico, categoriaDoItem,
-    pagarDocumento, agendarRevisao, salvarSimulacao,
+    pagarDocumento, agendarRevisao,
     dadosDoFormulario, atualizarDocsEFinanciamento, pagarParcelaFinanciamento,
     atualizarApolice, apoliceDe,
     resetar, importar, exportar, normalizarPlaca,

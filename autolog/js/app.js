@@ -24,7 +24,6 @@ const NAV_PAI = {
 const App = {
   rota: 'inicio',
   sub: { docs: 'todos', custos: 'km', periodo: 30, historico: 6, veiculoId: null },
-  _sim: {},
   _rascunho: null,
 
   ir(rota, sub) {
@@ -98,19 +97,6 @@ const App = {
     const editando = this.sub.veiculoId;
     this.limparRascunho();
     this.ir(editando ? 'ficha' : 'inicio');
-  },
-
-  // Parâmetros da simulação, por veículo, só na sessão.
-  sim(v) {
-    if (!this._sim[v.id]) {
-      this._sim[v.id] = { valor: v.fipe || 20000, entrada: Math.round((v.fipe || 20000) * 0.27), meses: 36, taxa: 1.49, sistema: 'price' };
-    }
-    return this._sim[v.id];
-  },
-  setSim(patch) {
-    const v = Store.atual();
-    if (!v) return;
-    Object.assign(this.sim(v), patch);
   },
 
   render({ topo = false } = {}) {
@@ -608,23 +594,6 @@ const Acoes = {
         UI.toast('Consumo de referência atualizado');
       },
     });
-  },
-
-  editarSim(campo, label, valor) {
-    UI.sheet({
-      titulo: label, sub: 'Simulação de financiamento',
-      campos: [{ name: 'v', label, tipo: campo === 'meses' ? 'number' : 'dinheiro', valor, obrigatorio: true }],
-      onSubmit: (d) => {
-        App.setSim({ [campo]: campo === 'meses' ? clamp(Math.round(d.v), 1, 120) : d.v });
-        App.render();
-      },
-    });
-  },
-
-  trocarSistema(s) {
-    App.setSim({ sistema: s.sistema === 'price' ? 'sac' : 'price' });
-    App.render();
-    UI.toast(s.sistema === 'price' ? 'Sistema SAC' : 'Tabela Price');
   },
 
   /* — perfil e dados — */

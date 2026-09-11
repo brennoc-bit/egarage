@@ -346,7 +346,7 @@ function abaFicha(v) {
             UI.kv({ k: 'Restam', v: String(f.restantes), sub: `saldo ${brl0(f.saldo)}` }));
     })(),
     UI.row(UI.kv({ k: 'Odômetro', v: kmFmt(v.odometro), onClick: () => Acoes.atualizarOdometro(v) })),
-    h('div', { class: 'note' }, 'Os dados da ficha alimentam o diagnóstico de manutenção e a simulação de financiamento.'),
+    h('div', { class: 'note' }, 'Os dados da ficha alimentam o diagnóstico de manutenção e a estimativa de IPVA pela sua região.'),
     UI.cta([
       { label: 'Editar ficha', icone: '✎', pri: true, onClick: () => Acoes.editarVeiculo(v) },
     ]));
@@ -573,14 +573,16 @@ function cartaoFinanciamento(v) {
 
 /* ── 05 · Custo por km  +  06 · Simulação ──────────────────────────────── */
 
-/* O Histórico entrou aqui como aba do meio: é a mesma pergunta das outras
-   duas — quanto esse veículo consome de dinheiro —, só que olhada no tempo em
-   vez de por quilômetro. Antes ele estava dentro da Garagem, longe de tudo com
-   que se parece. */
+/* Duas abas para a mesma pergunta — quanto este veículo consome de dinheiro —,
+   olhada por quilômetro e olhada no tempo.
+
+   Havia uma terceira, "Financiamento", que simulava Price e SAC para um
+   veículo que a pessoa ainda não tinha. Saiu em 2026-09-10: o app é sobre o
+   veículo que você tem, e a decisão de comprar é de outro momento da vida.
+   O código está no histórico do git se um dia fizer falta. */
 const ABAS_CUSTOS = {
   km: { label: 'Custo/km', kicker: 'Quanto custa cada quilômetro', titulo: 'Custo/km' },
   historico: { label: 'Histórico', kicker: 'Km rodado e gasto, mês a mês', titulo: 'Histórico' },
-  sim: { label: 'Financiamento', kicker: 'Tabela Price ou SAC', titulo: 'Simular' },
 };
 
 Screens.custos = (v) => {
@@ -588,7 +590,7 @@ Screens.custos = (v) => {
   const corpo = h('div', null,
     UI.seg(Object.keys(ABAS_CUSTOS).map((id) => ({ id, label: ABAS_CUSTOS[id].label })), aba,
       (id) => App.ir('custos', { custos: id })),
-    aba === 'km' ? abaCustoKm(v) : aba === 'historico' ? abaHistorico(v) : abaSimulacao(v));
+    aba === 'km' ? abaCustoKm(v) : abaHistorico(v));
   return { kicker: ABAS_CUSTOS[aba].kicker, titulo: ABAS_CUSTOS[aba].titulo, corpo };
 };
 
@@ -623,92 +625,6 @@ function abaCustoKm(v) {
     UI.cta([
       { label: 'Editar consumo', icone: '✎', onClick: () => Acoes.editarConsumo(v) },
       { label: 'Registrar peça', icone: '+', pri: true, onClick: () => Acoes.registrarLancamento(v, 'manutencao') },
-    ]));
-}
-
-function abaSimulacao(v) {
-  const s = App.sim(v);
-  const r = Calc.financiamento(s);
-  const entradaPct = s.valor > 0 ? (s.entrada / s.valor) * 100 : 0;
-
-  const caixa = (rotulo, valor, sub, onClick) => h('div', null,
-    UI.mono(rotulo, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }),
-    h('button', {
-      style: {
-        width: '100%', textAlign: 'left', padding: '12px 16px', border: '1px solid var(--color-divider)',
-        background: 'var(--color-bg)', borderRadius: 14, fontFamily: 'var(--font-heading)',
-        fontWeight: 700, fontSize: 20, letterSpacing: '-.01em', color: 'var(--color-text)', cursor: 'pointer',
-      },
-      onClick,
-    }, valor),
-    sub ? h('div', { style: { fontSize: 11, color: 'var(--muted)', marginTop: 4 } }, sub) : null);
-
-  const slider = h('input', {
-    type: 'range', min: 0, max: 90, step: 1, value: Math.round(entradaPct),
-    oninput: (ev) => {
-      const novo = Math.round(s.valor * (Number(ev.target.value) / 100));
-      App.setSim({ entrada: novo });
-      App.render();
-    },
-  });
-
-  const cenarios = [12, 24, 36, 48, 60].map((n) => ({ n, r: Calc.financiamento({ ...s, meses: n }) }));
-
-  return h('div', null,
-    h('div', { style: { padding: '18px 20px 8px', display: 'grid', gap: 14 } },
-      caixa('Valor do veículo', brl0(s.valor), 'toque para ajustar',
-        () => Acoes.editarSim('valor', 'Valor do veículo', s.valor)),
-      h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
-        caixa('Entrada', brl0(s.entrada), null, () => Acoes.editarSim('entrada', 'Entrada', s.entrada)),
-        caixa('Prazo', `${s.meses}x`, null, () => Acoes.editarSim('meses', 'Prazo em meses', s.meses))),
-      h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
-        caixa('Taxa a.m.', num(s.taxa, 2) + '%', null, () => Acoes.editarSim('taxa', 'Taxa mensal (%)', s.taxa)),
-        caixa('Sistema', s.sistema === 'sac' ? 'SAC' : 'Price', null, () => Acoes.trocarSistema(s)))),
-
-    h('div', { style: { padding: '4px 20px 16px' } }, slider,
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' } },
-        h('span', null, `${Math.round(entradaPct)}% de entrada`),
-        h('span', null, `${brl0(r.pv)} financiados`))),
-
-    h('div', { class: 'price-strip', style: { flexDirection: 'column', alignItems: 'stretch', gap: 12 } },
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' } },
-        h('div', null,
-          h('div', { class: 'pk' }, s.sistema === 'sac' ? '1ª parcela' : 'Parcela mensal'),
-          h('div', { class: 'pv', style: { fontSize: 32 } }, brl(r.parcela))),
-        h('div', { style: { textAlign: 'right' } },
-          h('div', { class: 'pk' }, 'em'),
-          UI.mono(`${r.n}x`, { fontSize: 15, marginTop: 4, fontWeight: 600 }))),
-      h('div', { style: { height: 1, background: 'rgba(255,255,255,.18)' } }),
-      h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontFamily: 'var(--mono)', fontSize: 11 } },
-        h('div', null, h('div', { style: { opacity: .7 } }, 'Total pago'), h('div', { style: { fontSize: 14, marginTop: 4, fontWeight: 600 } }, brl0(r.total + Number(s.entrada)))),
-        h('div', { style: { textAlign: 'right' } }, h('div', { style: { opacity: .7 } }, 'Juros totais'), h('div', { style: { fontSize: 14, marginTop: 4, fontWeight: 600 } }, brl0(r.juros)))),
-      s.sistema === 'sac' ? UI.mono(`última parcela ${brl(r.ultima)}`, { opacity: .7, fontSize: 10 }) : null),
-
-    UI.sectHd('Comparar prazos'),
-    cenarios.map((c) => h('button', {
-      class: 'list-item', style: c.n === s.meses ? { background: 'var(--color-accent-100)' } : null,
-      onClick: () => { App.setSim({ meses: c.n }); App.render(); },
-    },
-      h('div', { style: { width: 46, fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 16, color: c.n === s.meses ? 'var(--color-accent)' : 'var(--color-text)' } }, c.n + 'x'),
-      h('div', { style: { flex: 1 } },
-        h('div', { style: { fontSize: 15, fontWeight: 700 } }, brl(c.r.parcela)),
-        UI.mono(`juros ${brl0(c.r.juros)}`, { marginTop: 2, color: 'var(--muted)' })),
-      c.n === s.meses ? h('span', { class: 'status-tag', style: { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } }, 'ATUAL') : null)),
-
-    v.simulacoes && v.simulacoes.length ? h('div', null,
-      UI.sectHd('Simulações salvas'),
-      v.simulacoes.map((sim) => h('div', { class: 'list-item' },
-        UI.mono(fmtDia(sim.criada), { width: 44, color: 'var(--muted)' }),
-        h('div', { style: { flex: 1 } },
-          h('div', { style: { fontSize: 13, fontWeight: 600 } }, `${brl(sim.parcela)} · ${sim.meses}x`),
-          UI.mono(`${brl0(sim.valor)} · entrada ${brl0(sim.entrada)} · ${num(sim.taxa, 2)}% a.m. · ${sim.sistema === 'sac' ? 'SAC' : 'Price'}`, { marginTop: 2, color: 'var(--muted)' }))))) : null,
-
-    UI.cta([
-      { label: 'Limpar', icone: '↻', onClick: () => { App.setSim({ entrada: 0, meses: 36, taxa: 1.49, sistema: 'price' }); App.render(); } },
-      {
-        label: 'Salvar simulação', icone: '✓', pri: true,
-        onClick: () => { Store.salvarSimulacao(v.id, { ...s, parcela: r.parcela, juros: r.juros, total: r.total }); App.render(); UI.toast('Simulação salva'); },
-      },
     ]));
 }
 
