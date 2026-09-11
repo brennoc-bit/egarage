@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-10 — duas pendências antigas fechadas: redirect do endereço velho e fim do `car-cost-app/`
+**Última atualização:** 2026-09-10 — redirect do endereço velho, fim do `car-cost-app/` e da aba de simular financiamento
 
 ---
 
@@ -705,6 +705,29 @@ genérico). Sintaxe conferida com `node --check`. A validação real é no celul
 **Importante:** instalar como app exige **HTTPS**. Pelo IP da rede local o
 Chrome degrada para atalho com barra de navegador.
 
+### Simulador de financiamento 🗑️ removido em 2026-09-10
+
+A aba **Custos › Financiamento** (Tabela Price e SAC, comparação de prazos,
+cenários salvos) saiu a pedido do usuário. Custos ficou com duas abas:
+Custo/km e Histórico.
+
+A razão dá o critério para decisões parecidas: **simular financiamento é sobre
+um veículo que a pessoa ainda não tem, e este app é sobre o que ela já tem.**
+
+Removido junto, porque nada mais chamava: `abaSimulacao` em `screens.js`,
+`App._sim/sim()/setSim()/editarSim()/trocarSistema()` em `app.js`,
+`Calc.financiamento()` (a matemática Price/SAC) em `calc.js` e
+`Store.salvarSimulacao()`. `Calc.financiamentoStatus()` **fica** — é outra
+coisa, o estado real do financiamento do veículo, usado no custo mensal e na
+previsão.
+
+O campo `simulacoes` saiu do esquema do veículo, mas **nada foi apagado de quem
+já usa o app**: o que estiver gravado em `localStorage` fica lá, inerte. Apagar
+dado de usuário para limpar código seria troca ruim.
+
+Rota antiga não quebra: `App.ir('custos', {custos:'sim'})` cai em Custo/km,
+pelo guarda que já existia em `ABAS_CUSTOS`.
+
 ### `car-cost-app/` 🗑️ removido em 2026-09-10 — o Autolog passou por cima dele
 
 Era um formulário de seis blocos com tela de resultado. Fui olhar o que ele
@@ -721,10 +744,10 @@ O usuário decidiu apagar. O código continua no histórico do git, em
 `7f6bc13..d2d55ee`, se algum dia fizer falta.
 
 **O que se perdeu de verdade:** o fluxo de *simular sem cadastrar nada* — quem
-quer uma estimativa rápida antes de comprar um veículo, sem criar veículo no
-app. Sugeri trazer isso para a aba Custos › Financiamento, e o usuário
-**descartou a ideia**. Fica registrado que é uma lacuna conhecida e escolhida,
-não um esquecimento.
+quer uma estimativa rápida antes de comprar um veículo. Sugeri trazer isso para
+a aba Custos › Financiamento; o usuário não só descartou a sugestão como mandou
+**remover a própria aba** (seção acima). O app decidiu o que é: ferramenta para
+o veículo que você tem, não para o que você pensa em comprar.
 
 ### `motoreiro/` ✅ só uma placa de mudou-se
 
