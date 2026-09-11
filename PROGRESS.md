@@ -813,8 +813,8 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
   `"conferir": true`.
 - **Acrescentar Factor e Crosser** (Yamaha) ao `dados/veiculos.json` — faltam
   no catálogo e estão entre as motos mais vendidas do país.
-- **Trocar a senha do protótipo** se `2047` for um PIN usado em outro lugar —
-  ela fica visível no código de um repositório público.
+- ~~**Trocar a senha do protótipo.**~~ Decidido em 2026-09-10: `2047` é número
+  inventado só para o protótipo, não usado em lugar nenhum. Fica como está.
 
 ### Médios
 
@@ -842,6 +842,26 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
   país. É o maior item da lista; só o nome já nasceu internacional.
 - **Autenticação de verdade**, se o app deixar de ser protótipo: a conferência
   precisa sair do navegador e ir para um servidor.
+
+### Visibilidade do repositório — decidido: público
+
+Decidido em 2026-09-10, depois de pesquisar: **fica público, sem GitHub Pro.**
+Não reabrir sem motivo novo.
+
+O que pesou:
+
+- **Plano Free publica Pages só de repositório público.** Tornar privado hoje
+  tiraria o app do ar e o celular pararia de atualizar. Privado + Pages exige
+  GitHub Pro (~US$ 4/mês).
+- **Privar não esconderia o app.** É HTML/CSS/JS puro: quem abre a URL já tem
+  o código no navegador. E o site do Pages continua público mesmo com o
+  repositório privado — site que exige login só no Enterprise Cloud.
+- **O que privar esconderia** é este `PROGRESS.md` e o histórico de commits:
+  o raciocínio e as decisões, não o produto.
+- Hoje não há nada sensível versionado — sem chaves, sem dado pessoal.
+
+Se um dia o app for cobrado, o que vai proteger não é repositório privado, é o
+servidor que ainda não existe.
 
 ### Workspace
 
