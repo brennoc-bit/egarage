@@ -52,4 +52,3 @@ como app — isso exige origem segura. Testes de PWA só valem pelo endereço do
 | App | Porta |
 | --- | --- |
 | `autolog/` | 5174 |
-| `car-cost-app/` | 5173 |

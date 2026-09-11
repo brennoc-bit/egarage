@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-10 — quatro ajustes de formulário, preços da ANP atualizados e bug do gerador corrigido
+**Última atualização:** 2026-09-10 — duas pendências antigas fechadas: redirect do endereço velho e fim do `car-cost-app/`
 
 ---
 
@@ -705,11 +705,37 @@ genérico). Sintaxe conferida com `node --check`. A validação real é no celul
 **Importante:** instalar como app exige **HTTPS**. Pelo IP da rede local o
 Chrome degrada para atalho com barra de navegador.
 
-### `car-cost-app/` — simulador de custos do veículo ✅ existente, estável
+### `car-cost-app/` 🗑️ removido em 2026-09-10 — o Autolog passou por cima dele
 
-Formulário de seis blocos e tela de resultado, com persistência em
-`localStorage` (`simulador-veiculo-v1`) e sugestão dos meses de IPVA e
-licenciamento de SP pelo final da placa. Não foi tocado desde o commit inicial.
+Era um formulário de seis blocos com tela de resultado. Fui olhar o que ele
+perguntava antes de sugerir o que fazer, e a lista foi decisiva: parcela do
+veículo, parcela do seguro, IPVA, licenciamento, consumo, preço da gasolina,
+**final da placa** e revisão. Devolvia custo anual, mensal, por km, **o mês
+mais caro e o mais barato** e uma linha do tempo.
+
+Ou seja: a previsão de 6 meses do Autolog, mais o custo/km — só que sem
+histórico, sem região, sem FIPE e sem avisos. Tinha um commit na vida
+("Commit inicial") e nunca foi tocado depois.
+
+O usuário decidiu apagar. O código continua no histórico do git, em
+`7f6bc13..d2d55ee`, se algum dia fizer falta.
+
+**O que se perdeu de verdade:** o fluxo de *simular sem cadastrar nada* — quem
+quer uma estimativa rápida antes de comprar um veículo, sem criar veículo no
+app. Sugeri trazer isso para a aba Custos › Financiamento, e o usuário
+**descartou a ideia**. Fica registrado que é uma lacuna conhecida e escolhida,
+não um esquecimento.
+
+### `motoreiro/` ✅ só uma placa de mudou-se
+
+Uma página, sem app. O projeto se chamava Motoreiro e só servia motos; ao virar
+Autolog a pasta foi renomeada e todo link antigo passou a dar 404 — o que
+aconteceu de verdade num teste de celular em 2026-08-23, com um favorito salvo
+antes da troca.
+
+`<meta refresh>` para `../autolog/` (funciona sem JavaScript), `rel=canonical`
+para os buscadores e um parágrafo com link manual para quem tiver os dois
+desligados.
 
 ### Infraestrutura ✅
 
@@ -752,9 +778,6 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 
 ### Rápidos
 
-- **Redirecionar o endereço antigo.** Um `motoreiro/index.html` de duas linhas
-  apontando para `autolog/` mataria o 404 para sempre, inclusive em links já
-  compartilhados. Foi oferecido e ficou sem resposta — decisão pendente.
 - **Avisar quando o armazenamento encher.** Hoje o `Store.salvar()` captura o
   erro de cota e só escreve no console: a gravação falha em silêncio. Com o uso
   atual não acontece, mas passaria a ser plausível com anexos.
@@ -799,8 +822,9 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 
 ### Workspace
 
-- Decidir se `car-cost-app/` continua separado ou vira uma tela do `autolog/` —
-  os dois calculam custo de veículo e hoje se sobrepõem.
+- Nada aberto. As duas decisões que estavam paradas foram tomadas em
+  2026-09-10: o redirect do endereço antigo foi feito e o `car-cost-app/` foi
+  removido.
 
 ---
 

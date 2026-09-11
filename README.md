@@ -16,7 +16,7 @@ na `main` republica em um ou dois minutos.
 | Pasta | O que é | Como rodar na máquina |
 | --- | --- | --- |
 | [`autolog/`](autolog) | **Autolog** — custos, revisões, documentos, seguro e manutenção de carro ou moto. Instalável como app (PWA), tudo calculado a partir dos lançamentos, persistência em `localStorage`. | `python -m http.server 5174` dentro da pasta → <http://127.0.0.1:5174> |
-| [`car-cost-app/`](car-cost-app) | Simulador de custos do veículo: formulário de seis blocos e tela de resultado. | `python -m http.server 5173` dentro da pasta → <http://127.0.0.1:5173> |
+| [`motoreiro/`](motoreiro) | Uma página só, que redireciona para o `autolog/`. O app se chamava Motoreiro; o nome antigo sobrevive em favoritos. | — |
 
 O `autolog/` tem documentação própria em [`autolog/README.md`](autolog/README.md):
 arquitetura, o que o app deliberadamente não inventa, mapa das telas do design

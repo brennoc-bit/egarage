@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Motoreiro agora é Autolog</title>
+
+  <!--
+    Esta pasta não é mais um app: é só uma placa de "mudamos de endereço".
+
+    O app se chamava Motoreiro e só cuidava de motos. Virou Autolog e passou a
+    cuidar de carro também, e a pasta foi renomeada — o que fez todo link
+    antigo cair em 404. Aconteceu de verdade num teste de celular em
+    2026-08-23, com um favorito salvo antes da troca.
+
+    Redirecionar é mais barato que explicar: quem tiver o link velho guardado
+    chega no app em vez de bater numa parede. O <meta refresh> resolve sem
+    JavaScript; o <link rel=canonical> conta a mudança para buscadores; e o
+    parágrafo abaixo cobre o caso de alguém ter os dois desligados.
+  -->
+  <meta http-equiv="refresh" content="0; url=../autolog/" />
+  <link rel="canonical" href="https://brennoc-bit.github.io/egarage/autolog/" />
+
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #faf9f7; color: #1a1a1a; padding: 24px; text-align: center;
+    }
+    @media (prefers-color-scheme: dark) { body { background: #141414; color: #f0efed; } }
+    a { color: #ec3013; font-weight: 600; }
+    p { max-width: 30rem; }
+  </style>
+</head>
+<body>
+  <p>
+    O <strong>Motoreiro</strong> virou <strong>Autolog</strong> e agora cuida de
+    carro e moto.<br />
+    Se a página não trocar sozinha,
+    <a href="../autolog/">abra o Autolog aqui</a>.
+  </p>
+</body>
+</html>
