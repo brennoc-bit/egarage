@@ -14,6 +14,23 @@
   --c-warn: #e0a91b;
   --c-bad: var(--color-accent);
   --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
+
+  /* DUAS ESPESSURAS DE TRAÇO, E O MOTIVO DE SEREM DUAS
+     O `--color-divider` do design system é 40% de preto. Num canvas de design,
+     visto de longe e em poucos blocos, isso desenha bem. Numa tela de celular
+     cheia de linhas — cada `.row`, cada `.kv`, cada item de lista — 40% vira
+     uma grade pesada: o app passa a parecer planilha, e a linha compete com o
+     dado que ela deveria só separar.
+
+     `--linha` é para separar (divisões entre linhas e seções): quase invisível,
+     só o suficiente para o olho saber onde um bloco acaba.
+     `--borda` é para delimitar (campos, chips, botões de contorno): precisa ser
+     vista, porque mostra onde se toca e até onde vai o alvo.
+
+     O token do design system fica intacto — quem quiser o traço original ainda
+     tem `--color-divider`. */
+  --linha: color-mix(in srgb, var(--color-text) 12%, transparent);
+  --borda: color-mix(in srgb, var(--color-text) 22%, transparent);
 }
 
 html, body { height: 100%; }
@@ -101,26 +118,101 @@ body {
 }
 .screen > .spacer { flex: 1; }
 
+/* O BOTÃO FLUTUANTE PRECISA DE CHÃO
+   Ele mora sobre o conteúdo, e sobre conteúdo que rola isso é o esperado. O
+   problema é o fim da rolagem: sem respiro, a última coisa da tela fica
+   embaixo dele para sempre. Estava tapando "Agendar oficina" na Manutenção e
+   nos Documentos, "Registrar peça" nos Custos e o lápis de editar na Ficha —
+   sempre a ação principal, justamente a que não pode ficar escondida.
+
+   Duas telas resolviam isso com um espaçador de 76px escrito à mão; as outras
+   cinco não tinham nenhum. Aqui a regra vale para toda tela que tenha o botão,
+   e some sozinha nas que não têm (o cadastro, que tem ações próprias no pé). */
+.screen:has(> .fab) { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* ── Movimento ─────────────────────────────────────────────────────────────
+
+   TROCAR DE ABA ANIMA; REDESENHAR DEPOIS DE UMA AÇÃO, NÃO.
+   O `App.render()` é chamado a cada pagamento registrado, cada toque num chip,
+   cada troca de foto. Animar a tela inteira nessas horas seria pior que não
+   animar: o app pareceria piscar a cada toque. Por isso quem marca a classe é
+   o `render({ topo })`, e `topo` só é verdadeiro quando a rota mudou de fato.
+
+   O movimento é curto e vem de baixo — o bastante para o olho entender que uma
+   tela substituiu a outra, longe de virar espera. */
+@keyframes entra-tela {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes entra-titulo {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.screen > .entra { animation: entra-tela .26s cubic-bezier(.2, .7, .3, 1) both; }
+.app-hd .entra { animation: entra-titulo .3s cubic-bezier(.2, .7, .3, 1) both; }
+
+/* Resposta ao toque, num lugar só. Antes cada componente inventava a sua — uns
+   escureciam, outros afundavam 1px, a maioria não fazia nada. Num celular, o
+   dedo tapa o que acabou de tocar: sem devolutiva, a pessoa toca de novo. */
+button, .contato, .chip, .list-item, .maint-row, .kv, .headline-lockup {
+  transition: background-color .18s ease, border-color .18s ease,
+              color .18s ease, transform .12s ease, opacity .18s ease;
+}
+
+/* O realce de toque acende na hora e apaga devagar. Com a transição valendo
+   nos dois sentidos, um toque de 100ms mal chegaria a pintar a linha antes de
+   o dedo sair — a pessoa veria um cinza fraquinho e duvidaria se acertou. */
+.list-item:active, .maint-row:active, .kv:active,
+.headline-lockup:active, .contato:active, .chip:active {
+  transition-duration: 0s;
+}
+
+/* Quem não tem animação declarada por outro caminho afunda de leve ao toque. */
+.segrow > button:active, .footer-nav > button:active,
+.sim-nao button:active, .tipo-escolha button:active,
+.chip:active, button.mini:active, .foto-acoes button:active,
+.sheet-actions > button:active, .hero .photo-btn:active {
+  transform: scale(.96);
+}
+
+/* Preferência do sistema manda. Quem pediu menos movimento recebe menos — e
+   `both` some junto, senão o estado inicial do keyframe congelaria a tela
+   invisível. */
+@media (prefers-reduced-motion: reduce) {
+  .screen > .entra, .app-hd .entra, .sheet, .sheet-backdrop, .toast {
+    animation: none;
+  }
+  * { transition-duration: .01ms !important; }
+}
+
 /* ── Navegação inferior ────────────────────────────────────────────────── */
 .footer-nav {
   display: flex; flex: none;
-  border-top: 1px solid var(--color-divider);
+  border-top: 1px solid var(--linha);
   background: var(--color-bg);
   padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
 }
 .footer-nav > button {
-  flex: 1; text-align: center; padding: 10px 4px;
-  font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+  /* `min-width: 0` porque sem ele o item mais largo ("Manutenção") empurra os
+     vizinhos e a barra deixa de ser cinco fatias iguais. O espaçamento caiu de
+     .12em para .06em pelo mesmo motivo: a 9px, tracking de rótulo numa palavra
+     de dez letras encosta uma aba na outra. */
+  flex: 1; min-width: 0; text-align: center; padding: 9px 2px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em;
   text-transform: uppercase; display: flex; flex-direction: column;
-  gap: 4px; align-items: center; border-radius: var(--r-md);
-  background: none; border: 0; color: var(--color-text); cursor: pointer;
+  gap: 5px; align-items: center; border-radius: var(--r-md);
+  background: none; border: 0; color: var(--muted); cursor: pointer;
 }
-.footer-nav .ic { font-family: var(--font-heading); font-size: 16px; font-weight: 800; }
+.footer-nav > button > span:last-child {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.footer-nav .ic { display: flex; line-height: 0; opacity: .7; }
 .footer-nav .active { color: var(--color-accent); background: var(--color-accent-100); }
+.footer-nav .active .ic { opacity: 1; }
 
 /* ── Blocos herdados do canvas ─────────────────────────────────────────── */
-.row { display: flex; align-items: stretch; border-bottom: 1px solid var(--color-divider); }
-.kv { padding: 14px 16px; flex: 1; border-right: 1px solid var(--color-divider); min-width: 0; }
+.row { display: flex; align-items: stretch; border-bottom: 1px solid var(--linha); }
+.kv { padding: 14px 16px; flex: 1; border-right: 1px solid var(--linha); min-width: 0; }
 .kv:last-child { border-right: 0; }
 .kv .k {
   font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
@@ -128,8 +220,16 @@ body {
 }
 .kv .v {
   font-family: var(--font-heading); font-weight: 700; font-size: 20px;
-  line-height: 1; letter-spacing: -.01em;
+  line-height: 1.1; letter-spacing: -.01em;
+  /* O e-mail da conta, no Perfil, saía cortado no meio da palavra: 20px de
+     Archivo 700 não cabem em meia tela. Estas células guardam números curtos
+     ("18.420", "R$ 1,38"), então o corte só aparece quando o valor é texto — e
+     texto se quebra, não se corta. `anywhere` porque e-mail não tem espaço
+     onde quebrar. */
+  overflow-wrap: anywhere;
 }
+/* Marcado pelo `UI.kv` quando o valor é longo demais para o corpo grande. */
+.kv .v.longo { font-size: 14px; font-weight: 600; line-height: 1.35; }
 .kv .sub { font-size: 11px; margin-top: 4px; color: var(--muted); }
 button.kv { text-align: left; background: none; border-top: 0; border-bottom: 0; border-left: 0; font: inherit; color: inherit; cursor: pointer; }
 
@@ -138,11 +238,19 @@ button.kv { text-align: left; background: none; border-top: 0; border-bottom: 0;
   padding: 14px 16px 8px; font-family: var(--mono); font-size: 10px;
   letter-spacing: .16em; text-transform: uppercase;
 }
-.sect-hd .act { color: var(--color-accent); background: none; border: 0; font: inherit; letter-spacing: .12em; cursor: pointer; padding: 0; }
+/* Tinha 16px de altura — alvo de toque de 16px erra mais do que acerta. O
+   padding leva a área clicável a 40px sem mover nada na tela, porque a margem
+   negativa devolve exatamente o espaço que ele ocupou. */
+.sect-hd .act {
+  color: var(--color-accent); background: none; border: 0; font: inherit;
+  letter-spacing: .12em; cursor: pointer;
+  padding: 12px 4px; margin: -12px -4px;
+}
+.sect-hd .act:active { opacity: .55; }
 
 .list-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-  border-top: 1px solid var(--color-divider); width: 100%;
+  border-top: 1px solid var(--linha); width: 100%;
   background: none; border-left: 0; border-right: 0; border-bottom: 0;
   font: inherit; color: inherit; text-align: left;
 }
@@ -158,22 +266,28 @@ button.list-item:active { background: var(--color-surface); }
 }
 .hero img { width: 100%; height: 100%; object-fit: cover; }
 .hero.sm { max-height: 190px; }
+/* Quem ainda não pôs foto vê este bloco como primeiro elemento do app, e ele
+   ocupa 343×193px na tela — o maior de todos. Com listras de 300 sobre 200 a
+   textura gritava mais que o nome do veículo logo abaixo. Listras mais largas
+   e de contraste quase nulo mantêm o "aqui vai uma imagem" sem disputar
+   atenção com o conteúdo. */
 .placeholder-img {
-  background: repeating-linear-gradient(135deg, var(--color-neutral-300) 0 10px, var(--color-neutral-200) 10px 20px);
-  height: 100%; display: grid; place-items: center; color: var(--color-neutral-700);
+  background: repeating-linear-gradient(135deg,
+    var(--color-neutral-200) 0 14px, var(--color-neutral-100) 14px 28px);
+  height: 100%; display: grid; place-items: center; color: var(--color-neutral-600);
   font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
   text-transform: uppercase; position: relative; text-align: center; padding: 0 20px;
 }
 .placeholder-img::before {
   content: ""; position: absolute; inset: 8px;
-  border: 1px dashed var(--color-neutral-500); border-radius: calc(var(--r-md) - 6px);
+  border: 1px dashed var(--color-neutral-400); border-radius: calc(var(--r-md) - 6px);
 }
 .hero .photo-btn {
   position: absolute; right: 10px; bottom: 10px; z-index: 1;
   font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
   text-transform: uppercase; padding: 7px 12px; border-radius: 100px;
   background: var(--color-bg); color: var(--color-text);
-  border: 1px solid var(--color-divider); cursor: pointer;
+  border: 1px solid var(--borda); cursor: pointer;
 }
 
 .bignum {
@@ -186,7 +300,7 @@ button.list-item:active { background: var(--color-surface); }
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
   font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
   text-transform: uppercase; font-weight: 500;
-  border: 1px solid var(--color-divider); border-radius: 100px;
+  border: 1px solid var(--borda); border-radius: 100px;
 }
 .status-tag .dot { width: 8px; height: 8px; }
 
@@ -202,7 +316,7 @@ button.list-item:active { background: var(--color-surface); }
    com <button>: largura de conteúdo, texto centralizado e fonte própria. */
 .headline-lockup {
   display: block; width: 100%; text-align: left; padding: 20px;
-  background: none; border: 0; border-bottom: 1px solid var(--color-divider);
+  background: none; border: 0; border-bottom: 1px solid var(--linha);
   font: inherit; color: inherit; cursor: pointer;
 }
 .headline-lockup:active { background: var(--color-surface); }
@@ -214,21 +328,36 @@ button.list-item:active { background: var(--color-surface); }
 
 .segrow {
   display: flex; gap: 6px; padding: 12px 16px;
-  border-bottom: 1px solid var(--color-divider); background: var(--color-surface);
+  border-bottom: 1px solid var(--linha); background: var(--color-surface);
   overflow-x: auto; scrollbar-width: none;
 }
 .segrow::-webkit-scrollbar { display: none; }
 .segrow > button {
-  flex: 1; padding: 10px 12px; font-family: var(--mono); font-size: 10px;
+  flex: 1; min-height: 40px; padding: 11px 12px;
+  font-family: var(--mono); font-size: 10px;
   letter-spacing: .12em; text-transform: uppercase; text-align: center;
   color: var(--muted); border-radius: 100px; background: var(--color-bg);
   border: 0; cursor: pointer; white-space: nowrap;
 }
 .segrow > button.on { color: var(--color-bg); background: var(--color-text); font-weight: 600; }
 
+/* DOIS NÍVEIS DE FILTRO NÃO PODEM TER O MESMO PESO
+   Em Custos havia duas faixas de pílulas empilhadas, idênticas: "Custo/km |
+   Histórico" e "30 dias | 90 dias | 12 meses". A primeira diz em que tela você
+   está; a segunda, que janela de tempo está vendo. Desenhadas iguais, viram
+   uma barra de ferramentas confusa com cinco botões do mesmo valor.
+   A de baixo passa a secundária: sem fundo próprio, contorno no lugar do
+   preenchimento sólido, e o acento só no escolhido. */
+.segrow.sub { background: none; padding-top: 10px; border-bottom: 0; }
+.segrow.sub > button { background: none; border: 1px solid var(--linha); min-height: 36px; }
+.segrow.sub > button.on {
+  background: none; color: var(--color-accent);
+  border-color: var(--color-accent); font-weight: 600;
+}
+
 .maint-row {
   display: grid; grid-template-columns: 14px 1fr auto; gap: 12px;
-  padding: 14px 16px; border-top: 1px solid var(--color-divider);
+  padding: 14px 16px; border-top: 1px solid var(--linha);
   align-items: center; width: 100%; text-align: left;
   background: none; border-left: 0; border-right: 0; border-bottom: 0;
   font: inherit; color: inherit; cursor: pointer;
@@ -236,9 +365,13 @@ button.list-item:active { background: var(--color-surface); }
 .maint-row:first-child { border-top: 0; }
 .maint-row:active { background: var(--color-surface); }
 .maint-row .mt { font-size: 14px; font-weight: 600; line-height: 1.2; }
+/* Era caixa alta com espaçamento de rótulo — só que o conteúdo aqui é frase:
+   "última · 7.000 km · faltam 580 km · faltam 4 meses". Caixa alta apaga o
+   desenho das palavras e obriga a soletrar; numa linha que já quebra em duas,
+   isso custa leitura. O mono fica (são números que alinham), a caixa alta sai. */
 .maint-row .ms {
-  font-size: 11px; color: var(--muted); margin-top: 2px;
-  font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.45;
+  font-family: var(--mono); letter-spacing: .01em;
 }
 .maint-row .mv { font-family: var(--mono); font-size: 12px; text-align: right; font-weight: 700; }
 
@@ -250,12 +383,12 @@ button.list-item:active { background: var(--color-surface); }
 .price-strip .pv { font-family: var(--font-heading); font-weight: 800; font-size: 26px; letter-spacing: -.02em; }
 .price-strip .pk { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
 
-.cta-strip { display: flex; gap: 10px; padding: 16px; border-top: 1px solid var(--color-divider); }
+.cta-strip { display: flex; gap: 10px; padding: 16px; border-top: 1px solid var(--linha); }
 .cta-strip > button {
   flex: 1; padding: 14px 18px; font-family: var(--font-heading); font-weight: 800;
   font-size: 12px; letter-spacing: .08em; text-transform: uppercase; text-align: left;
   background: var(--color-surface); color: var(--color-text);
-  border: 1px solid var(--color-divider); cursor: pointer;
+  border: 1px solid var(--borda); cursor: pointer;
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
   border-radius: 100px;
 }
@@ -266,9 +399,28 @@ button.list-item:active { background: var(--color-surface); }
 .meter > i { display: block; height: 100%; border-radius: 100px; }
 
 .pillbox {
-  padding: 10px 14px; border: 1px solid var(--color-divider);
+  padding: 10px 14px; border: 1px solid var(--borda);
   background: var(--color-bg); font-weight: 600; border-radius: 100px;
 }
+/* PISO DE ALVO DE TOQUE
+   O `.btn` do design system nasce com 35px de altura, e os botões fantasma com
+   31px — medidas de mouse. No celular o dedo cobre bem mais que isso, e aqui
+   esses botões carregam "Pagar 3ª parcela", "Agendar oficina" e, no Perfil,
+   "excluir" a dois dedos de "editar". Errar o alvo custa caro nos três.
+
+   Só o `.btn-icon`, que é quadrado e já tem 36px por desenho, fica de fora. */
+.screen .btn:not(.btn-icon) { min-height: 44px; padding-inline: 14px; }
+/* O `:not()` aqui não é enfeite: sem ele esta regra tem menos peso que a de
+   cima e perde. Os botões fantasma ficariam com 14px de folga lateral, e no
+   Perfil "editar"/"excluir" mais largos espremiam o nome do veículo para duas
+   linhas. Cresce a altura, que é o que o dedo precisa; a largura fica. */
+.screen .btn-ghost:not(.btn-icon) { padding-inline: 4px; }
+
+/* Controles pequenos por desenho — "copiar" ao lado de um número, "+ foto"
+   sobre a imagem. Não viram botões grandes sem estragar a tela, mas 22px é
+   pouco demais: sobem ao mínimo que ainda cabe no lugar onde vivem. */
+button.mini, .hero .photo-btn, .foto-acoes button { min-height: 36px; }
+
 .note { padding: 16px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .empty { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 13px; }
 
@@ -298,7 +450,7 @@ button.list-item:active { background: var(--color-surface); }
 .campo input, .campo select, .campo textarea {
   width: 100%; padding: 12px 14px; font: inherit; font-size: 15px; font-weight: 600;
   color: var(--color-text); background: var(--color-bg);
-  border: 1px solid var(--color-divider); border-radius: var(--r-md);
+  border: 1px solid var(--borda); border-radius: var(--r-md);
 }
 .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible {
   border-color: var(--color-accent); outline: none;
@@ -312,7 +464,7 @@ button.list-item:active { background: var(--color-surface); }
   font-family: var(--font-heading); font-weight: 800; font-size: 12px;
   letter-spacing: .08em; text-transform: uppercase;
   background: var(--color-surface); color: var(--color-text);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
 }
 .sheet-actions > button.pri { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
 
@@ -352,7 +504,7 @@ button.list-item:active { background: var(--color-surface); }
   overflow: hidden; background: var(--color-surface); display: block; width: calc(100% - 32px);
   border: 1px dashed var(--color-neutral-500); cursor: pointer; padding: 0;
 }
-.foto-slot.tem-foto { border-style: solid; border-color: var(--color-divider); }
+.foto-slot.tem-foto { border-style: solid; border-color: var(--borda); }
 .foto-slot img { width: 100%; height: 100%; object-fit: cover; }
 .foto-slot .vazia {
   height: 100%; display: flex; flex-direction: column; align-items: center;
@@ -364,7 +516,7 @@ button.list-item:active { background: var(--color-surface); }
 .foto-acoes button {
   font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
   padding: 8px 14px; border-radius: 100px; cursor: pointer;
-  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-divider);
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--borda);
 }
 
 /* Pergunta de sim/não dentro do formulário. */
@@ -378,7 +530,7 @@ button.list-item:active { background: var(--color-surface); }
   font-family: var(--font-heading); font-weight: 800; font-size: 12px;
   letter-spacing: .08em; text-transform: uppercase;
   background: var(--color-bg); color: var(--color-text);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
 }
 .sim-nao button.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 
@@ -387,7 +539,7 @@ button.list-item:active { background: var(--color-surface); }
 .tipo-escolha button {
   padding: 16px 12px; border-radius: var(--r-md); cursor: pointer; text-align: left;
   background: var(--color-bg); color: var(--color-text);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
 }
 .tipo-escolha button .ic { font-family: var(--font-heading); font-size: 22px; font-weight: 800; line-height: 1; }
 .tipo-escolha button .nm {
@@ -407,7 +559,7 @@ button.list-item:active { background: var(--color-surface); }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 16px 18px; border-radius: var(--r-md); text-decoration: none;
   background: var(--color-surface); color: var(--color-text);
-  border: 1px solid var(--color-divider); min-height: 62px;
+  border: 1px solid var(--borda); min-height: 62px;
 }
 .contato:active { transform: scale(.99); }
 .contato.principal {
@@ -422,7 +574,7 @@ button.list-item:active { background: var(--color-surface); }
 .contato-ic { font-size: 22px; line-height: 1; opacity: .9; }
 
 /* Par rótulo/valor das seções de dados. */
-.dado { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--color-divider); }
+.dado { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--linha); }
 .dado:last-child { border-bottom: 0; }
 .dado .dado-k {
   width: 108px; flex: none; font-size: 9px; letter-spacing: .14em;
@@ -432,7 +584,7 @@ button.list-item:active { background: var(--color-surface); }
 button.mini {
   font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
   padding: 5px 10px; border-radius: 100px; cursor: pointer;
-  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-divider);
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--borda);
 }
 
 /* Chips de cobertura e assistência. */
@@ -441,7 +593,7 @@ button.mini {
   padding: 9px 14px; border-radius: 100px; cursor: pointer; font: inherit;
   font-size: 12px; font-weight: 600;
   background: var(--color-bg); color: var(--color-text);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
 }
 .chip.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 span.chip { cursor: default; }
@@ -482,7 +634,7 @@ span.chip { cursor: default; }
   font-family: var(--font-heading); font-weight: 800; font-size: 12px;
   letter-spacing: .08em; text-transform: uppercase;
   background: var(--color-surface); color: var(--color-text);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
 }
 .ajuste-acoes button.pri { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
 
@@ -537,7 +689,7 @@ span.chip { cursor: default; }
   font-weight: 600;
   color: var(--color-text);
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--borda);
   border-radius: var(--r-md);
 }
 .login-form input:focus-visible { border-color: var(--color-accent); outline: none; }
@@ -571,7 +723,7 @@ span.chip { cursor: default; }
   font-size: 11px;
   line-height: 1.5;
   color: var(--muted);
-  border-top: 1px solid var(--color-divider);
+  border-top: 1px solid var(--linha);
   padding-top: 16px;
 }
 
@@ -617,7 +769,7 @@ span.chip { cursor: default; }
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--color-divider);
+  background: var(--linha);
 }
 
 .login-erro.ok { color: var(--color-ok, #2d8a4a); }
@@ -657,7 +809,7 @@ span.chip { cursor: default; }
 .ler-linha .ler-foto { margin-bottom: 0; }
 .ler-foto.secundario {
   background: var(--color-surface); color: var(--color-text);
-  border-color: var(--color-divider);
+  border-color: var(--borda);
 }
 
 /* Sugestões de marca e modelo. */
@@ -665,13 +817,13 @@ span.chip { cursor: default; }
 .sugestoes {
   position: absolute; left: 0; right: 0; top: 100%; z-index: 30;
   margin-top: 4px; max-height: 260px; overflow-y: auto;
-  background: var(--color-bg); border: 1px solid var(--color-divider);
+  background: var(--color-bg); border: 1px solid var(--borda);
   border-radius: var(--r-md); box-shadow: var(--shadow-lg);
 }
 .sugestao {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
   width: 100%; padding: 13px 14px; cursor: pointer; text-align: left;
-  background: none; border: 0; border-bottom: 1px solid var(--color-divider);
+  background: none; border: 0; border-bottom: 1px solid var(--linha);
   font: inherit; font-size: 14px; font-weight: 600; color: var(--color-text);
 }
 .sugestao:last-child { border-bottom: 0; }
@@ -697,7 +849,7 @@ pre.erro-cru {
 textarea.instrucao {
   width: 100%; padding: 12px 14px; font-family: var(--mono);
   font-size: 12px; line-height: 1.5; color: var(--color-text);
-  background: var(--color-bg); border: 1px solid var(--color-divider);
+  background: var(--color-bg); border: 1px solid var(--borda);
   border-radius: var(--r-md); resize: vertical;
 }
 textarea.instrucao:focus-visible { border-color: var(--color-accent); outline: none; }

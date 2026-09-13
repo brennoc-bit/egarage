@@ -8,12 +8,34 @@
    toda semana, só era alcançável por dentro de um cartão. As duas trocaram de
    lugar: o Início virou a tela do veículo e a ficha completa saiu da barra,
    já que é consulta ocasional. */
+/* ÍCONES DA BARRA, DESENHADOS E NÃO DIGITADOS
+
+   Eram caracteres Unicode: ⌂ ⏣ ◫ ◉. Medindo no navegador, os quatro têm
+   exatamente a mesma largura em Archivo e em monospace — sinal de que nenhuma
+   das duas os possui e quem desenha é a fonte de símbolos do sistema. Ou seja:
+   o formato do ícone mudava de aparelho para aparelho, e num Android sem o
+   glifo apareceria o quadradinho vazio. Numa barra que está em todas as telas,
+   isso é o app parecendo quebrado.
+
+   Em SVG o desenho é o mesmo em todo lugar, sem fonte de ícone e sem
+   dependência — mesma escolha já feita para a bomba do botão flutuante. */
+const svgNav = (d) => `<svg viewBox="0 0 24 24" width="21" height="21" fill="none"
+  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+  stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+
+const IC_INICIO = svgNav('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.7V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.7"/><path d="M9.8 20v-5.4h4.4V20"/>');
+// Chave de boca: "manutenção" se lê mais rápido numa ferramenta que num símbolo.
+const IC_MANUT = svgNav('<path d="M15.8 4.6a4.9 4.9 0 0 0-5.9 6.3L4 16.8 7.2 20l5.9-5.9a4.9 4.9 0 0 0 6.3-5.9l-2.8 2.8-2.6-.7-.7-2.6z"/>');
+const IC_CUSTOS = svgNav('<rect x="2.8" y="6.2" width="18.4" height="11.6" rx="1.8"/><circle cx="12" cy="12" r="2.6"/><path d="M6.1 9.6v4.8M17.9 9.6v4.8"/>');
+const IC_DOCS = svgNav('<path d="M6 3.4h7.2L18.6 8.8V20a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V4.3a.9.9 0 0 1 .9-.9z"/><path d="M13 3.6v5.4h5.4"/><path d="M8.4 13.4h7M8.4 16.8h4.6"/>');
+const IC_PERFIL = svgNav('<circle cx="12" cy="8.4" r="3.7"/><path d="M4.9 20.2a7.5 7.5 0 0 1 14.2 0"/>');
+
 const NAV = [
-  { id: 'inicio', label: 'Início', ic: '⌂' },
-  { id: 'manutencao', label: 'Manutenção', ic: '⏣' },
-  { id: 'custos', label: 'Custos', ic: '$' },
-  { id: 'docs', label: 'Docs', ic: '◫' },
-  { id: 'perfil', label: 'Perfil', ic: '◉' },
+  { id: 'inicio', label: 'Início', ic: IC_INICIO },
+  { id: 'manutencao', label: 'Manutenção', ic: IC_MANUT },
+  { id: 'custos', label: 'Custos', ic: IC_CUSTOS },
+  { id: 'docs', label: 'Docs', ic: IC_DOCS },
+  { id: 'perfil', label: 'Perfil', ic: IC_PERFIL },
 ];
 // Telas sem aba própria herdam o destaque de outra.
 const NAV_PAI = {
@@ -117,13 +139,19 @@ const App = {
 
     const conteudo = (Screens[this.rota] || Screens.inicio)(v);
 
-    hd.append(h('div', { class: 'hd-text' },
+    // `topo` só é verdadeiro quando a rota mudou — é o mesmo sinal que manda
+    // rolar de volta ao começo. Serve de gatilho da animação de entrada: assim
+    // trocar de aba desliza, e redesenhar depois de uma ação não pisca.
+    const animar = topo ? ' entra' : '';
+
+    hd.append(h('div', { class: 'hd-text' + animar },
       conteudo.kicker ? h('div', { class: 'kick' }, conteudo.kicker) : null,
       h('h2', null, conteudo.titulo)));
     if (conteudo.voltar) {
       hd.append(h('button', { class: 'hd-btn', onClick: () => App.ir(conteudo.voltar) }, '‹ voltar'));
     }
 
+    if (animar) conteudo.corpo.classList.add('entra');
     tela.append(conteudo.corpo);
 
     // Abastecer é a ação mais repetida do app: fica flutuando, sempre à mão.
@@ -136,7 +164,7 @@ const App = {
     NAV.forEach((n) => nav.append(h('button', {
       class: n.id === ativo ? 'active' : '',
       onClick: () => App.ir(n.id),
-    }, h('span', { class: 'ic' }, n.ic), h('span', null, n.label))));
+    }, h('span', { class: 'ic', html: n.ic }), h('span', null, n.label))));
 
     tela.scrollTop = topo ? 0 : scroll;
   },

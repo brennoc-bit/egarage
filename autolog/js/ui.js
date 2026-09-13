@@ -12,9 +12,14 @@ const UI = (() => {
   const mono = (txt, style) => h('div', { class: 'mono', style: Object.assign({ fontSize: 11 }, style || {}) }, txt);
 
   function kv({ k, v, sub, cor, onClick }) {
+    // Estas células foram desenhadas para número curto ("18.420", "R$ 1,38").
+    // Quando cai texto longo — o e-mail da conta, no Perfil —, 20px de Archivo
+    // 700 não cabem em meia tela e o valor saía cortado no meio da palavra.
+    // Acima de 14 caracteres o corpo diminui e o valor passa a caber inteiro.
+    const longo = String(v == null ? '' : v).length > 14;
     const conteudo = [
       h('div', { class: 'k' }, k),
-      h('div', { class: 'v', style: cor ? { color: cor } : null }, v),
+      h('div', { class: 'v' + (longo ? ' longo' : ''), style: cor ? { color: cor } : null }, v),
       sub ? h('div', { class: 'sub' }, sub) : null,
     ];
     return onClick
@@ -30,8 +35,11 @@ const UI = (() => {
       acao ? h('button', { class: 'act', onClick: onAcao }, acao) : null);
   }
 
-  function seg(opcoes, ativo, onPick) {
-    return h('div', { class: 'segrow' },
+  /* `sub: true` desenha a faixa como filtro secundário — contorno em vez de
+     preenchimento. Serve para quando há duas faixas empilhadas e a de baixo
+     não é navegação, é recorte do que já está na tela. */
+  function seg(opcoes, ativo, onPick, { sub = false } = {}) {
+    return h('div', { class: 'segrow' + (sub ? ' sub' : '') },
       opcoes.map((o) => h('button', {
         class: o.id === ativo ? 'on' : '',
         onClick: () => onPick(o.id),

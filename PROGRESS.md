@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — login de verdade, 5xx do Gemini, CEP com zero e o puxar-para-atualizar que quebrava a barra
+**Última atualização:** 2026-09-13 — passada de design: movimento, traço mais leve, ícones desenhados e o botão flutuante que tapava as ações
 
 ---
 
@@ -1088,6 +1088,111 @@ o celular pegar a versão nova ao reabrir.
 
 > **Atenção ao endereço.** O antigo `/egarage/motoreiro/` dá 404 desde a troca
 > de nome. Foi exatamente o que aconteceu no teste de celular em 2026-08-23.
+
+### Passada de design ✅ movimento, traço e alvo de toque
+
+O usuário pediu para o app ficar "mais fluido visualmente". Auditei as dez
+rotas a 375px, medindo em vez de olhar — e o que apareceu não foi questão de
+gosto: era um defeito funcional, um risco de compatibilidade e três problemas
+de leitura.
+
+#### O defeito: o botão flutuante tapava a ação principal de cinco telas
+
+Rolando até o fim, o botão de abastecer ficava **em cima** do último elemento.
+Medido, rota a rota: "Agendar oficina" na Manutenção e nos Documentos,
+"Registrar peça" nos Custos, o lápis de editar na Ficha, o rodapé no Perfil.
+Sempre a ação principal, e permanentemente — não era questão de rolar mais.
+
+Duas telas resolviam isso com `h('div', { style: { height: 76 } })` escrito à
+mão; as outras cinco não tinham nada. Virou regra única:
+`.screen:has(> .fab) { padding-bottom: 96px }`. Vale em toda tela que tem o
+botão e **some sozinha** nas que não têm — o cadastro, que já tem ações no pé,
+continua com padding zero (conferido).
+
+Medida depois: folga de 11 a 52px em todas as oito rotas com botão.
+
+#### O risco: quatro dos cinco ícones da barra não existiam em fonte nenhuma
+
+Eram caracteres Unicode — `⌂ ⏣ ◫ ◉`. Medi a largura de cada um em Archivo e em
+monospace: **idênticas**, o que só acontece quando nenhuma das duas tem o glifo
+e quem desenha é a fonte de símbolos do sistema. Ou seja, a barra mais visível
+do app mudava de forma conforme o aparelho, e num Android sem o glifo sairia o
+quadradinho vazio.
+
+Agora são cinco SVGs embutidos (casa, chave de boca, cédula, documento,
+pessoa), no mesmo traço da bomba do botão flutuante. Sem fonte de ícone e sem
+dependência nova.
+
+#### Movimento, que era o pedido literal
+
+Não havia transição nenhuma: trocar de aba era substituição seca de DOM. Entrou
+uma entrada curta (opacidade + 10px de baixo para cima, 260ms) no corpo da tela
+e no título do cabeçalho.
+
+**O cuidado que faz a diferença:** `App.render()` roda a cada parcela paga,
+cada chip tocado, cada foto trocada. Animar tudo isso faria o app *piscar* a
+cada toque. O gatilho é o `topo` do `render({ topo })`, que já existia e só é
+verdadeiro quando a rota muda de fato.
+
+Junto: realce de toque padronizado, que **acende na hora e apaga devagar** —
+com a transição valendo nos dois sentidos, um toque de 100ms mal chegaria a
+pintar a linha. E `prefers-reduced-motion` desliga tudo.
+
+#### Traço: dois tokens no lugar de um
+
+O `--color-divider` do design system é 40% de preto. Num canvas, visto em
+poucos blocos, desenha bem; numa tela de celular com dezenas de linhas, vira
+grade de planilha e a linha compete com o dado que deveria separar.
+
+Split em `--linha` (12%, para separar) e `--borda` (22%, para delimitar campo e
+chip, que precisa ser visto porque mostra onde se toca). As 30 ocorrências do
+CSS foram classificadas uma a uma, mais 5 escritas inline no `screens.js`. **O
+token do design system ficou intacto.**
+
+#### Leitura
+
+- **Subtítulos da Manutenção saíram da caixa alta.** O conteúdo ali é frase —
+  "última · 7.000 km · faltam 580 km · faltam 4 meses" —, e caixa alta apaga o
+  desenho das palavras. O mono fica, porque são números que alinham.
+- **Dois níveis de filtro nos Custos deixaram de ter o mesmo peso.** "Custo/km
+  | Histórico" diz em que tela você está; "30 | 90 dias | 12 meses" diz que
+  janela está vendo. Desenhados iguais, viravam cinco botões equivalentes. O de
+  baixo virou contorno (`.segrow.sub`).
+- **Valor longo agora quebra em vez de ser cortado.** O e-mail da conta no
+  Perfil aparecia como "capobiancobrenno@gm" e acabava. Acima de 14 caracteres
+  o corpo diminui e o valor cabe inteiro.
+- **Faixa do gráfico da previsão tem piso de 3px.** Num mês tranquilo a barra
+  tem ~15px, e uma faixa de 8% virava 1px: sumia, e a legenda prometia uma
+  leitura que a barra não entregava.
+- **Moldura da foto vazia ficou calma.** É o maior elemento do Início para quem
+  não pôs foto (343×193px), e as listras gritavam mais que o nome do veículo.
+
+#### Alvo de toque
+
+Piso de 44px nos botões de ação (`.btn` do design system nascia com 35px, os
+fantasma com 31px) e área clicável de 40px nos links de seção, que tinham
+**16px** de altura. Todas as dez rotas foram medidas: nenhum alvo abaixo de
+36px, com uma exceção deliberada — o link "R$ 6,29/L — usar este" dentro da
+frase de dica do cadastro, que não cresce sem distorcer o parágrafo.
+
+**Uma regressão minha, encontrada e corrigida na verificação:** o piso de toque
+alargou "editar"/"excluir" no Perfil e empurrou o nome do veículo para duas
+linhas. Causa de especificidade — a regra do `:not()` pesa mais que a do botão
+fantasma, que por isso não valia. Cresce a altura, que é o que o dedo precisa;
+a largura fica.
+
+#### Verificado
+
+Dez rotas a 375px: nenhum estouro horizontal, nenhum erro de console (só o
+aviso conhecido de service worker, que este navegador bloqueia), botão
+flutuante livre em todas, `:has()` aplicando o respiro só onde há botão. O
+enquadramento de celular em tela larga continua de pé. `sw.js` em
+`autolog-v26`.
+
+**Não verificado:** nada disso passou por um aparelho de verdade — animação em
+Android mais fraco, os ícones novos na densidade do celular e o toque real nos
+alvos de 44px. A regra `:has()` pede Chrome 105+ (agosto de 2022); em navegador
+mais antigo ela é ignorada e o botão volta a tapar o rodapé, sem quebrar nada.
 
 ### O que ainda não foi validado no aparelho
 

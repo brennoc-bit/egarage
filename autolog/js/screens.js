@@ -82,8 +82,7 @@ Screens.inicio = (v) => {
 
     UI.cta([
       { label: 'Novo lançamento', icone: '+', onClick: () => Acoes.registrarLancamento(v) },
-    ]),
-    h('div', { style: { height: 76 } })); // respiro para o botão flutuante
+    ]));
 
   return {
     kicker: `Sua garagem · ${Store.veiculos().length} ${Store.veiculos().length === 1 ? 'veículo' : 'veículos'}`,
@@ -157,13 +156,18 @@ function graficoPrevisao(p, altura) {
   },
     h('div', {
       style: {
-        width: '100%', maxWidth: 26, height: Math.max(3, (m.total / max) * 100) + '%',
+        width: '100%', maxWidth: 30, height: Math.max(4, (m.total / max) * 100) + '%',
         display: 'flex', flexDirection: 'column-reverse',
         borderRadius: '6px 6px 2px 2px', overflow: 'hidden',
-        opacity: m === p.pico ? 1 : .78,
+        opacity: m === p.pico ? 1 : .8,
       },
     }, FAIXAS.map((f) => (m[f.chave] > 0
-      ? h('div', { style: { height: (m[f.chave] / m.total) * 100 + '%', background: f.cor } })
+      // `minHeight` porque aqui a cor é informação. Num mês tranquilo a barra
+      // tem uns 15px, e a faixa de 8% viraria 1px — some, e a legenda passa a
+      // prometer uma leitura que a barra não entrega. Com piso de 3px a
+      // composição continua legível nos meses pequenos; a altura total, que é
+      // o que diz "quanto", segue proporcional.
+      ? h('div', { style: { height: (m[f.chave] / m.total) * 100 + '%', minHeight: 3, background: f.cor } })
       : null)))));
 
   return h('div', { style: { padding: '4px 4px 0' } },
@@ -211,7 +215,7 @@ function blocoPrevisao(v) {
           `${brl0(acima)} acima da média${motivos(p.pico) ? ' · ' + motivos(p.pico) : ''}`)
       : manchete(`Seis meses parecidos, ~${brl0(p.media)} por mês`,
           'nenhum vencimento grande à vista'),
-    graficoPrevisao(p, 110),
+    graficoPrevisao(p, 124),
     h('div', { style: { padding: '0 16px 4px' } }, legendaPrevisao()));
 }
 
@@ -227,7 +231,7 @@ Screens.previsao = (v) => {
         detalhe ? UI.mono(detalhe, { fontSize: 10, color: 'var(--muted)', marginTop: 2 }) : null),
       UI.mono(valor, { fontSize: 13, fontWeight: 600, color: destaque ? 'var(--color-accent)' : 'inherit' }));
 
-    return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+    return h('div', { style: { borderTop: '1px solid var(--linha)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 } },
         h('span', { class: 'status-tag' },
           UI.dot(m === p.pico ? 'var(--color-accent)' : 'var(--muted)', 8),
@@ -269,8 +273,7 @@ Screens.previsao = (v) => {
       'Esta conta é o contrário do "custo por mês" do Início: lá o IPVA, o '
       + 'licenciamento e o seguro entram diluídos em doze; aqui cada um cai no '
       + 'mês em que vence. No ano as duas fecham parecido — o que muda é onde '
-      + 'o dinheiro aparece.'),
-    h('div', { style: { height: 76 } }));
+      + 'o dinheiro aparece.'));
 
   return { kicker: 'O que vem pela frente', titulo: 'Previsão', voltar: 'inicio', corpo };
 };
@@ -365,7 +368,7 @@ function abaHistorico(v) {
 
   return h('div', null,
     UI.seg([{ id: 6, label: '6 meses' }, { id: 12, label: '12 meses' }, { id: 24, label: '24 meses' }],
-      janela, (id) => App.ir('custos', { custos: 'historico', historico: id })),
+      janela, (id) => App.ir('custos', { custos: 'historico', historico: id }), { sub: true }),
 
     UI.row(
       UI.kv({ k: `Rodado (${janela}m)`, v: kmFmt(kmTotal), sub: `média ${num(Math.round(kmTotal / janela))} km/mês` }),
@@ -417,7 +420,7 @@ Screens.manutencao = (v) => {
       : h('div', { class: 'pillbox' }, valor));
 
   const corpo = h('div', null,
-    h('div', { style: { padding: 16, borderBottom: '1px solid var(--color-divider)', background: 'var(--color-surface)' } },
+    h('div', { style: { padding: 16, borderBottom: '1px solid var(--linha)', background: 'var(--color-surface)' } },
       UI.mono('Parâmetros do diagnóstico', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 12, color: 'var(--muted)' }),
       h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
         parametro('Tipo', labelTipo(v.tipo)),
@@ -499,7 +502,7 @@ Screens.docs = (v) => {
     todos ? UI.sectHd('Estimativa pela sua região') : null,
     todos ? blocoImpostos(v) : null,
 
-    visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+    visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--linha)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
         h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), s.tag),
         UI.mono(s.prazo, { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
@@ -541,7 +544,7 @@ function cartaoSeguro(v, s) {
     UI.mono(rotulo, { width: 92, flex: 'none', fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)' }),
     h('div', { style: { fontSize: 12, flex: 1, color: cor || 'inherit' } }, texto));
 
-  return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+  return h('div', { style: { borderTop: '1px solid var(--linha)', padding: 16 } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
       h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), 'SEGURO'),
       UI.mono(pag.quitado ? 'quitado' : `${pag.restantes}x a pagar`,
@@ -573,7 +576,7 @@ function cartaoSeguro(v, s) {
 function cartaoFinanciamento(v) {
   const f = Calc.financiamentoStatus(v);
   if (f.quitado) return null;
-  return h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
+  return h('div', { style: { borderTop: '1px solid var(--linha)', padding: 16 } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
       h('span', { class: 'status-tag' }, UI.dot(COR.warn, 8), 'FINANC.'),
       UI.mono(`todo dia ${f.dia}`, { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
@@ -624,7 +627,7 @@ function abaCustoKm(v) {
 
   return h('div', null,
     UI.seg([{ id: 30, label: '30 dias' }, { id: 90, label: '90 dias' }, { id: 365, label: '12 meses' }],
-      dias, (id) => App.ir('custos', { custos: 'km', periodo: id })),
+      dias, (id) => App.ir('custos', { custos: 'km', periodo: id }), { sub: true }),
 
     h('div', { style: { padding: '24px 20px 8px' } },
       UI.mono('Custo médio por km', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }),
