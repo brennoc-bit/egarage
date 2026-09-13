@@ -1829,6 +1829,25 @@ Screens.perfil = () => {
     UI.cta([
       { label: 'Sair da conta', icone: '⏻', onClick: () => Acoes.sair() },
     ]),
+
+    /* Privacidade e exclusão de conta ficam juntas e no fim, que é onde se
+       procura por elas — e a exclusão precisa estar dentro do app, não só no
+       site: é exigência da Play Store para qualquer app com conta. */
+    UI.sectHd('Privacidade'),
+    h('div', { class: 'note', style: { paddingTop: 0 } },
+      'Seus dados ficam na sua conta e servem só para os cálculos do app. '
+      + 'Não vendemos, não usamos para anúncio e não há rastreamento.'),
+    UI.cta([
+      {
+        label: 'Política de privacidade',
+        icone: '↗',
+        onClick: () => window.open('privacidade.html', '_blank', 'noopener'),
+      },
+    ]),
+    UI.cta([
+      { label: 'Apagar minha conta', icone: '⌫', onClick: () => Acoes.apagarConta() },
+    ]),
+
     h('div', { class: 'note', style: { paddingBottom: 24 } },
       'Autolog · sua garagem, em ordem · v1 — nasceu do canvas Garagem.dc.html (Modernist DS).'));
 

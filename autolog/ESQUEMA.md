@@ -90,7 +90,11 @@ foi removida — ele veria uma linha que existe só nele e a mandaria de volta. 
 lançamento apagado no celular ressuscitaria pelo tablet. A marca de remoção é o
 que ensina o outro aparelho que aquilo morreu.
 
-Uma limpeza periódica remove de vez o que está marcado há mais de 90 dias.
+**Aplicado no passo 6 (2026-09-13), e não antes:** esta frase existia desde o
+passo 1 como plano, e eu a tratei como fato ao escrever a política de
+privacidade. Fui conferir e não havia nada — sem `pg_cron`, sem função, sem
+agendamento. Agora existe: `public.limpar_removidos()`, rodando todo dia às 4h
+UTC, apagando de vez o que está marcado há mais de 90 dias.
 
 ### 3. Foto não entra no banco
 

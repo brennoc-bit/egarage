@@ -141,6 +141,26 @@ const Conta = (() => {
     if (error) throw new Error(traduzir(error));
   }
 
+  /* Apaga a conta inteira, chamando a função no servidor.
+
+     Não existe parâmetro de usuário de propósito: quem a função apaga é o dono
+     do token que chegou. Mandar um id seria abrir a porta para apagar a conta
+     dos outros. */
+  async function apagarConta() {
+    if (!cliente) throw new Error(ERRO_BIBLIOTECA);
+    const { data, error } = await cliente.functions.invoke('apagar-conta', {
+      method: 'POST',
+    });
+    if (error) throw new Error(traduzir(error));
+    if (!data || !data.apagada) {
+      throw new Error((data && data.erro) || 'Não consegui apagar a conta agora.');
+    }
+    // A sessão morreu junto com a conta; limpar o que ficou no aparelho.
+    try { await cliente.auth.signOut(); } catch (e) { /* ignora */ }
+    sessaoAtual = null;
+    return true;
+  }
+
   async function sair() {
     if (cliente) { try { await cliente.auth.signOut(); } catch (e) { /* ignora */ } }
     sessaoAtual = null;
@@ -194,7 +214,7 @@ const Conta = (() => {
 
   return {
     iniciar, disponivel, carregado, sessao, logado, usuario, email, nome, aoMudar,
-    entrarComGoogle, entrar, cadastrar, recuperarSenha, sair,
+    entrarComGoogle, entrar, cadastrar, recuperarSenha, sair, apagarConta,
     cliente: cliente_,
   };
 })();

@@ -18,7 +18,7 @@
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'autolog-v32';
+const VERSAO = 'autolog-v33';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [
@@ -26,6 +26,7 @@ const ESSENCIAIS = [
   './index.html',
   './styles.css',
   './manifest.json',
+  './privacidade.html',
   './ds/modernist.css',
   './js/util.js',
   './js/store.js',

@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 5 de 7: garagem nasce vazia, com tela de boas-vindas
+**Última atualização:** 2026-09-13 — passo 6 de 7: privacidade, exclusão de conta e limpeza das lápides
 
 ---
 
@@ -806,6 +806,102 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
+### Passo 6 de 7 ✅ privacidade, exclusão de conta e limpeza das lápides
+
+#### O levantamento veio antes do texto
+
+Política de privacidade só presta se for verdade, então o primeiro passo foi
+`grep` nas chamadas externas de `js/` — não na intenção. O app fala com **seis**
+serviços, e dois só apareceram assim:
+
+| Serviço | O que sai do aparelho |
+|---|---|
+| Supabase (São Paulo) | conta, veículos, lançamentos, documentos |
+| Google | login (e-mail, nome, foto) |
+| Google Gemini | **a foto do cupom/documento**, só com chave própria |
+| ViaCEP · BrasilAPI | o CEP digitado |
+| **Nominatim / OpenStreetMap** | **latitude e longitude** |
+| API FIPE (parallelum) | marca, modelo, ano |
+
+A localização era o achado importante: o app guarda só estado e município, mas
+as coordenadas **saem do aparelho** para virar nome de cidade. Está escrito na
+política em caixa destacada.
+
+#### Uma promessa que era mentira, e virou verdade
+
+O `ESQUEMA.md` dizia desde o passo 1 que "uma limpeza periódica remove de vez o
+que está marcado há mais de 90 dias". Fui conferir para escrever a política:
+**não existia**. Sem `pg_cron`, sem função, sem agendamento — era plano que
+virou frase. Escrever isso na política seria mentir para o usuário e para o
+Google.
+
+Implementado: extensão `pg_cron`, função `public.limpar_removidos()`
+(`security definer`, `search_path` vazio, `execute` revogado) e agendamento
+diário às 4h UTC. Conferido ativo em `cron.job`.
+
+**O preço dos 90 dias, dito na própria função:** um aparelho que fique mais de
+90 dias sem abrir o app perde a notícia da remoção e devolve a linha ao
+servidor. Não há número que evite isso — só desloca.
+
+#### Apagar a conta, de dentro do app
+
+Exigência da Play Store para qualquer app com conta, e coisa certa de qualquer
+jeito. O app sozinho não dá conta: o RLS deixa apagar as **linhas**, mas a
+conta em si (`auth.users`, com e-mail, nome e foto do Google) exige a chave
+`service_role` — que não pode chegar ao navegador de jeito nenhum.
+
+Entrou a Edge Function **`apagar-conta`**, com `verify_jwt`. Ela apaga o dono do
+token que chegou, e **não aceita id por parâmetro** — aceitar seria abrir a
+porta para apagar a conta dos outros. As sete tabelas têm `on delete cascade`
+para `auth.users`, então some a conta e somem as linhas, sem lista escrita na
+função (lista é o que envelhece calada quando alguém acrescenta uma tabela). A
+foto no Storage fica fora do cascade e sai à mão, antes.
+
+Testado de fora: sem token → **401**; com a chave pública e sem sessão →
+*"Sessão inválida"*; preflight CORS → 200.
+
+Na tela, é a **única ação do app com confirmação digitada**. As outras são
+reversíveis de algum jeito; esta apaga tudo em todos os aparelhos, sem backup do
+outro lado.
+
+**Um detalhe que o teste pegou:** a primeira versão limpava uma lista de chaves
+escrita à mão e deixava para trás a região, a chave do Gemini e a credencial da
+digital — fazendo da promessa "somem deste aparelho" meia verdade. Agora limpa
+tudo que começa com `autolog-`. Verificado: **zero chaves sobram**.
+
+#### Os arquivos
+
+- **`autolog/privacidade.html`** — página independente: sem JavaScript, sem
+  login, com modo escuro. A Play Store e a tela de consentimento do Google
+  precisam abri-la de fora, por quem talvez nem tenha o app.
+  Endereço: `https://brennoc-bit.github.io/egarage/autolog/privacidade.html`
+- **`autolog/SEGURANCA-DE-DADOS.md`** — as respostas prontas do formulário do
+  Play Console, com o raciocínio de cada uma. Inclui o que **não** marcar e por
+  quê, e o que responder se o revisor perguntar por que um app de veículo pede
+  localização e fotos.
+
+No app: Perfil › **Privacidade**, com link para a política e o botão de apagar.
+
+#### Verificado
+
+Dez rotas sem estouro nem erro de console; a página abre sem JavaScript e em
+modo escuro; a folha de exclusão avisa sobre os outros aparelhos e sugere
+exportar; **texto errado no campo não apaga nada**; texto certo limpa as 14
+chaves do app. Advisors de segurança do banco: nenhuma novidade das minhas
+mudanças.
+
+**Pendente do usuário, e está no `SEGURANCA-DE-DADOS.md`:** publicar a tela de
+consentimento do Google, ligar a proteção contra senha vazada no Supabase (o
+advisor aponta, e vale conferir se o plano grátis cobre), e a rotina de backup
+antes do primeiro usuário real.
+
+**Não verificado:** a exclusão de conta nunca rodou contra uma conta de verdade
+— testei a função recusando quem não deve, e o fluxo da tela com a chamada
+substituída. Apagar a conta do usuário para testar seria trocar um risco por
+outro pior.
+
+`sw.js` em `autolog-v33`.
+
 ### Passo 5 de 7 ✅ a garagem nasce vazia, e a primeira tela convida
 
 O app nascia com uma moto e um carro de mentira, com seis meses de
@@ -1292,7 +1388,7 @@ As decisões já fechadas, para não reabrir:
 
 **Os 7 passos até a loja:** 1) ✅ esquema e RLS · 2) ✅ login com Google · 3) ✅ `Store`
 lendo e escrevendo no Supabase · 4) ✅ sincronização offline ·
-5) ✅ boas-vindas sem dado de demonstração · 6) política de privacidade e
+5) ✅ boas-vindas sem dado de demonstração · 6) ✅ política de privacidade e
 Segurança de Dados · 7) TWA, assetlinks e publicação.
 
 **Depois da loja, já pedido:** manutenção mais sofisticada e **manual do veículo

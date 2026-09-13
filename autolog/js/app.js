@@ -776,6 +776,58 @@ const Acoes = {
     }
   },
 
+  /* APAGAR A CONTA — EXIGÊNCIA DA LOJA, E COISA CERTA DE QUALQUER JEITO
+
+     A Play Store exige que todo app com criação de conta ofereça apagar a
+     conta dentro do próprio app. Mas mesmo sem a exigência: guardar dado de
+     quem pediu para sair é indefensável.
+
+     É a única ação do app que pede confirmação digitada. As outras são
+     reversiveis de algum jeito — dá para recadastrar um veículo, relançar uma
+     despesa. Esta apaga a conta, os veículos, o histórico e as fotos, em todos
+     os aparelhos, e não há backup do outro lado. Um toque errado não pode
+     bastar. */
+  apagarConta() {
+    if (!Conta.logado()) { UI.toast('Você não está em nenhuma conta'); return; }
+    UI.sheet({
+      titulo: 'Apagar minha conta',
+      sub: 'isto não tem volta',
+      texto: 'Somem a sua conta, os veículos, os lançamentos, os documentos e as '
+        + 'fotos — deste aparelho e de todos os outros onde você entrou. Não guardamos '
+        + 'cópia. Se quiser levar seus dados, exporte antes em Perfil › Dados.',
+      campos: [{
+        name: 'confirmacao', label: 'Para confirmar, escreva APAGAR',
+        tipo: 'text', obrigatorio: true, maiusculas: true,
+      }],
+      acao: 'Apagar tudo',
+      destrutivo: true,
+      onSubmit: async (d) => {
+        if (String(d.confirmacao || '').trim().toUpperCase() !== 'APAGAR') {
+          UI.toast('Escreva APAGAR para confirmar');
+          return;
+        }
+        UI.toast('Apagando…');
+        try {
+          await Conta.apagarConta();
+          /* Limpa TUDO que é do app neste aparelho — e não uma lista de chaves
+             escrita à mão, que é o tipo de lista que envelhece calada quando
+             alguém acrescenta uma nova. A promessa da folha foi "somem deste
+             aparelho e de todos os outros"; sobrar a região, a chave do Gemini
+             ou a credencial da digital faria dela meia verdade. */
+          Sincronia.aoSair();
+          try {
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith('autolog-') || k === 'autolog-v1')
+              .forEach((k) => localStorage.removeItem(k));
+          } catch (e) { /* ignora */ }
+          location.reload();
+        } catch (e) {
+          UI.toast(e.message || 'Não consegui apagar a conta');
+        }
+      },
+    });
+  },
+
   /* O BOTÃO DE SINCRONIZAR AGORA
 
      Pedido depois de um travamento real: o usuário desligou o Wi-Fi, mexeu no
