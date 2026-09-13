@@ -842,9 +842,25 @@ Detalhes e números medidos em `autolog/ESQUEMA.md`.
 cadastro, bucket privado de fotos com policy própria. Advisors de segurança
 limpos. **Nenhuma linha de dado ainda** — o app segue em `localStorage`.
 
-**Próximo: passo 2, login com Google.** Precisa de você: criar o client OAuth no
-Google Cloud com a URI de redirecionamento apontando para o **callback do
-Supabase**, não para o do app.
+**Próximo: passo 2, login com Google.** Checklist completo em
+`autolog/LOGIN-GOOGLE.md`. A parte do Google Cloud é do usuário; o código vem
+depois que ele avisar.
+
+Três coisas dessa etapa que custam tempo se esquecidas:
+
+- A URI de redirecionamento é o **callback do Supabase**
+  (`https://zhknfipxjvkthkbzgguf.supabase.co/auth/v1/callback`), **não** o
+  endereço do app. Confirmado respondendo 303.
+- A tela de consentimento nasce em **Testing**, onde só usuários de teste
+  listados conseguem entrar (máx. 100). Publicar é obrigatório antes da loja —
+  e com escopo básico não abre revisão do Google.
+- **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
+  dispara verificação que leva dias.
+
+**Decisão guardada para antes do lançamento:** a tela do Google vai exibir
+`zhknfipxjvkthkbzgguf.supabase.co` para o usuário, o que parece golpe. A própria
+documentação do Supabase recomenda domínio próprio por isso — e domínio
+customizado é adicional pago.
 
 **Duas coisas decididas na hora de aplicar, que mudaram a proposta:**
 
