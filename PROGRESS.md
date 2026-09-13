@@ -857,10 +857,53 @@ Três coisas dessa etapa que custam tempo se esquecidas:
 - **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
   dispara verificação que leva dias.
 
-**Decisão guardada para antes do lançamento:** a tela do Google vai exibir
-`zhknfipxjvkthkbzgguf.supabase.co` para o usuário, o que parece golpe. A própria
-documentação do Supabase recomenda domínio próprio por isso — e domínio
-customizado é adicional pago.
+**Duas portas de entrada, não uma.** Decidido em 2026-09-13: além do Google,
+**e-mail e senha com confirmação**. A confirmação fica **ligada** — sem ela,
+qualquer um cria conta com o e-mail de outra pessoa.
+
+> **Armadilha do remetente:** o serviço de e-mail embutido do Supabase manda
+> **2 mensagens por hora** e a documentação diz que **não é para produção**. A
+> terceira pessoa que se cadastrar na mesma hora não recebe nada, sem erro
+> nenhum. Em produção, SMTP próprio (Resend), que sobe para 30/hora.
+
+### Domínio próprio — decidido: sim, `.com.br`
+
+Decidido em 2026-09-13. O que ele resolve, **de graça**:
+
+1. **Endereço do app** — GitHub Pages aceita domínio próprio com HTTPS
+   automático (Let's Encrypt), sem custo.
+2. **E-mail de verdade** — o Resend exige domínio verificado.
+3. **Resolve o TWA.** O `assetlinks.json` precisa ficar na raiz do domínio; com
+   domínio próprio ele vai em `/.well-known/assetlinks.json` e **a gambiarra do
+   repositório `brennoc-bit.github.io` deixa de ser necessária**.
+4. **`rpId` limpo para o WebAuthn**, em vez de domínio compartilhado.
+
+> **Correção registrada:** eu havia dito que o domínio próprio consertaria a tela
+> de consentimento do Google. **Não conserta.** O que o Google exibe vem do
+> destino do redirecionamento — o callback do Supabase — e não do endereço do
+> app. Isso exige o **domínio customizado do Supabase**, adicional pago e
+> separado. Fica para antes do lançamento.
+
+### Trava local por digital — decidido: sim, em vez de passkey
+
+Decidido em 2026-09-13. O passkey do Supabase está em **beta**, e depender de
+recurso beta como única porta de entrada é risco para app de loja.
+
+A trava usa **WebAuthn**, o mesmo mecanismo, de outro jeito: em vez de provar
+identidade para um servidor, só exige que o dono do aparelho se identifique
+antes de liberar. Sem servidor, sem beta, funciona no Chrome do Android e
+portanto dentro do TWA.
+
+**O alcance honesto:** protege contra alguém pegar o celular desbloqueado e abrir
+o app. **Não criptografa nada** — quem tiver o aparelho e conhecimento técnico lê
+os dados por baixo. É cortina, não cofre, e é o que a maioria dos apps de banco
+chama de "bloqueio do app". Cofre de verdade exigiria usar a digital para
+destravar uma chave de criptografia — bem mais complexo, fora da v1.
+
+**A regra do fracasso, que é o que decide se a trava presta:** quando a digital
+falha (aparelho sem biometria, pessoa cancela, credencial some ao limpar dados
+do site), **cai no login normal**. Abrir assim mesmo seria teatro; travar de vez
+trancaria a pessoa para fora da própria garagem.
 
 **Duas coisas decididas na hora de aplicar, que mudaram a proposta:**
 

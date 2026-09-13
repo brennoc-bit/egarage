@@ -71,6 +71,10 @@ https://brennoc-bit.github.io
 http://localhost:5174
 ```
 
+> **Domínio próprio a caminho.** Pode fazer com estas agora: quando
+> `autolog.com.br` (ou o nome escolhido) estiver de pé, basta **acrescentar** a
+> origem nova ao lado destas. O Google aceita várias e nada precisa ser refeito.
+
 **URIs de redirecionamento autorizados** — só este, exatamente:
 
 ```
@@ -125,11 +129,14 @@ Aí eu troco a porteira `2047` pelo login de verdade. O que muda no código:
 ## Duas coisas para decidir antes da loja (não agora)
 
 **A tela do Google vai mostrar `zhknfipxjvkthkbzgguf.supabase.co`.** Quando a
-pessoa clicar em "Entrar com Google", o aviso do Google diz "continuar para
-zhknfipxjvkthkbzgguf.supabase.co" — que parece golpe. A própria documentação do
-Supabase recomenda domínio próprio por causa disso. Domínio customizado no
-Supabase é um adicional pago. Para um app de loja, vale resolver antes do
-lançamento.
+pessoa clicar em "Entrar com Google", o aviso diz "continuar para
+zhknfipxjvkthkbzgguf.supabase.co" — que parece golpe.
+
+**Atenção, porque eu já errei isso aqui:** comprar domínio próprio para o app
+**não conserta essa tela**. O que o Google exibe vem do destino do
+redirecionamento, que é o callback do Supabase, e não o endereço do app.
+Consertar exige o **domínio customizado do Supabase**, que é adicional pago,
+separado da compra do domínio. Decisão para antes do lançamento.
 
 **Facebook é bem mais chato que Google.** Exige app no Meta for Developers,
 revisão e, dependendo do caso, verificação de negócio. Sugiro subir só com
