@@ -116,6 +116,19 @@ openid
 - Tipo: **Aplicativo da Web**
 - Nome: `Autolog Web`
 
+> **"Mas o app não é Android?"** É — e mesmo assim o tipo certo é Web, porque
+> **o Google nunca fala com o Android: ele fala com o Supabase.** A página roda
+> no Chrome dentro do invólucro, o Google redireciona para o callback do
+> Supabase (endereço web) e o Supabase devolve a pessoa para o app. Quem se
+> apresenta como cliente é o servidor do Supabase.
+>
+> O tipo **Android** serve para app nativo que chama o SDK do Google direto —
+> ele pede nome do pacote e SHA-1 do certificado de assinatura. Esse seria o
+> caminho **Capacitor**. No TWA não existe camada nativa de onde chamar o SDK.
+>
+> Se um dia migrar para Capacitor, cria-se um cliente Android **ao lado** deste,
+> no mesmo projeto. Os dois convivem, e nada aqui se perde.
+
 **Origens JavaScript autorizadas:**
 
 ```
