@@ -1601,10 +1601,74 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
 
 /* ── Perfil (fora do canvas — necessário para o app funcionar) ─────────── */
 
+/* Bloqueio por digital. A caixa só aparece onde o aparelho tem leitor
+   utilizável pelo navegador — oferecer e falhar seria pior que não oferecer.
+
+   O texto diz o alcance real: isto impede que alguém pegue o celular
+   desbloqueado e veja os gastos. Não criptografa nada. Vender como segurança
+   o que é conveniência seria o tipo de promessa que este app não faz. */
+function blocoTrava() {
+  const caixa = h('div');
+
+  const desenhar = (suportada) => {
+    clear(caixa);
+    if (!suportada) {
+      caixa.append(h('div', { class: 'note', style: { paddingTop: 0 } },
+        'Este aparelho não oferece desbloqueio por digital ao navegador. '
+        + 'Em celular com leitor, a opção aparece aqui.'));
+      return;
+    }
+
+    const ligada = Trava.ativa();
+    caixa.append(
+      UI.row(UI.kv({
+        k: 'Digital', v: ligada ? 'Ligado' : 'Desligado',
+        cor: ligada ? COR.ok : null,
+        sub: ligada ? 'pedida ao abrir o app' : 'toque no botão abaixo',
+      })),
+      h('div', { class: 'note', style: { paddingTop: 0 } },
+        ligada
+          ? 'Ao abrir o app, sua digital é pedida. Se ela falhar, o app pede seu '
+            + 'login — você nunca fica trancado para fora da própria garagem.'
+          : 'Impede que alguém que pegou seu celular desbloqueado abra o Autolog '
+            + 'e veja seus gastos. Não criptografa os dados — é uma cortina, como o '
+            + 'bloqueio dos apps de banco.'),
+      UI.cta([{
+        label: ligada ? 'Desligar bloqueio' : 'Ligar bloqueio por digital',
+        icone: ligada ? '✕' : '☝',
+        pri: !ligada,
+        onClick: async () => {
+          if (ligada) {
+            Trava.desativar();
+            App.render();
+            UI.toast('Bloqueio desligado');
+            return;
+          }
+          try {
+            await Trava.ativar(Conta.email());
+            App.render();
+            UI.toast('Bloqueio ligado');
+          } catch (e) {
+            UI.toast(e.message || 'Não consegui registrar a digital');
+          }
+        },
+      }]));
+  };
+
+  desenhar(false);
+  Trava.suportada().then(desenhar);
+  return caixa;
+}
+
 Screens.perfil = () => {
   const st = Store.get();
   const corpo = h('div', null,
-    UI.row(UI.kv({ k: 'Nome', v: st.perfil.nome || '—', sub: 'toque para editar', onClick: () => Acoes.editarPerfil() })),
+    UI.row(
+      UI.kv({ k: 'Nome', v: st.perfil.nome || '—', sub: 'toque para editar', onClick: () => Acoes.editarPerfil() }),
+      UI.kv({ k: 'Conta', v: Conta.email() || '—', sub: 'onde sua garagem fica salva' })),
+
+    UI.sectHd('Bloqueio do app'),
+    blocoTrava(),
 
     UI.sectHd('Garagem', '+ veículo', () => Acoes.novoVeiculo()),
     st.veiculos.map((x) => h('div', { class: 'list-item' },

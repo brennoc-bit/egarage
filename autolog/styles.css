@@ -528,11 +528,6 @@ span.chip { cursor: default; }
   border-radius: var(--r-md);
 }
 .login-form input:focus-visible { border-color: var(--color-accent); outline: none; }
-.login-form #login-senha {
-  font-family: var(--mono);
-  letter-spacing: .5em;
-  font-size: 20px;
-}
 .login-form.erro input { border-color: var(--color-accent); }
 
 .login-erro {
@@ -566,6 +561,79 @@ span.chip { cursor: default; }
   border-top: 1px solid var(--color-divider);
   padding-top: 16px;
 }
+
+/* ── Entrar com Google, separador, e as telas de recado ────────────────── */
+
+/* Branco com borda, e não com a cor do app: é a aparência que as pessoas já
+   reconhecem como "botão do Google", e reconhecer importa na hora de entregar
+   a conta. */
+.btn-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 20px;
+  margin-bottom: 4px;
+  border-radius: 100px;
+  cursor: pointer;
+  background: #fff;
+  color: #1f1f1f;
+  border: 1px solid #dadce0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14px;
+}
+.btn-google:active { transform: translateY(1px); }
+.btn-google:disabled { opacity: .55; }
+.btn-google .g-ic { display: flex; }
+
+.login-ou {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 18px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.login-ou::before,
+.login-ou::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-divider);
+}
+
+.login-erro.ok { color: var(--color-ok, #2d8a4a); }
+
+.login-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+.login-link {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+.login-link.discreto { color: var(--muted); font-weight: 400; }
+
+.login-msg { font-size: 14px; line-height: 1.6; margin: 8px 0 22px; }
+.login-msg p { margin: 0 0 10px; }
+.login-msg .discreto,
+.login-msg.discreto { color: var(--muted); font-size: 12px; }
+
+.login-btn:disabled { opacity: .55; }
 
 /* ── Botões de leitura por imagem ──────────────────────────────────────── */
 .ler-titulo {

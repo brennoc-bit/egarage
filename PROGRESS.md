@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 1 feito: banco do Autolog criado no Supabase, com RLS testado de fora
+**Última atualização:** 2026-09-13 — passo 2 feito: login de verdade no lugar da senha `2047`, com Google, e-mail e trava por digital
 
 ---
 
@@ -806,7 +806,7 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
-### Autolog vira produto — passo 1 de 7 ✅ banco criado e testado
+### Autolog vira produto — passos 1 e 2 de 7 ✅ banco e login
 
 Decidido em 2026-09-13: o app vai para a Play Store com conta de usuário real.
 As decisões já fechadas, para não reabrir:
@@ -856,6 +856,60 @@ Três coisas dessa etapa que custam tempo se esquecidas:
   e com escopo básico não abre revisão do Google.
 - **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
   dispara verificação que leva dias.
+
+### Passo 2 ✅ a senha `2047` morreu
+
+Três arquivos novos e um reescrito:
+
+- **`js/conta.js`** — o Supabase. Sessão, Google, e-mail/senha, recuperação, e a
+  tradução das mensagens de erro num lugar só.
+- **`js/trava.js`** — o bloqueio por digital, em WebAuthn.
+- **`js/auth.js`** — reescrito: só telas agora, sem lógica de credencial.
+- **`index.html`** — o cliente do Supabase entra por CDN, versão UMD: **sem npm
+  e sem build step**, para a regra do projeto continuar valendo.
+
+**Quatro estados, e o `App.render` escolhe a tela por eles:** `carregando`
+(restaurar sessão é assíncrono — sem esse estado o app piscaria o login antes de
+descobrir que já havia sessão), `indisponivel` (a biblioteca vem de CDN e pode
+não vir; melhor dizer isso que mostrar tela branca), `deslogado`, `trancado`.
+
+**Ainda é só autenticação.** A garagem continua em `localStorage`: a sessão
+decide se o app abre, não o que ele mostra. Ligar o `Store` ao banco é o passo 3,
+e é lá que a garagem local do usuário sobe para a conta dele.
+
+#### Testado
+
+- **Trigger do perfil dispara** — usuário criado, linha em `perfis` nasce junto,
+  com o nome vindo de `raw_user_meta_data.full_name` (o caminho do Google).
+- **Login ponta a ponta**, app abre, `Conta.email()` e `Conta.nome()` preenchidos.
+- **Sessão sobrevive ao recarregar**, sem piscar a tela de login.
+- **Sair** volta para a entrada.
+- **Cascade limpa junto:** apagar o usuário zerou `perfis`.
+- Tradução de erro: senha errada dá "E-mail ou senha incorretos.", não
+  *Invalid login credentials*.
+
+#### Dois tropeços que valem registro
+
+**A tradução deixou inglês vazar.** O Supabase diz `Email address "x" is invalid`,
+e meu padrão procurava `invalid email` — não casou, e a mensagem crua foi para a
+tela. Corrigido com `email` + `invalid` juntos, e o fallback deixou de devolver a
+mensagem original: agora ela vai para o console e a tela recebe português.
+
+**Usuário inserido direto no banco quebra o login** com *Database error querying
+schema*. As colunas de token (`confirmation_token`, `recovery_token`, etc.)
+nascem NULL e o servidor de auth as lê como texto não-nulo. Cadastro pela API
+não tem esse problema — era limitação do atalho de teste, não do app. Fica
+anotado porque vai acontecer de novo em qualquer semente de dados.
+
+#### Não verificado
+
+- **Entrar com Google de verdade.** O fluxo redireciona para fora, e este
+  navegador não completa. Só no aparelho.
+- **A digital.** `isUserVerifyingPlatformAuthenticatorAvailable()` responde
+  `true` aqui, mas registrar a credencial abre diálogo do sistema operacional.
+  Só no celular.
+- **E-mail de confirmação chegando.** Não gastei o limite de 2/hora com endereço
+  falso — e o Supabase recusa domínios como `example.com`.
 
 **Duas portas de entrada, não uma.** Decidido em 2026-09-13: além do Google,
 **e-mail e senha com confirmação**. A confirmação fica **ligada** — sem ela,

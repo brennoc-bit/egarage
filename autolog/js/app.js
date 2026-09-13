@@ -644,7 +644,7 @@ const Acoes = {
       titulo: 'Sair da conta',
       texto: 'A garagem continua salva neste aparelho; é só entrar de novo para vê-la.',
       acao: 'Sair',
-      onOk: () => { Auth.sair(); App.ir('inicio'); },
+      onOk: () => { Auth.sair().then(() => App.ir('inicio')); },
     });
   },
 
@@ -661,7 +661,19 @@ const Acoes = {
 /* ── Bootstrap ─────────────────────────────────────────────────────────── */
 
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') UI.fecharSheet(); });
+
+/* Desenha já, com a tela de "abrindo sua garagem", porque restaurar a sessão é
+   assíncrono. Sem isso o app piscaria o login antes de descobrir que já havia
+   sessão — e quem volta do Google veria a tela de entrada por um instante. */
 App.render({ topo: true });
+Conta.iniciar().then(() => App.render({ topo: true }));
+
+// Entrar, sair ou a sessão expirar redesenha sozinho, venha de onde vier —
+// inclusive de outra aba do mesmo navegador.
+Conta.aoMudar((evento) => {
+  if (evento === 'SIGNED_OUT') Trava.esquecerLiberacao();
+  App.render({ topo: true });
+});
 
 // Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
 // tela de cadastro já estiver aberta esperando por ele.
