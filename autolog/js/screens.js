@@ -457,31 +457,47 @@ Screens.manutencao = (v) => {
 
 /* ── 04 · Documentos (IPVA · Seguro · Revisão) ─────────────────────────── */
 
+/* O filtro do topo filtra a tela inteira, não só a lista.
+
+   Antes ele só mexia nos cartões de baixo: o total do ciclo, o cartão do
+   financiamento, a estimativa da região e os botões do rodapé continuavam
+   falando de todos os documentos. Como esses blocos ocupam os primeiros
+   ~400 px, tocar em "IPVA" não mudava nada do que cabia na tela — parecia
+   botão quebrado — e, pior, deixava o total de R$ 1.813 em cima de um
+   documento de R$ 444. Número e lista têm que falar da mesma coisa. */
 Screens.docs = (v) => {
   const filtro = App.sub.docs || 'todos';
   const status = Calc.docsStatus(v);
-  const anuais = Calc.compromissosAnuais(v);
-  const visiveis = filtro === 'todos' ? status : status.filter((s) => s.doc.id === filtro);
+  const todos = filtro === 'todos';
+  const visiveis = todos ? status : status.filter((s) => s.doc.id === filtro);
+  const anuais = Calc.compromissosAnuais(v, visiveis);
   // A revisão não se "paga" aqui — ela se agenda; entra como CTA alternativa.
-  const pagaveis = status.filter((s) => s.pendente > 0 && s.acao && s.doc.tipo !== 'km');
-  const revisao = status.find((s) => s.doc.tipo === 'km' && s.status !== 'ok');
+  const pagaveis = visiveis.filter((s) => s.pendente > 0 && s.acao && s.doc.tipo !== 'km');
+  const revisao = visiveis.find((s) => s.doc.tipo === 'km' && s.status !== 'ok');
+  const rotulo = todos ? 'Compromissos do ciclo' : `${visiveis[0] ? visiveis[0].tag : filtro} · no ciclo`;
 
   const corpo = h('div', null,
     UI.seg([{ id: 'todos', label: 'Todos' }, ...status.map((s) => ({ id: s.doc.id, label: s.tag }))],
       filtro, (id) => App.ir('docs', { docs: id })),
 
     h('div', { style: { padding: '18px 16px 6px' } },
-      UI.mono('Compromissos do ciclo', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }),
-      h('div', { class: 'bignum' }, brl0(anuais.total), h('small', null, 'previstos'))),
+      UI.mono(rotulo, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }),
+      // "R$ 0 previstos" se lê como "custa zero"; a revisão é o caso em que o
+      // app não sabe o preço. Dizer que não sabe é diferente de dizer zero.
+      anuais.total > 0
+        ? h('div', { class: 'bignum' }, brl0(anuais.total), h('small', null, 'previstos'))
+        : h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 17, letterSpacing: '-.01em' } },
+            'Valor ainda não informado')),
 
-    UI.row(
+    anuais.total > 0 ? UI.row(
       UI.kv({ k: 'Pago', v: brl0(anuais.pago) }),
-      UI.kv({ k: 'A pagar', v: brl0(anuais.pendente), cor: 'var(--color-accent)' })),
+      UI.kv({ k: 'A pagar', v: brl0(anuais.pendente), cor: 'var(--color-accent)' })) : null,
 
-    cartaoFinanciamento(v),
-
-    UI.sectHd('Estimativa pela sua região'),
-    blocoImpostos(v),
+    // Financiamento e estimativa da região são panorama, não documento: com um
+    // documento escolhido, viram ruído em volta do que a pessoa foi ver.
+    todos ? cartaoFinanciamento(v) : null,
+    todos ? UI.sectHd('Estimativa pela sua região') : null,
+    todos ? blocoImpostos(v) : null,
 
     visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--color-divider)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
@@ -504,9 +520,14 @@ Screens.docs = (v) => {
     pagaveis.length || revisao ? UI.cta([
       pagaveis.length ? { label: pagaveis[0].acao, pri: true, onClick: () => Acoes.pagar(v, pagaveis[0]) } : null,
       revisao ? { label: 'Agendar oficina', pri: !pagaveis.length, onClick: () => Acoes.agendarOficina(v) } : null,
-    ].filter(Boolean)) : h('div', { class: 'note' }, 'Nada pendente neste ciclo.'));
+    ].filter(Boolean)) : h('div', { class: 'note' },
+      todos ? 'Nada pendente neste ciclo.' : 'Nada pendente neste documento.'));
 
-  return { kicker: 'Cronograma do ciclo', titulo: 'Documentos', corpo };
+  return {
+    kicker: todos ? 'Cronograma do ciclo' : 'Filtrando por um documento',
+    titulo: 'Documentos',
+    corpo,
+  };
 };
 
 /* O seguro tem duas linhas do tempo que a pessoa confunde o tempo todo:

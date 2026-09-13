@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-10 — redirect do endereço velho, fim do `car-cost-app/` e da aba de simular financiamento
+**Última atualização:** 2026-09-13 — filtro da tela de Documentos passou a valer para a tela inteira
 
 ---
 
@@ -704,6 +704,41 @@ genérico). Sintaxe conferida com `node --check`. A validação real é no celul
 
 **Importante:** instalar como app exige **HTTPS**. Pelo IP da rede local o
 Chrome degrada para atalho com barra de navegador.
+
+### Filtro de Documentos consertado ✅ parecia botão morto
+
+O usuário reportou: "na aba de docs, os botões IPVA, LICENC., SEGURO, REVISÃO —
+quando clico, nada acontece."
+
+Ele **funcionava**. Medido no navegador: tocar em IPVA reduzia a página de
+1278 px para 673 px e a lista filtrava certo. O problema é que o filtro só
+mexia na lista, e a lista começa a **416 px** do topo, numa área visível de
+651 px. Ou seja: os primeiros dois terços da tela não mudavam nada. Da posição
+em que a pessoa está, é indistinguível de botão quebrado.
+
+E tinha coisa pior que invisibilidade — duas incoerências reais:
+
+1. **"Compromissos do ciclo" ignorava o filtro.** Com IPVA selecionado, a tela
+   mostrava **R$ 1.813 previstos** em cima de um documento de R$ 445. Mentira
+   por vizinhança: o número e a lista falavam de coisas diferentes.
+2. **O rodapé ignorava o filtro.** Filtrando por IPVA, o botão "Agendar
+   oficina" continuava lá — ação de um cartão de revisão que não estava na
+   tela.
+
+Agora o filtro vale para a tela toda: o total é dos documentos visíveis
+(`Calc.compromissosAnuais` passou a aceitar uma lista já filtrada), o rótulo
+vira "IPVA · no ciclo", os botões do rodapé saem só do que está visível, e o
+cartão de financiamento e a estimativa da região — que são panorama, não
+documento — somem quando há um documento escolhido.
+
+**De brinde, um número que mentia:** a revisão aparecia como "R$ 0 previstos",
+que se lê como "custa zero". O app não sabe o preço da revisão. Agora diz
+"Valor ainda não informado", e o bloco Pago/A pagar some junto.
+
+Verificado a 375 px, os quatro filtros: IPVA R$ 445 (pago 296, a pagar 148) e
+só "Pagar 3ª parcela"; LICENC. R$ 129; SEGURO R$ 1.240 com "Nada pendente
+neste documento"; REVISÃO sem valor e só "Agendar oficina". Sete outras rotas
+sem erro nem estouro. `sw.js` em `autolog-v21`.
 
 ### Simulador de financiamento 🗑️ removido em 2026-09-10
 

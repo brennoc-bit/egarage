@@ -271,8 +271,11 @@ const Calc = (() => {
     return itens.sort((a, b) => a.ordem - b.ordem).slice(0, limite);
   }
 
-  function compromissosAnuais(v) {
-    const st = docsStatus(v);
+  /* Aceita uma lista já filtrada: a tela de Documentos tem um filtro por tipo,
+     e mostrar o total de tudo em cima de um documento só seria mentir pela
+     vizinhança — o número e a lista precisam falar da mesma coisa. */
+  function compromissosAnuais(v, lista) {
+    const st = lista || docsStatus(v);
     return {
       total: st.reduce((s, d) => s + (d.pago || 0) + (d.pendente || 0), 0),
       pago: st.reduce((s, d) => s + (d.pago || 0), 0),
