@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — filtro da tela de Documentos passou a valer para a tela inteira
+**Última atualização:** 2026-09-13 — decidido virar produto: Supabase, conta de usuário e Play Store. Esquema proposto em `autolog/ESQUEMA.md`
 
 ---
 
@@ -806,7 +806,43 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
-Nada aberto. O ciclo foi encerrado com tudo commitado e publicado.
+### Autolog vira produto — passo 1 de 7, aguardando aprovação do esquema
+
+Decidido em 2026-09-13: o app vai para a Play Store com conta de usuário real.
+As decisões já fechadas, para não reabrir:
+
+| Assunto | Decisão |
+|---|---|
+| Banco | Supabase, região São Paulo. Cliente por CDN — **segue sem build step** |
+| Login | Google e Facebook, via Supabase Auth. A senha `2047` morre |
+| Dados | **Local-primeiro com sincronização**, não só-online. É a parte mais difícil |
+| Foto | **Storage, nunca no banco.** GB de arquivo custa 6× menos que GB de banco |
+| FIPE | **Continua no celular, sempre.** No servidor, os 500/dia viram um só para todos |
+| Gemini | Edge Function com a chave do dono, só logado, com teto por pessoa |
+| Primeira tela | Boas-vindas + "adicionar seu veículo". Sem dado de demonstração |
+| Invólucro | TWA na v1; Capacitor só se precisar de nativo de verdade |
+| Custo | Começa no plano grátis, **com rotina de backup própria** |
+| Preço | R$ 30/ano depois — mas **v1 sai de graça**, para descobrir quem volta |
+
+**Os 7 passos:** 1) esquema e RLS · 2) login com Google · 3) `Store` lendo e
+escrevendo no Supabase, ainda só online · 4) sincronização offline ·
+5) boas-vindas sem dado de demonstração · 6) política de privacidade e
+Segurança de Dados · 7) TWA, assetlinks e publicação.
+
+**Onde parou:** `autolog/ESQUEMA.md` tem a proposta completa das 6 tabelas,
+levantada do que o `store.js` guarda hoje. **Nada foi criado no Supabase.**
+
+**Dois achados do levantamento:**
+
+- O projeto Supabase que existe (`dfkpjwrqbmuvbxcsvity`) **é de outro produto** —
+  tem `caixas`, `portas`, `notificacoes` com dados reais. O Autolog precisa do
+  próprio. Cabem 2 projetos grátis por organização, então sobra exatamente um.
+- **Armadilha no esquema:** o app usa `ipva`, `seguro` etc. como id de documento,
+  e esses valores se repetem entre veículos. Como chave primária, o IPVA da moto
+  sobrescreveria o do carro. Virou coluna `doc_id`, com chave própria separada.
+
+**A favor do projeto:** nenhuma tela lê armazenamento direto — conferido, zero
+acessos a `localStorage` fora do `store.js`. A migração mexe em um arquivo.
 
 **O app está no ar:** <https://brennoc-bit.github.io/egarage/autolog/>
 
