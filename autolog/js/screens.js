@@ -1683,11 +1683,20 @@ function blocoSincronia() {
   const RECADOS = {
     parado: { v: 'Só neste aparelho', sub: 'entre na conta para sincronizar', cor: null },
     baixando: { v: 'Carregando…', sub: 'buscando a garagem da conta', cor: null },
+    sincronizando: { v: 'Sincronizando…', sub: 'comparando com a conta', cor: null },
     enviando: { v: 'Salvando…', sub: 'mandando as mudanças', cor: null },
     salvo: { v: 'Em dia', sub: hora ? `última vez às ${hora}` : 'tudo enviado', cor: 'var(--c-ok)' },
-    erro: { v: 'Só neste aparelho', sub: s.recado || 'tentarei de novo na próxima gravação', cor: 'var(--color-accent)' },
+    conflito: { v: 'Em dia', sub: s.recado, cor: 'var(--c-warn)' },
+    erro: { v: 'Aguardando conexão', sub: s.recado || 'tento de novo sozinho', cor: 'var(--color-accent)' },
   };
   const r = RECADOS[s.fase] || RECADOS.parado;
+  const conflitos = Nuvem.lerConflitos();
+
+  const verConflitos = h('button', {
+    class: 'btn btn-secondary',
+    style: { borderRadius: 100, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+    onClick: () => Acoes.verConflitos(),
+  }, `Ver ${conflitos.length} ${conflitos.length === 1 ? 'mudança descartada' : 'mudanças descartadas'}`);
 
   return h('div', null,
     UI.sectHd('Sua garagem na conta'),
@@ -1695,7 +1704,13 @@ function blocoSincronia() {
     s.fase === 'erro'
       ? h('div', { class: 'note', style: { paddingTop: 0 } },
           'Nada foi perdido: o que você registrou está salvo neste aparelho e sobe '
-          + 'assim que a conexão voltar.')
+          + 'sozinho assim que a conexão voltar.')
+      : null,
+    /* Conflito é raro, e justamente por isso não pode passar batido. Enquanto
+       houver mudança descartada, ela fica visível aqui — a pessoa decide se
+       aquilo importava. */
+    conflitos.length
+      ? h('div', { style: { padding: '0 16px 16px' } }, verConflitos)
       : null);
 }
 

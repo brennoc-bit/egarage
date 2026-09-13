@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 3 de 7: a garagem passou a viver na conta
+**Última atualização:** 2026-09-13 — passo 4 de 7: sincronização offline, com fusão de três vias
 
 ---
 
@@ -806,6 +806,121 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
+### Passo 4 de 7 ✅ sincronização offline, com fusão de três vias
+
+O passo 3 resolvia o encontro de duas garagens no muque: a do servidor ganhava
+inteira. Isso servia para entrar numa conta pela primeira vez e estragava todo o
+resto — quem registrasse um abastecimento no estacionamento sem sinal perderia o
+registro ao voltar para a rede.
+
+#### A fusão
+
+Agora existem três versões de cada linha, e é isso que permite decidir sem
+chutar: **base** (o espelho: como a linha estava no servidor na última
+sincronização), **local** e **remota**.
+
+| local vs base | remota vs base | o que acontece |
+|---|---|---|
+| igual | igual | nada |
+| igual | mudou | aceita a remota |
+| mudou | igual | sobe a local |
+| mudou | mudou | conflito de verdade |
+
+As três primeiras linhas não perdem nada de ninguém, e cobrem praticamente todo
+uso real: as linhas são miúdas (um lançamento, uma parcela), então dois
+aparelhos mexerem na **mesma** linha entre duas sincronizações é raro.
+
+**No conflito, o aparelho na mão ganha — e o descartado fica guardado.** Toda
+decisão automática perde alguma coisa; escolhi perder a versão que a pessoa não
+está vendo, porque sumir da tela o que ela acabou de digitar é a mais
+assustadora das duas falhas. A versão remota vai para `autolog-conflitos-v1` e o
+Perfil mostra **"Ver N mudanças descartadas"** enquanto a lista não for limpa.
+
+Comparar por relógio seria mais justo no papel, mas relógio de celular erra: um
+aparelho adiantado venceria disputas que não deveria, e o erro seria invisível.
+
+#### O primeiro encontro tem regra própria
+
+Na primeira vez que um aparelho vê uma conta não existe espelho — e sem base a
+fusão acusaria conflito em toda linha que existisse dos dois lados. Ali a regra
+é **união, com o servidor tendo preferência no que coincide**.
+
+Isso é melhor que a substituição do passo 3: quem cadastrou um veículo **antes**
+de entrar na conta tem id próprio nele, então ele sobrevive e sobe em seguida.
+Testado: aparelho com a garagem de demonstração + uma Ninja 400 só dele entrou
+numa conta que já tinha garagem — ficou com os três veículos, e a Ninja subiu.
+
+#### Quatro momentos de sincronizar, em vez de um
+
+Antes: gravou, mandou. Se falhasse, nada tentava de novo até a gravação
+seguinte — e quem guardou o celular no bolso nunca mais gravava nada.
+
+1. **Gravou** — meio segundo depois, agrupando toques seguidos.
+2. **Voltou a rede** (`online`) — o momento exato de insistir.
+3. **App veio para a frente** — e também quando abre.
+4. **Espera crescente** após falha: 8s, 30s, 2min, e depois para de insistir
+   sozinho.
+
+**O que torna isso seguro não é nenhum desses temporizadores**, e sim o espelho
+só avançar quando o envio dá certo. Enquanto não deu, a mudança segue pendente
+— mesmo que o app feche, mesmo que o celular reinicie.
+
+#### Três defeitos encontrados pelos testes, dois deles graves
+
+**1. O `select` do supabase-js nunca resolve quando o `fetch` rejeita.** Medido
+na versão 2.116: sem rede, a leitura **fica pendurada para sempre**; o `upsert`,
+no mesmo cenário, devolve erro normalmente.
+
+Isso passou despercebido no passo 3 porque lá só havia escrita. O passo 4 lê
+antes de escrever, e o efeito seria o pior possível: tela presa em
+"Sincronizando…" para sempre, sem erro, sem nova tentativa e com o envio travado
+bloqueando todas as gravações seguintes. Corrigido com **prazo próprio de 20s em
+toda chamada de rede**.
+
+**2. Eco infinito entre os aparelhos.** Depois de aceitar uma linha do servidor,
+o app a empurrava de volta — o servidor carimbava data nova, que voltava na
+leitura seguinte como novidade, que era aceita de novo. Dois aparelhos abertos
+ficariam empurrando a mesma linha um para o outro para sempre. Corrigido fazendo
+a base acompanhar o que foi aceito.
+
+**3. Lápide já digerida contava como novidade a cada ciclo.** Não corrompia
+nada, mas reconstruía o estado e redesenhava a tela indefinidamente, piorando
+conforme as lápides se acumulassem.
+
+#### A forma canônica, que evitou um quarto defeito
+
+Comparar linha local com linha do servidor exige uma forma só. Conferido no
+banco: o `jsonb` volta com as chaves **reordenadas** pelo Postgres
+(`{quitado, parcela, restantes, dia}` volta como `{dia, parcela, quitado,
+restantes}`) e `numeric` volta como **texto** (`"148.2"`).
+
+Sem normalizar, todo veículo financiado seria reenviado em toda gravação, para
+sempre, sem nada ter mudado. `canonico()` projeta qualquer linha — minha ou do
+servidor — nas mesmas colunas, na mesma ordem, com os mesmos tipos.
+
+#### Verificado
+
+| O quê | Resultado |
+|---|---|
+| Os quatro quadrantes da fusão | Cada um se comporta como projetado, contra um servidor falso que filtra por `atualizado_em`, aceita upsert e carimba data como o gatilho do banco |
+| Conflito | Local vence nos dois lados, remota guardada e visível no Perfil |
+| Lápide nos dois sentidos | Apagado lá some aqui; apagado aqui vira lápide lá |
+| Ociosidade | **Três ciclos seguidos sem nenhuma escrita no servidor** |
+| Primeiro encontro | União preserva o veículo que só existia no aparelho |
+| Offline | Erro em tela, nova tentativa aos 8s, `online` recupera e o lançamento chega |
+| Deslogado | Zero chamadas de rede |
+
+**Não verificado:** nada disso passou por dois aparelhos de verdade ao mesmo
+tempo. O servidor falso imita o comportamento que importa, mas latência real,
+sessão expirando no meio de um ciclo e duas escritas no mesmo instante só
+aparecem em uso. O conflito de verdade, em especial, eu nunca vi acontecer — só
+provoquei.
+
+**O que continua fora:** a **foto** segue só no aparelho (a coluna `foto_path` e
+o bucket esperando), e a tabela `servicos` segue sem uso.
+
+`sw.js` em `autolog-v28`.
+
 ### Passo 3 de 7 ✅ o `Store` lendo e escrevendo no Supabase
 
 O app deixou de ser só-local. O estado na memória continua sendo a verdade
@@ -887,11 +1002,11 @@ do plano do tipo de veículo, lançamentos por data e, no empate, por id.
 | Falha de rede não perde nada | Lançamento continua no aparelho, espelho não avança, recado honesto na tela |
 | Deslogado não muda nada | Zero chamadas de rede |
 
-**Não verificado:** o caminho autenticado de ponta a ponta contra o servidor de
-verdade. Tentei criar um usuário descartável para isso e **a permissão foi
-negada** (mexe em recurso compartilhado) — não insisti. O que falta provar no
-aparelho do usuário: entrar com o Google, ver a garagem subir, e abrir num
-segundo aparelho.
+**Confirmado no aparelho em 2026-09-13:** o usuário entrou com a conta, a
+garagem subiu e **apareceu num segundo aparelho**. Isso fecha o que eu não tinha
+como testar daqui — tentei criar um usuário descartável para o teste autenticado
+e a permissão foi negada (mexe em recurso compartilhado), então o caminho REST
+com sessão de verdade só podia ser provado por ele. Foi.
 
 **O que este passo ainda não faz:** a **foto** continua só no aparelho (a coluna
 `foto_path` e o bucket estão prontos, esperando); não há **fila offline**, só
@@ -920,7 +1035,7 @@ As decisões já fechadas, para não reabrir:
 | Preço | R$ 30/ano depois — mas **v1 sai de graça**, para descobrir quem volta |
 
 **Os 7 passos até a loja:** 1) ✅ esquema e RLS · 2) ✅ login com Google · 3) ✅ `Store`
-lendo e escrevendo no Supabase, ainda só online · 4) sincronização offline ·
+lendo e escrevendo no Supabase · 4) ✅ sincronização offline ·
 5) boas-vindas sem dado de demonstração · 6) política de privacidade e
 Segurança de Dados · 7) TWA, assetlinks e publicação.
 

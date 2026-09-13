@@ -327,7 +327,12 @@ pessoa é barato o bastante para pagar.
 
 ## O que falta decidir depois (não agora)
 
-- Regra de conflito quando dois aparelhos editam o mesmo veículo. A proposta é
-  o mais recente vence por campo, mas isso se decide com a sincronização na mão.
+- ~~Regra de conflito quando dois aparelhos editam o mesmo veículo.~~
+  **Decidido no passo 4 (2026-09-13):** fusão de três vias por linha, e no
+  conflito o aparelho na mão vence — com a versão remota guardada em
+  `autolog-conflitos-v1` e mostrada no Perfil. A proposta antiga era "o mais
+  recente vence por campo"; foi descartada porque exigiria um carimbo de tempo
+  por coluna e dependeria do relógio do celular, que erra. Linha é miúda o
+  bastante para a granularidade não fazer falta.
 - Rotina de backup (`supabase db dump` agendado), obrigatória antes do primeiro
   usuário de verdade, porque o plano grátis não tem backup automático.

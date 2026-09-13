@@ -364,8 +364,10 @@ const UI = (() => {
       linha);
   }
 
-  const confirmar = ({ titulo, texto, acao = 'Confirmar', onOk }) =>
-    sheet({ titulo, texto, acao, destrutivo: true, onSubmit: onOk });
+  /* `topo` passa adiante um bloco pronto — serve para a folha mostrar conteúdo
+     (a lista de mudanças descartadas, por exemplo) e não só uma pergunta. */
+  const confirmar = ({ titulo, texto, acao = 'Confirmar', topo, onOk }) =>
+    sheet({ titulo, texto, acao, topo, destrutivo: true, onSubmit: onOk });
 
   /* ── Foto do veículo ────────────────────────────────────────────────── */
 

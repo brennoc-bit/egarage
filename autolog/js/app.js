@@ -705,6 +705,52 @@ const Acoes = {
     }
   },
 
+  /* CONFLITO PRECISA TER UM LUGAR ONDE APARECER
+
+     Quando os dois aparelhos mexem na mesma linha entre duas sincronizações, a
+     versão do aparelho na mão vence e a outra é descartada. Descartar em
+     silêncio seria o mesmo que perder — então a versão descartada fica
+     guardada, e só some daqui quando a pessoa mandar.
+
+     Mostrar o conteúdo cru do registro é feio, e é honesto: é exatamente o que
+     foi jogado fora, sem resumo meu por cima. Quem quiser recuperar um valor
+     lê ali e digita de volta. */
+  verConflitos() {
+    const lista = Nuvem.lerConflitos();
+    if (!lista.length) { UI.toast('Nenhuma mudança descartada'); return; }
+
+    const NOME = {
+      veiculos: 'veículo', documentos: 'documento', parcelas: 'parcela',
+      manutencao: 'item de manutenção', lancamentos: 'lançamento', perfis: 'perfil',
+    };
+
+    const corpo = lista.slice().reverse().map((c) => {
+      const quando = new Date(c.em).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+      });
+      return h('div', { style: { borderTop: '1px solid var(--linha)', padding: '12px 0' } },
+        h('div', { style: { fontSize: 13, fontWeight: 600 } },
+          `${NOME[c.tabela] || c.tabela} · ${c.id}`),
+        UI.mono(quando, { fontSize: 10, color: 'var(--muted)', marginTop: 2 }),
+        h('pre', {
+          class: 'mono',
+          style: {
+            margin: '8px 0 0', fontSize: 10, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word', color: 'var(--muted)',
+          },
+        }, JSON.stringify(c.remotaDescartada, null, 1)));
+    });
+
+    UI.confirmar({
+      titulo: 'Mudanças descartadas',
+      texto: 'Estas versões vieram do outro aparelho e foram substituídas pelo que estava '
+        + 'neste. Confira se alguma coisa importante se perdeu; depois pode limpar a lista.',
+      acao: 'Limpar lista',
+      topo: h('div', { style: { maxHeight: 280, overflowY: 'auto' } }, corpo),
+      onOk: () => { Nuvem.limparConflitos(); App.render(); UI.toast('Lista limpa'); },
+    });
+  },
+
   resetar() {
     UI.confirmar({
       titulo: 'Restaurar demonstração',
@@ -740,10 +786,17 @@ Conta.aoMudar((evento) => {
 // Toda gravação local avisa a nuvem. Registrado uma vez, no arranque.
 Store.aoGravar((state) => Nuvem.aoSalvar(state));
 
-// O Perfil mostra em que pé está a sincronização, então precisa ser redesenhado
-// quando ela muda. Só o Perfil: redesenhar qualquer tela a cada envio faria a
-// lista piscar no meio de uma rolagem.
-Nuvem.aoMudar(() => { if (App.rota === 'perfil') App.render(); });
+// Rede voltando e app vindo para a frente também disparam sincronização — os
+// dois sinais que fazem o registro feito offline subir sem a pessoa pedir.
+Nuvem.escutarAmbiente();
+
+// Duas razões para redesenhar, e só duas: o Perfil mostra o estado da
+// sincronização, e qualquer tela precisa se refazer quando a fusão trouxe dado
+// do outro aparelho. Sem o `aceitas`, seria um render a cada gravação.
+Nuvem.aoMudar((s) => {
+  if (s.aceitas > 0 || App.rota === 'perfil') App.render();
+});
+
 
 // Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
 // tela de cadastro já estiver aberta esperando por ele.
