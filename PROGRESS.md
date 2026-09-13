@@ -893,7 +893,26 @@ depois do primeiro conserto.
 **Não verificado:** o aparelho. Em especial, o instante entre entrar na conta e
 a garagem chegar — aqui eu simulo a fase, lá ela depende da rede real.
 
-`sw.js` em `autolog-v31`.
+#### Ajuste depois do passo 5
+
+O usuário foi ver as boas-vindas e descobriu que **não dava**: o botão "excluir"
+some quando resta um veículo só (`st.veiculos.length > 1`). A trava fazia
+sentido quando a garagem vazia era um beco sem saída — e o botão de cadastrar
+que havia nela nem funcionava. Com a tela de boas-vindas e caminho de volta, ela
+só impede quem vendeu o único carro de tirá-lo da garagem. Removida.
+
+Junto, um texto que virou mentira: o aviso de exclusão dizia "serão apagados
+**deste aparelho**", e desde o passo 3 a garagem vive na conta — some do outro
+celular também. Aviso de ação destrutiva que subestima o estrago é pior que
+aviso nenhum, porque sugere que dá para desfazer. Agora diz a verdade, avisa
+quando é o último veículo e lembra de exportar antes.
+
+**Verificado o caminho de ida e volta** (exportar → apagar tudo → ver as
+boas-vindas → importar): a exclusão deixa lápide na conta, e o importar
+ressuscita tudo — local **e no servidor**, lançamentos inclusive. É seguro usar
+para só dar uma olhada na tela.
+
+`sw.js` em `autolog-v32`.
 
 ### Sincronização 100% quebrada desde a v28 ✅ `order=id` numa tabela sem `id`
 

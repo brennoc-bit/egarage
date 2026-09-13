@@ -1792,9 +1792,12 @@ Screens.perfil = () => {
         h('div', { style: { fontSize: 14, fontWeight: 600 } }, `${x.marca} ${x.modelo}`),
         UI.mono(`${x.ano} · ${x.placa || 'sem placa'} · ${num(x.odometro)} km`, { marginTop: 2, color: 'var(--muted)' })),
       h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.editarVeiculo(x) }, 'editar'),
-      st.veiculos.length > 1
-        ? h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir')
-        : null)),
+      /* O "excluir" sumia quando restava um veículo só. Fazia sentido enquanto
+         a tela de garagem vazia era um beco sem saída — e o botão de cadastrar
+         que havia nela nem funcionava. Agora existe a tela de boas-vindas, com
+         caminho de volta, então esconder o botão só impede quem vendeu o único
+         carro de tirá-lo da garagem. */
+      h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir'))),
 
     UI.sectHd('Onde você dirige'),
     blocoRegiao(),

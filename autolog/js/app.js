@@ -323,12 +323,20 @@ const Acoes = {
     App.ir('veiculo', { veiculoId: v.id });
   },
 
+  /* O texto dizia "apagados deste aparelho", e isso deixou de ser verdade
+     quando a garagem passou a viver na conta: agora some do outro celular
+     também. Aviso de ação destrutiva que subestima o estrago é pior que aviso
+     nenhum, porque dá uma falsa sensação de que dá para desfazer. */
   removerVeiculo(v) {
+    const ultimo = Store.veiculos().length === 1;
     UI.confirmar({
       titulo: `Excluir ${labelTipo(v.tipo).toLowerCase()}`,
-      texto: `${v.marca} ${v.modelo} e todos os seus lançamentos serão apagados deste aparelho.`,
+      texto: `${v.marca} ${v.modelo} e todos os seus lançamentos saem da sua conta `
+        + '— e somem também dos outros aparelhos onde você entrou.'
+        + (ultimo ? ' É o seu único veículo: a garagem fica vazia.' : '')
+        + ' Vale exportar antes, em Perfil › Dados.',
       acao: 'Excluir',
-      onOk: () => { Store.removerVeiculo(v.id); App.render(); UI.toast('Veículo removido'); },
+      onOk: () => { Store.removerVeiculo(v.id); App.render({ topo: true }); UI.toast('Veículo removido'); },
     });
   },
 
