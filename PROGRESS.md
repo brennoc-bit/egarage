@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — decidido virar produto: Supabase, conta de usuário e Play Store. Esquema proposto em `autolog/ESQUEMA.md`
+**Última atualização:** 2026-09-13 — passo 1 feito: banco do Autolog criado no Supabase, com RLS testado de fora
 
 ---
 
@@ -806,7 +806,7 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
-### Autolog vira produto — passo 1 de 7, aguardando aprovação do esquema
+### Autolog vira produto — passo 1 de 7 ✅ banco criado e testado
 
 Decidido em 2026-09-13: o app vai para a Play Store com conta de usuário real.
 As decisões já fechadas, para não reabrir:
@@ -835,8 +835,31 @@ pneu?"). Isso resolve por outro caminho o projeto de especificações por modelo
 que segue pausado: a fonte passa a ser o manual do modelo e ano exatos dela.
 Detalhes e números medidos em `autolog/ESQUEMA.md`.
 
-**Onde parou:** `autolog/ESQUEMA.md` tem a proposta completa das 6 tabelas,
-levantada do que o `store.js` guarda hoje. **Nada foi criado no Supabase.**
+**Onde parou:** passo 1 concluído em 2026-09-13. Projeto `autolog`, ref
+`zhknfipxjvkthkbzgguf`, região São Paulo, plano grátis (R$ 0). **7 tabelas**
+(`perfis`, `veiculos`, `lancamentos`, `documentos`, `parcelas`, `manutencao`,
+`servicos`), RLS ligado em todas com 4 policies cada, trigger de perfil no
+cadastro, bucket privado de fotos com policy própria. Advisors de segurança
+limpos. **Nenhuma linha de dado ainda** — o app segue em `localStorage`.
+
+**Próximo: passo 2, login com Google.** Precisa de você: criar o client OAuth no
+Google Cloud com a URI de redirecionamento apontando para o **callback do
+Supabase**, não para o do app.
+
+**Duas coisas decididas na hora de aplicar, que mudaram a proposta:**
+
+- **Chave primária virou composta `(user_id, id)`.** O `uid()` do app tem 8
+  caracteres base36; colisão de aniversário aparece por volta de 2 milhões de
+  ids, e com 1 milhão já são 16% de chance. Somando todos os usuários isso é
+  alcançável, e com chave global alguém veria o insert falhar por causa do id de
+  um estranho. Composta, a colisão só importa dentro da garagem de uma pessoa.
+- **O advisor pegou a função do trigger exposta pela API REST.** Ela nasceu em
+  `public`, que o Supabase publica, e era `security definer` — escalada de
+  privilégio. `execute` revogado de `public`, `anon` e `authenticated`.
+
+**RLS testado de fora, com a chave pública, não só conferido no painel:** ler
+deslogado devolve `[]`; gravar com `user_id` de outro dá **401 · violates
+row-level security policy**; chamar a função do trigger dá **404**.
 
 **Dois achados do levantamento:**
 

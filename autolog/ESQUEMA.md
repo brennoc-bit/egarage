@@ -1,8 +1,15 @@
-# Esquema do banco — proposta
+# Esquema do banco
 
-> **Estado: proposta, nada criado.** Este arquivo é o passo 1 da migração do
-> Autolog de `localStorage` para Supabase, com conta de usuário e sincronização.
-> Nada vai para o banco antes de você aprovar o que está aqui.
+> **Estado: APLICADO em 2026-09-13.** Projeto `autolog`, ref
+> `zhknfipxjvkthkbzgguf`, região `sa-east-1` (São Paulo), plano grátis.
+> URL: `https://zhknfipxjvkthkbzgguf.supabase.co`
+>
+> Sete tabelas, RLS ligado em todas, trigger de perfil, bucket de fotos.
+> **Nenhuma linha de dado ainda** — o app continua em `localStorage`. A
+> ligação é o passo 3.
+>
+> **O projeto antigo da conta (`dfkpjwrqbmuvbxcsvity`) não foi tocado.** Ele é
+> de outro produto, com `caixas`, `portas` e `notificacoes` dentro.
 
 Levantado a partir do que o `js/store.js` guarda hoje, não de imaginação. As 25
 funções que o `Store` expõe continuam sendo a única porta de entrada dos dados —
@@ -12,14 +19,26 @@ nenhuma tela vai falar com o Supabase direto.
 
 ## As três decisões que amarram tudo
 
-### 1. Id vem do aparelho, não do banco
+### 1. Id vem do aparelho, e a chave é composta
 
 Toda tabela usa `id text` gerado no celular, como o `uid()` que o app já usa.
+**A chave primária é `(user_id, id)`**, não `id` sozinho.
 
-**Por quê:** local-primeiro significa cadastrar veículo no estacionamento sem
-sinal. Se o id viesse do banco (`serial`, `identity`), criar qualquer coisa
-exigiria ida e volta à rede — e offline pararia de funcionar. O id nascer no
-aparelho é o que permite gravar agora e sincronizar depois.
+**Por que do aparelho:** local-primeiro significa cadastrar veículo no
+estacionamento sem sinal. Se o id viesse do banco (`serial`, `identity`), criar
+qualquer coisa exigiria ida e volta à rede — e offline pararia de funcionar.
+
+**Por que composta** (mudança decidida na hora de aplicar): o `uid()` do app é
+`Math.random().toString(36).slice(2, 10)` — 8 caracteres base36, 2,8 trilhões de
+combinações. Parece muito, mas colisão de aniversário aparece por volta de
+**2 milhões de ids**, e com 1 milhão já há 16% de chance de haver alguma. Somando
+todos os usuários, isso é alcançável — e com chave global uma pessoa veria o
+insert falhar por causa do id de um estranho.
+
+Com `(user_id, id)`, a colisão só importaria dentro da garagem de uma pessoa,
+onde algumas centenas de ids num espaço de trilhões é risco nulo. As chaves
+estrangeiras também viraram compostas, o que dá de bônus uma garantia: um
+lançamento não consegue apontar para o veículo de outro usuário nem por erro.
 
 ### 2. Nada é apagado de verdade
 
@@ -176,7 +195,32 @@ gravar linha com o `user_id` de outro.
 
 **Storage tem policy própria**, separada das tabelas: cada pessoa só lê e escreve
 dentro da pasta `fotos/{seu user_id}/`. Liberar a tabela não libera o bucket — é
-o erro clássico, a linha grava e a foto não sobe.
+o erro clássico, a linha grava e a foto não sobe. O bucket é **privado**, com
+teto de 5 MB por arquivo e só jpeg, png e webp.
+
+### O que o advisor pegou, e foi corrigido
+
+A função do trigger nasceu no esquema `public`, que o Supabase **expõe pela API
+REST**. Qualquer pessoa, inclusive deslogada, poderia chamar
+`/rest/v1/rpc/criar_perfil_do_usuario` — e como ela é `security definer`, isso é
+superfície de escalada de privilégio. Corrigido revogando `execute` de `public`,
+`anon` e `authenticated`. O trigger segue funcionando, porque quem o dispara é o
+banco, não a API.
+
+### Testado de fora, com a chave pública
+
+Não basta ver `rls_enabled: true`. Batendo na API REST como um estranho faria:
+
+| Tentativa | Resultado |
+|---|---|
+| Ler `veiculos` deslogado | `[]` — vazio, sem vazar linha |
+| Gravar veículo com `user_id` de outro | **401** · *violates row-level security policy* |
+| Chamar a função do trigger | **404** — não existe mais para a API |
+
+**Sobre a chave `anon`:** ela vai para o código do app e para o repositório
+público, e isso é correto — ela chega ao navegador de qualquer usuário e não
+há como escondê-la. Quem protege é o RLS acima. A `service_role`, essa sim, **nunca**
+entra em código que chega ao cliente.
 
 ---
 
