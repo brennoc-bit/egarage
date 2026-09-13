@@ -1189,10 +1189,16 @@ flutuante livre em todas, `:has()` aplicando o respiro só onde há botão. O
 enquadramento de celular em tela larga continua de pé. `sw.js` em
 `autolog-v26`.
 
-**Não verificado:** nada disso passou por um aparelho de verdade — animação em
-Android mais fraco, os ícones novos na densidade do celular e o toque real nos
-alvos de 44px. A regra `:has()` pede Chrome 105+ (agosto de 2022); em navegador
-mais antigo ela é ignorada e o botão volta a tapar o rodapé, sem quebrar nada.
+**Conferido no aparelho em 2026-09-13**, depois da publicação: o usuário abriu
+a v26 no celular e aprovou o resultado visual. Isso fecha a dúvida que importa
+— animação, ícones desenhados e traço novo se comportam na tela de verdade,
+não só na medição.
+
+**O que esse teste não cobre**, e segue em aberto: o toque real nos alvos de
+44px (aprovar a aparência não é o mesmo que errar ou acertar o dedo) e o
+desempenho da animação num Android mais fraco que o dele. A regra `:has()` pede
+Chrome 105+ (agosto de 2022); em navegador mais antigo ela é ignorada e o botão
+volta a tapar o rodapé, sem quebrar nada.
 
 ### O que ainda não foi validado no aparelho
 
