@@ -29,37 +29,59 @@ Confirmado funcionando (responde 303).
 <https://console.cloud.google.com/> → seletor de projeto no topo → **Novo
 projeto**. Nome: `Autolog`.
 
-### 1.2 Tela de consentimento
+> **O menu antigo não existe mais.** O Google reorganizou o console: "Tela de
+> permissão OAuth" virou **Google Auth Platform**, com abas separadas —
+> Branding, Audience, Data Access e Clients. Os links diretos abaixo pulam a
+> navegação.
 
-**APIs e serviços → Tela de permissão OAuth**.
+Confirme que o projeto `Autolog` está selecionado no topo antes de seguir.
+Configurar no projeto errado é o erro mais comum daqui em diante.
 
-- Tipo: **Externo** (Interno só existe em conta Workspace de empresa).
+### 1.2 Branding
+
+<https://console.cloud.google.com/auth/branding>
+
 - Nome do app: `Autolog`
 - E-mail de suporte e e-mail do desenvolvedor: o seu.
 
-**Escopos:** deixe apenas os básicos — `openid`, `userinfo.email`,
-`userinfo.profile`. Se precisar adicionar `openid` à mão, adicione.
+Logo em branco por enquanto — enviar logo dispara verificação de dias.
 
-> **Por que só os básicos:** escopo básico **não passa por revisão do Google**.
-> Qualquer escopo sensível dispara um processo de verificação que leva dias e
-> pede vídeo demonstrativo e política de privacidade publicada. Não vale a pena
-> agora — e o app não precisa de mais nada para saber quem você é.
+### 1.3 Audience — quem pode entrar
 
-### 1.3 Modo de teste vs. publicado
+<https://console.cloud.google.com/auth/audience>
 
-A tela nasce em **Testing**. Nesse modo **só quem estiver na lista de usuários de
-teste consegue entrar**, no máximo 100 pessoas.
+- Tipo: **Externo** (Interno só existe em conta Workspace de empresa).
+- Em **Usuários de teste**, adicione o seu e-mail.
 
-- **Agora:** deixe em Testing e adicione seu e-mail em *Usuários de teste*.
+A tela nasce em **modo de teste**, e nele **só quem estiver nessa lista consegue
+entrar**, no máximo 100 pessoas.
+
+- **Agora:** deixe assim.
 - **Antes de publicar na Play Store:** volte aqui e clique em **Publicar app**.
   Com escopo básico, publicar não abre revisão — é imediato.
 
-Anote isso: é a causa número um de "funciona pra mim e não funciona pro meu
-amigo".
+Anote: é a causa número um de "funciona pra mim e não funciona pro meu amigo".
 
-### 1.4 Client OAuth
+### 1.4 Data Access — os escopos
 
-**APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**.
+<https://console.cloud.google.com/auth/scopes>
+
+Apenas estes três:
+
+```
+openid
+.../auth/userinfo.email
+.../auth/userinfo.profile
+```
+
+> **Por que só os básicos:** escopo básico **não passa por revisão do Google**.
+> Qualquer escopo sensível dispara um processo de dias que pede vídeo
+> demonstrativo e política de privacidade publicada. E o app não precisa de mais
+> nada para saber quem você é.
+
+### 1.5 Clients — criar o cliente OAuth
+
+<https://console.cloud.google.com/auth/clients> → **Criar cliente**
 
 - Tipo: **Aplicativo da Web**
 - Nome: `Autolog Web`
