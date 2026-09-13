@@ -1692,26 +1692,36 @@ function blocoSincronia() {
   const r = RECADOS[s.fase] || RECADOS.parado;
   const conflitos = Nuvem.lerConflitos();
 
-  const verConflitos = h('button', {
-    class: 'btn btn-secondary',
+  const pilula = (rotulo, onClick, principal) => h('button', {
+    class: 'btn ' + (principal ? 'btn-primary' : 'btn-secondary'),
     style: { borderRadius: 100, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
-    onClick: () => Acoes.verConflitos(),
-  }, `Ver ${conflitos.length} ${conflitos.length === 1 ? 'mudança descartada' : 'mudanças descartadas'}`);
+    onClick,
+  }, rotulo);
+
+  const agora = pilula('Sincronizar agora', () => Acoes.sincronizarAgora(),
+    s.fase === 'erro');
+
+  const verConflitos = pilula(
+    `Ver ${conflitos.length} ${conflitos.length === 1 ? 'mudança descartada' : 'mudanças descartadas'}`,
+    () => Acoes.verConflitos());
 
   return h('div', null,
     UI.sectHd('Sua garagem na conta'),
     UI.row(UI.kv({ k: 'Sincronização', v: r.v, sub: r.sub, cor: r.cor })),
     s.fase === 'erro'
       ? h('div', { class: 'note', style: { paddingTop: 0 } },
-          'Nada foi perdido: o que você registrou está salvo neste aparelho e sobe '
-          + 'sozinho assim que a conexão voltar.')
+          'Nada foi perdido: o que você registrou está salvo neste aparelho. O app '
+          + 'continua tentando sozinho de minuto em minuto — e o botão abaixo '
+          + 'força agora.')
       : null,
-    /* Conflito é raro, e justamente por isso não pode passar batido. Enquanto
-       houver mudança descartada, ela fica visível aqui — a pessoa decide se
-       aquilo importava. */
-    conflitos.length
-      ? h('div', { style: { padding: '0 16px 16px' } }, verConflitos)
-      : null);
+    /* O botão fica sempre visível, e não só quando dá erro: sincronização
+       automática é caixa-preta, e poder conferir por vontade própria vale mais
+       que a economia de um botão na tela. */
+    h('div', { style: { padding: '12px 16px 16px', display: 'flex', gap: 10, flexWrap: 'wrap' } },
+      agora,
+      /* Conflito é raro, e justamente por isso não pode passar batido. Enquanto
+         houver mudança descartada, ela fica visível aqui. */
+      conflitos.length ? verConflitos : null));
 }
 
 Screens.perfil = () => {

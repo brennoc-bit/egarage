@@ -821,7 +821,24 @@ const Nuvem = (() => {
      continua aparecendo como pendente — mesmo que o app feche, mesmo que o
      celular reinicie. Na próxima abertura com rede, ela sobe. */
 
+  /* A ESCADA NAO PODE TER ÚLTIMO DEGRAU — BUG RELATADO EM 2026-09-13
+
+     A versão anterior parava de tentar depois do terceiro degrau e passava a
+     depender de dois eventos: `online` e `visibilitychange`. Os dois falharam
+     no uso real. Quem desliga o Wi-Fi, mexe no app e liga de volta **nunca
+     manda o app para segundo plano**, então `visibilitychange` não dispara; e
+     `online` é conhecido por não disparar de forma confiável no Android, porque
+     reflete "existe interface de rede" e não "a internet responde".
+
+     Resultado: depois de 2min40 o app parava de tentar e ficava eternamente em
+     "Aguardando conexão" mesmo com a rede de volta. A mensagem virava mentira,
+     porque ele não estava aguardando nada.
+
+     Agora o último degrau se repete para sempre. Insistir de minuto em minuto
+     custa pouco — e só acontece enquanto existe coisa pendente, porque o timer
+     só é armado depois de uma falha. */
   const ESPERAS = [8000, 30000, 120000];
+  const ESPERA_TEIMOSA = 60000;
   let tentativa = 0;
   let timerTentativa = null;
   let falhou = false;
@@ -836,26 +853,55 @@ const Nuvem = (() => {
     timer = setTimeout(() => { despachar(state); }, 500);
   }
 
-  /** Forca um ciclo agora — usada pelos gatilhos de rede e de foco. */
+  /** Força um ciclo agora — usada pelos gatilhos e pelo botão do Perfil. */
   function tentarAgora(state) {
     const alvo = state || ultimoEstado;
-    if (!alvo || !ligado()) return Promise.resolve({ pulou: true });
+    if (!alvo) return Promise.resolve({ pulou: 'sem-estado' });
+    if (!ligado()) return Promise.resolve({ pulou: 'sem-sessao' });
     clearTimeout(timerTentativa);
     return despachar(alvo);
   }
 
   function agendarTentativa(state) {
-    if (tentativa >= ESPERAS.length) return;
-    const espera = ESPERAS[tentativa];
+    const espera = tentativa < ESPERAS.length ? ESPERAS[tentativa] : ESPERA_TEIMOSA;
     tentativa += 1;
     clearTimeout(timerTentativa);
-    timerTentativa = setTimeout(() => { despachar(state); }, espera);
+    timerTentativa = setTimeout(() => {
+      /* `navigator.onLine` mente para cima (diz que há rede num portal
+         cativo), mas quando diz que NÃO há, não há mesmo. Dá para poupar a
+         tentativa — e principalmente os 20s pendurados de cada chamada.
+         Só vale para a tentativa automática: o botão do Perfil tenta de
+         qualquer jeito, porque se a pessoa tocou nele é porque quer. */
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        agendarTentativa(state);
+        return;
+      }
+      despachar(state);
+    }, espera);
   }
 
-  async function despachar(state) {
+  /* QUEM CHEGA NO MEIO DE UM CICLO ESPERA, EM VEZ DE LEVAR UM NÃO
+
+     Antes, chamar enquanto outro ciclo rodava devolvia "já estou
+     sincronizando" na hora. Isso é verdade e não serve para nada: o botão do
+     Perfil existe justamente para quando a sincronização automática parece
+     travada, e a pessoa que toca nele receberia de volta exatamente o "estou
+     tentando" de que já desconfia.
+
+     Guardando a promessa em andamento, quem chega no meio recebe o resultado
+     dela — sucesso ou erro de verdade. */
+  let promessaAtual = null;
+
+  function despachar(state) {
     ultimoEstado = state;
-    if (enviando) { repetir = true; return; }
+    if (enviando) { repetir = true; return promessaAtual || Promise.resolve({ pulou: 'ja-rodando' }); }
+    promessaAtual = executar(state);
+    return promessaAtual;
+  }
+
+  async function executar(state) {
     enviando = true;
+    let resultado;
     try {
       const r = await sincronizar(state);
       falhou = false;
@@ -872,6 +918,7 @@ const Nuvem = (() => {
             : `${n} mudanças do outro aparelho foram descartadas`, extra);
         } else anunciar('salvo', '', extra);
       }
+      resultado = Object.assign({ ok: true }, r);
     } catch (e) {
       /* Sem rede, ou servidor recusando: o dado local está salvo, então isto
          não e perda — e atraso. O espelho não avançou, então a mudança segue
@@ -880,10 +927,12 @@ const Nuvem = (() => {
       falhou = true;
       anunciar('erro', traduzir(e));
       agendarTentativa(state);
+      resultado = { ok: false, erro: traduzir(e) };
     } finally {
       enviando = false;
       if (repetir) { repetir = false; despachar(ultimoEstado); }
     }
+    return resultado;
   }
 
   /* Os gatilhos de ambiente. Ficam aqui, e não no `app.js`, porque quem sabe o

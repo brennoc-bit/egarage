@@ -705,6 +705,44 @@ const Acoes = {
     }
   },
 
+  /* O BOTÃO DE SINCRONIZAR AGORA
+
+     Pedido depois de um travamento real: o usuário desligou o Wi-Fi, mexeu no
+     app, ligou de volta e o app ficou preso em "Aguardando conexão". A causa
+     foi corrigida na `nuvem.js` — a escada de tentativas desistia depois do
+     terceiro degrau —, mas o botão fica, e fica por um motivo que vale além
+     deste bug: sincronização automática é uma caixa-preta, e quando a pessoa
+     desconfia dela precisa ter como forçar e **ver o que aconteceu**.
+
+     Por isso ele não some sozinho nem mostra só "pronto": diz quantas mudanças
+     subiram, quantas desceram, ou por que não deu. */
+  async sincronizarAgora() {
+    const tentativa = Nuvem.tentarAgora(Store.get());
+
+    /* Um ciclo preso pode levar até o prazo de 20s por chamada. Ficar mudo
+       todo esse tempo depois de um toque é o que faz a pessoa achar que o
+       botão não funcionou — então, se passar de meio segundo, avisa que está
+       em andamento e a resposta de verdade vem depois. */
+    let respondeu = false;
+    setTimeout(() => { if (!respondeu) UI.toast('Sincronizando…'); }, 500);
+    const r = await tentativa;
+    respondeu = true;
+
+    if (!r || r.pulou === 'sem-sessao') {
+      UI.toast('Entre na conta para sincronizar');
+      return;
+    }
+    if (r.pulou) { UI.toast('Nada para sincronizar'); return; }
+
+    if (!r.ok) { UI.toast(r.erro || 'Não consegui falar com a conta'); return; }
+
+    const partes = [];
+    if (r.enviadas) partes.push(`${r.enviadas} ${r.enviadas === 1 ? 'mudança enviada' : 'mudanças enviadas'}`);
+    if (r.aceitas) partes.push(`${r.aceitas} ${r.aceitas === 1 ? 'recebida' : 'recebidas'}`);
+    UI.toast(partes.length ? partes.join(' · ') : 'Já estava tudo em dia');
+    App.render();
+  },
+
   /* CONFLITO PRECISA TER UM LUGAR ONDE APARECER
 
      Quando os dois aparelhos mexem na mesma linha entre duas sincronizações, a

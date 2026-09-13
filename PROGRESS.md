@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 4 de 7: sincronização offline, com fusão de três vias
+**Última atualização:** 2026-09-13 — a sincronização desistia de tentar; agora insiste para sempre, e ganhou botão manual
 
 ---
 
@@ -805,6 +805,79 @@ Kickpush saiu do repositório e vive em pasta própria.
 ---
 
 ## Em andamento
+
+### "Aguardando conexão" para sempre ✅ corrigido — a escada desistia
+
+Reportado no mesmo dia em que o passo 4 subiu: o usuário desligou o Wi-Fi, fez
+alterações, ligou a rede de volta — e o app ficou **eternamente** em "Aguardando
+conexão".
+
+#### A causa, que era minha
+
+A escada de novas tentativas era `[8s, 30s, 2min]` e tinha um último degrau:
+
+```js
+if (tentativa >= ESPERAS.length) return;   // desiste
+```
+
+Depois de 2min40 o app parava de tentar sozinho e passava a depender de dois
+eventos. **Os dois falham exatamente neste cenário:**
+
+- `visibilitychange` não dispara porque quem mexe no app com o Wi-Fi desligado
+  **nunca manda o app para segundo plano**;
+- `online` é reconhecidamente pouco confiável no Android — ele reflete "existe
+  interface de rede", não "a internet responde".
+
+Sem nenhum dos dois, nada mais tentava. E a mensagem virava mentira: o app não
+estava aguardando coisa nenhuma, tinha desistido.
+
+**Erro de projeto, não de implementação.** Eu escrevi a escada limitada de
+propósito, para "não gastar bateria num túnel", e apoiei a recuperação em dois
+eventos sem testar se eles disparam no caso real.
+
+#### O conserto
+
+O último degrau passou a se repetir para sempre, de minuto em minuto. Isso só
+acontece **enquanto existe coisa pendente**, porque o temporizador só é armado
+depois de uma falha. Antes de cada tentativa automática o app consulta
+`navigator.onLine`: quando ele diz que NÃO há rede, não há mesmo, e dá para
+poupar a tentativa — principalmente os 20s pendurados de cada chamada. (Ele
+mente para cima, nunca para baixo.)
+
+Medido, os degraus agora são: **8s, 30s, 2min, 60s, 60s, 60s…** sem fim.
+
+#### E o botão "Sincronizar agora", pedido pelo usuário
+
+Fica em Perfil › Sua garagem na conta, sempre visível — vermelho quando há erro,
+discreto quando está tudo em dia. Ele responde o que aconteceu, em vez de só
+"pronto": *"3 mudanças enviadas"*, *"1 recebida"*, *"Já estava tudo em dia"*,
+*"Entre na conta para sincronizar"* ou o erro de verdade.
+
+**O detalhe que quase passou.** Na primeira versão, tocar no botão enquanto um
+ciclo travado estava em curso devolvia *"Já estou sincronizando…"* — que é
+verdade e não serve para nada, justamente na hora em que a pessoa desconfia de
+que a sincronização automática travou. Agora quem chega no meio **espera a
+promessa em andamento** e recebe o resultado dela; passando de meio segundo, sai
+um "Sincronizando…" para o toque não parecer ignorado.
+
+O botão tenta mesmo com `navigator.onLine` falso: se a pessoa tocou, é porque
+quer.
+
+#### Verificado
+
+- Escada: 8s, 30s, 2min, 60s, 60s, 60s — **não desiste** (medido espionando os
+  agendamentos, sem esperar o tempo real).
+- Botão nas cinco respostas: enviou / recebeu / já em dia / sem sessão / sem
+  conexão.
+- Toque no meio de um ciclo preso: sai "Sincronizando…" e depois "Sem conexão —
+  salvo neste aparelho", em vez do antigo "já estou sincronizando".
+- Dez rotas sem estouro horizontal; botão com 44px de altura.
+
+**Não verificado:** o cenário exato do usuário, num celular de verdade,
+desligando e religando o Wi-Fi. A causa foi identificada lendo o código e o
+conserto foi medido aqui — mas quem reproduz é o aparelho.
+
+`sw.js` em `autolog-v29`.
 
 ### Passo 4 de 7 ✅ sincronização offline, com fusão de três vias
 
