@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — a sincronização desistia de tentar; agora insiste para sempre, e ganhou botão manual
+**Última atualização:** 2026-09-13 — a sincronização estava 100% quebrada por uma coluna que não existe
 
 ---
 
@@ -805,6 +805,81 @@ Kickpush saiu do repositório e vive em pasta própria.
 ---
 
 ## Em andamento
+
+### Sincronização 100% quebrada desde a v28 ✅ `order=id` numa tabela sem `id`
+
+O usuário reabriu o app, com internet, tocou em "Sincronizar agora" e recebeu
+"não consegui sincronizar". **Nenhuma sincronização havia funcionado desde a
+v28** — nem automática, nem manual, para ninguém.
+
+#### A causa
+
+O `baixarDesde` ordenava **todas** as tabelas por `id`:
+
+```js
+q.order('id', { ascending: true })
+```
+
+Só que `perfis` não tem coluna `id` — a chave dela é `user_id`. Confirmado
+batendo direto no PostgREST de produção:
+
+```
+GET /rest/v1/perfis?order=id.asc
+{"code":"42703","message":"column perfis.id does not exist"}
+```
+
+E `perfis` é a **primeira** tabela de cada ciclo. Todo ciclo morria na primeira
+requisição, sempre. A mensagem não casava com "sem rede" nem com "sessão
+expirada", então caía no genérico — e a tela ainda por cima dizia "Aguardando
+conexão", mandando a pessoa conferir o Wi-Fi à toa.
+
+#### Por que meus testes não pegaram
+
+**O servidor falso que escrevi ignorava o `order`.** Ele aceitava qualquer
+coluna, em qualquer tabela. Testar contra um servidor complacente é quase o
+mesmo que não testar — ele confirma o que eu já acreditava em vez de me
+contradizer.
+
+O arnês foi refeito: agora conhece as colunas de cada tabela e **recusa** o que
+não existe, com o mesmo `42703` do PostgREST, seja em `order`, em filtro ou no
+corpo de um `upsert`. Verificado que ele pega o bug antigo.
+
+#### Corrigido junto
+
+**1. O espelho mudou de formato entre o passo 3 e o 4** e continuava na mesma
+chave. Como nenhuma sincronização da v28 chegou a gravar, o aparelho do usuário
+ainda tinha o espelho do passo 3 — em formato antigo. Na primeira sincronização
+que voltasse a funcionar, **toda linha pareceria diferente** e a fusão acusaria
+umas setenta "mudanças descartadas" de mentira.
+
+Chave nova (`-v2`): o espelho velho é ignorado, o app cai no primeiro encontro
+(união com preferência do servidor) e nada se perde. Testado exatamente nesse
+cenário: **zero conflitos falsos**, garagem intacta. O espelho antigo é apagado
+do armazenamento.
+
+**2. O erro cru agora aparece na tela**, com botão de copiar, atrás do estado de
+erro. Sem isso o motivo ficava no `console.warn`, que ninguém abre no celular —
+o usuário não tinha como me contar o que houve e eu não tinha como saber sem
+adivinhar. Mesmo caminho que a tela do Gemini já usava, pelo mesmo motivo.
+
+**3. "Aguardando conexão" só aparece quando o problema é de conexão.** Erro de
+servidor agora diz "Não consegui sincronizar".
+
+**4. `baixar()` e `paginado()` foram removidos** — eram um segundo caminho de
+leitura, do passo 3, que ninguém mais chamava. Caminho morto só diverge do vivo
+com o tempo.
+
+#### Verificado contra o arnês rigoroso
+
+Ciclo completo sem nenhuma recusa do servidor; envio de 67 linhas; ciclo ocioso
+inerte; só-local, lápide e **perfil** (a tabela que quebrava tudo) sincronizando;
+espelho velho sem gerar conflito falso; e os dois tipos de erro com título
+distinto. Dez rotas sem estouro horizontal.
+
+**Não verificado:** o aparelho do usuário. A causa foi provada contra o
+PostgREST de produção, mas quem confirma que voltou a sincronizar é ele.
+
+`sw.js` em `autolog-v30`.
 
 ### "Aguardando conexão" para sempre ✅ corrigido — a escada desistia
 

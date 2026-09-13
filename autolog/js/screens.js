@@ -1687,7 +1687,12 @@ function blocoSincronia() {
     enviando: { v: 'Salvando…', sub: 'mandando as mudanças', cor: null },
     salvo: { v: 'Em dia', sub: hora ? `última vez às ${hora}` : 'tudo enviado', cor: 'var(--c-ok)' },
     conflito: { v: 'Em dia', sub: s.recado, cor: 'var(--c-warn)' },
-    erro: { v: 'Aguardando conexão', sub: s.recado || 'tento de novo sozinho', cor: 'var(--color-accent)' },
+    erro: {
+      // Só fala de conexão quando o problema é de conexão.
+      v: s.deRede === false ? 'Não consegui sincronizar' : 'Aguardando conexão',
+      sub: s.recado || 'tento de novo sozinho',
+      cor: 'var(--color-accent)',
+    },
   };
   const r = RECADOS[s.fase] || RECADOS.parado;
   const conflitos = Nuvem.lerConflitos();
@@ -1713,6 +1718,28 @@ function blocoSincronia() {
           'Nada foi perdido: o que você registrou está salvo neste aparelho. O app '
           + 'continua tentando sozinho de minuto em minuto — e o botão abaixo '
           + 'força agora.')
+      : null,
+
+    /* O TEXTO CRU DO ERRO, PARA PODER SER LIDO E COPIADO
+
+       Sem isto, um erro de verdade virava só "não consegui salvar" na tela e o
+       motivo ficava no `console.warn` — que ninguém abre no celular. Foi o que
+       aconteceu quando a leitura começou a ser recusada pelo banco: o app
+       estava totalmente fora do ar para sincronizar, e a tela não dava nenhuma
+       pista de por quê.
+
+       É feio de propósito: mensagem de servidor é para diagnóstico, não para
+       leitura casual. Fica atrás do estado de erro e some sozinho quando a
+       sincronização volta a funcionar. */
+    s.fase === 'erro' && Nuvem.erroCru()
+      ? h('div', { style: { padding: '0 16px 12px' } },
+          UI.mono('Detalhe técnico', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }),
+          h('pre', { class: 'erro-cru' }, Nuvem.erroCru()),
+          h('button', {
+            class: 'btn btn-secondary',
+            style: { borderRadius: 100, marginTop: 8, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' },
+            onClick: () => Acoes.copiar(Nuvem.erroCru(), 'Detalhe copiado'),
+          }, 'Copiar detalhe'))
       : null,
     /* O botão fica sempre visível, e não só quando dá erro: sincronização
        automática é caixa-preta, e poder conferir por vontade própria vale mais

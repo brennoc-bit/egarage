@@ -31,7 +31,15 @@
 'use strict';
 
 const Nuvem = (() => {
-  const KEY_ESPELHO = 'autolog-espelho-v1';
+  /* `-v2` porque o CONTEÚDO do espelho mudou de formato no passo 4: era
+     `JSON.stringify(linha)` na ordem em que eu montava o objeto, virou
+     `canonico()`. Reaproveitar o espelho velho faria toda linha parecer
+     diferente, e a fusão acusaria conflito em TODAS elas — umas setenta
+     "mudanças descartadas" de mentira na cara do usuário.
+
+     Com a chave nova, o espelho antigo é simplesmente ignorado: o app cai no
+     primeiro encontro, que é união com preferência do servidor. Seguro. */
+  const KEY_ESPELHO = 'autolog-espelho-v2';
   const KEY_BACKUP = 'autolog-antes-da-nuvem';
   const KEY_MARCA = 'autolog-marca-leitura-v1';
   const KEY_CONFLITOS = 'autolog-conflitos-v1';
@@ -343,9 +351,24 @@ const Nuvem = (() => {
     return JSON.stringify(out);
   }
 
-  const chaveDe = (tabela, row) => `${tabela}/${row.id || row.user_id}`;
+  /* `perfis` é a única tabela sem coluna `id` — a chave dela é o `user_id`.
+     Isso já me custou caro: a leitura ordenava TODAS as tabelas por `id`, e o
+     PostgREST recusava com `42703 column perfis.id does not exist`. Como
+     `perfis` é a primeira do ciclo, **nenhuma sincronização funcionava**, e a
+     mensagem genérica na tela não dizia nada disso.
+
+     Passou nos meus testes porque o servidor falso que escrevi ignorava o
+     `order`. Testar contra um servidor complacente e o mesmo que nao testar. */
+  const COLUNA_CHAVE = (tabela) => (tabela === 'perfis' ? 'user_id' : 'id');
+
+  const chaveDe = (tabela, row) => `${tabela}/${row[COLUNA_CHAVE(tabela)]}`;
 
   /* ── Espelho do que já foi enviado ─────────────────────────────────── */
+
+  /* O espelho do passo 3 continua ocupando espaço no aparelho de quem já usava
+     o app, e nunca mais será lido. Alguns KB não são problema, mas lixo que
+     ninguém remove vira o tipo de coisa que estoura a cota anos depois. */
+  try { localStorage.removeItem('autolog-espelho-v1'); } catch (e) { /* ignora */ }
 
   const lerEspelho = () => {
     try { return JSON.parse(localStorage.getItem(KEY_ESPELHO)) || {}; }
@@ -360,6 +383,20 @@ const Nuvem = (() => {
   };
 
   /* ── Situação, para a tela poder contar ────────────────────────────── */
+
+  /* O ERRO CRU PRECISA CHEGAR AO USUÁRIO
+
+     Quando a sincronização quebrou de verdade, a tela dizia "Não consegui
+     salvar na conta agora" e o motivo ficava só no `console.warn` — que no
+     celular ninguém abre. O usuário não tinha como me contar o que houve, e eu
+     não tinha como saber sem adivinhar.
+
+     A mensagem amigável continua sendo a da tela. O texto cru fica guardado
+     aqui e aparece num bloco de diagnóstico, com botão de copiar — o mesmo
+     caminho que a tela do Gemini já usava pelo mesmo motivo. */
+  let ultimoErroCru = '';
+  const erroCru = () => ultimoErroCru;
+  const limparErroCru = () => { ultimoErroCru = ''; };
 
   function anunciar(fase, recado, extra) {
     situacao = Object.assign(
@@ -404,51 +441,17 @@ const Nuvem = (() => {
   };
   const ligado = () => !!(cliente() && usuarioId());
 
-  /** Traz tudo do servidor. Devolve `null` quando a conta ainda não tem nada. */
-  async function baixar() {
-    const sb = cliente();
-    const uid = usuarioId();
-    if (!sb || !uid) throw new Error('Sem sessão para sincronizar.');
-
-    const dados = {};
-    const perfil = await sb.from('perfis').select('*').eq('user_id', uid);
-    if (perfil.error) throw new Error(perfil.error.message);
-    dados.perfis = perfil.data || [];
-
-    for (const t of ORDEM) {
-      dados[t] = await paginado(sb, t, uid);
-    }
-    return dados;
-  }
-
   /* O PostgREST tem teto de linhas por resposta (o padrão do painel é 1.000).
      Quem abastece toda semana passa de 1.000 lançamentos em pouco mais de
      quinze anos — mas o teto também pode ser baixado a qualquer momento no
      painel, e aí a garagem voltaria cortada **sem erro nenhum**: o app
      simplesmente não veria os lançamentos mais antigos. Pedir em faixas tira
-     essa bomba-relógio do caminho.
+     essa bomba-relógio do caminho. A paginação mora no `baixarDesde`.
 
-     `user_id` explícito não é redundância inútil: o RLS já filtra, mas deixar
-     a intenção escrita evita que uma policy mal editada no futuro transforme
-     uma leitura em vazamento silencioso. */
+     (Havia aqui um `baixar()` que trazia tudo de uma vez, do passo 3. Depois
+     que o `baixarDesde` assumiu, ele virou um segundo caminho de leitura que
+     ninguém chamava — e caminho morto só diverge do vivo com o tempo. Saiu.) */
   const TAMANHO_FAIXA = 1000;
-
-  async function paginado(sb, tabela, uid) {
-    const tudo = [];
-    for (let de = 0; ; de += TAMANHO_FAIXA) {
-      // `removido_em is null` é o que faz a lápide funcionar: a linha continua
-      // no banco para o outro aparelho saber que morreu, e some da leitura.
-      const r = await comPrazo(sb.from(tabela).select('*')
-        .eq('user_id', uid)
-        .is('removido_em', null)
-        .order('id', { ascending: true })
-        .range(de, de + TAMANHO_FAIXA - 1), tabela);
-      if (r.error) throw new Error(`${tabela}: ${r.error.message}`);
-      const lote = r.data || [];
-      tudo.push(...lote);
-      if (lote.length < TAMANHO_FAIXA) return tudo;
-    }
-  }
 
   /** O servidor já tem garagem nesta conta? */
   async function temGaragem() {
@@ -699,7 +702,7 @@ const Nuvem = (() => {
         // ensina este aparelho que a linha morreu no outro.
         if (marca) q = q.gte('atualizado_em', marca);
         const r = await comPrazo(
-          q.order('id', { ascending: true }).range(de, de + TAMANHO_FAIXA - 1), t);
+          q.order(COLUNA_CHAVE(t), { ascending: true }).range(de, de + TAMANHO_FAIXA - 1), t);
         if (r.error) throw new Error(`${t}: ${r.error.message}`);
         const lote = r.data || [];
         tudo.push(...lote);
@@ -906,6 +909,7 @@ const Nuvem = (() => {
       const r = await sincronizar(state);
       falhou = false;
       tentativa = 0;
+      ultimoErroCru = '';
       if (!r.pulou) {
         // `aceitas` conta o que veio do outro aparelho. Quem ouve usa esse
         // número para decidir se vale redesenhar a tela: sem novidade, um
@@ -925,7 +929,12 @@ const Nuvem = (() => {
          pendente e sobe na próxima oportunidade. */
       console.warn('[nuvem] sincronizacao falhou', e);
       falhou = true;
-      anunciar('erro', traduzir(e));
+      ultimoErroCru = String((e && e.message) || e || '').slice(0, 500);
+      /* "Aguardando conexão" só é honesto quando o problema É a conexão. Um
+         erro do servidor com esse título manda a pessoa checar o Wi-Fi à toa —
+         foi o que aconteceu quando a leitura passou a ser recusada pelo banco
+         e a tela insistia em falar de rede. */
+      anunciar('erro', traduzir(e), { deRede: ehDeRede(e) });
       agendarTentativa(state);
       resultado = { ok: false, erro: traduzir(e) };
     } finally {
@@ -956,6 +965,12 @@ const Nuvem = (() => {
     });
   }
 
+  const ehDeRede = (e) => {
+    const m = String((e && e.message) || '').toLowerCase();
+    return m.includes('failed to fetch') || m.includes('networkerror')
+      || m.includes('sem resposta em');
+  };
+
   function traduzir(e) {
     const m = String((e && e.message) || '').toLowerCase();
     if (m.includes('failed to fetch') || m.includes('networkerror')
@@ -968,13 +983,13 @@ const Nuvem = (() => {
 
   return {
     linhasDoEstado, estadoDasLinhas, canonico, chaveDe,
-    baixar, baixarDesde, enviar, sincronizar, temGaragem, ligado,
+    baixarDesde, enviar, sincronizar, temGaragem, ligado,
     unir, espelharRemotas, escutarAmbiente,
     aoSalvar, estado, aoMudar, anunciar, aoAplicar,
     lerEspelho, gravarEspelho, esquecerEspelho,
     lerMarca, gravarMarca, esquecerMarca,
     lerConflitos, limparConflitos,
-    temPendencia, tentarAgora,
+    temPendencia, tentarAgora, erroCru, limparErroCru,
     KEY_BACKUP,
   };
 })();
