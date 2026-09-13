@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 2 (login de verdade) e conserto do 5xx do Gemini
+**Última atualização:** 2026-09-13 — passo 2 (login de verdade), 5xx do Gemini e o CEP com zero à esquerda
 
 ---
 
@@ -856,6 +856,35 @@ Três coisas dessa etapa que custam tempo se esquecidas:
   e com escopo básico não abre revisão do Google.
 - **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
   dispara verificação que leva dias.
+
+### CEP começando com zero era recusado ✅ e o mesmo erro estava no Renavam
+
+O usuário digitava `07176640`, um CEP de Guarulhos, e o app respondia que
+faltava dígito.
+
+**A causa:** o campo era `tipo: 'number'`, e `valorDoCampo` roda `parseNum` em
+tudo que é número. `parseNum('07176640')` devolve **7176640** — sete dígitos.
+A validação estava certa; o dado é que chegava mutilado.
+
+**A lição, que vale além deste caso:** CEP não é número, é sequência de
+algarismos. **Se você nunca somaria nem multiplicaria aquilo, não é `number`.**
+
+Entrou o tipo **`digitos`** no `UI.campo`: teclado numérico, aceita só
+algarismos, respeita `maxlength` e **devolve texto**. Como ele limpa a
+pontuação, `07176-640` também passa a funcionar.
+
+**E o mesmo erro estava no Renavam**, que ninguém tinha reportado: 11 dígitos,
+também pode começar com zero, também era `number`. Corrigido junto.
+
+> **Dado já gravado não se recupera.** Renavam digitado antes desta correção
+> perdeu o zero da frente na hora de gravar — o dígito nunca chegou ao `Store`.
+> Quem tiver Renavam iniciado em zero precisa redigitar.
+
+Os demais campos `number` continuam certos: km, ano, parcelas e dia são
+quantidade, e aí zero à esquerda não significa nada.
+
+Verificado: `' 07176-640 '` como `digitos` dá `'07176640'` (8); como `number`
+dava `7176640` (7). E `Regiao.porCEP('07176640')` devolve **Guarulhos, SP**.
 
 ### Gemini: 5xx passou a repetir, e a mensagem parou de mentir ✅
 

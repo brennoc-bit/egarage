@@ -441,7 +441,9 @@ const Acoes = {
     UI.sheet({
       titulo: 'Informar CEP',
       sub: 'Só a cidade e o estado são usados — o endereço não é guardado.',
-      campos: [{ name: 'cep', label: 'CEP', tipo: 'number', placeholder: '00000000', obrigatorio: true }],
+      // `digitos`, não `number`: CEP de São Paulo começa com zero, e como
+      // número ele viraria 7 dígitos e a validação recusaria um CEP correto.
+      campos: [{ name: 'cep', label: 'CEP', tipo: 'digitos', digitos: 8, placeholder: '00000000', obrigatorio: true }],
       acao: 'Buscar',
       onSubmit: async (d) => {
         try {

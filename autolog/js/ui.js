@@ -111,16 +111,26 @@ const UI = (() => {
     } else {
       // Números ficam em campo de texto: "9,5" é o que o teclado pt-BR
       // entrega, e input[type=number] descarta a vírgula. parseNum resolve.
+      const numerico = def.tipo === 'dinheiro' || def.tipo === 'number';
       input = h('input', {
         id,
         type: def.tipo === 'date' ? 'date' : 'text',
-        inputmode: def.tipo === 'dinheiro' || def.tipo === 'number' ? 'decimal' : null,
+        inputmode: numerico ? 'decimal' : (def.tipo === 'digitos' ? 'numeric' : null),
+        maxlength: def.tipo === 'digitos' && def.digitos ? String(def.digitos) : null,
         autocapitalize: def.maiusculas ? 'characters' : null,
         placeholder: def.placeholder || '',
         value: def.valor != null ? def.valor : '',
       });
       if (def.maiusculas) {
         input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+      }
+      // `digitos` aceita só algarismos e devolve TEXTO. Ver a nota em
+      // `valorDoCampo` sobre por que isso não pode ser número.
+      if (def.tipo === 'digitos') {
+        input.addEventListener('input', () => {
+          const limpo = input.value.replace(/\D/g, '');
+          input.value = def.digitos ? limpo.slice(0, def.digitos) : limpo;
+        });
       }
     }
 
@@ -171,8 +181,18 @@ const UI = (() => {
     return base;
   }
 
+  /* ATENÇÃO AO TIPO `digitos`
+     CEP e Renavam são sequências de algarismos, não números. A diferença
+     importa por causa do zero à esquerda: `parseNum('07176640')` devolve
+     7176640, e aí a validação reclama que faltou um dígito num CEP que estava
+     certo. Foi exatamente o que aconteceu com um CEP de São Paulo.
+
+     A regra: se você nunca somaria nem multiplicaria aquilo, é `digitos`, não
+     `number`. Vale para CEP, Renavam, CPF, telefone, número de apólice.
+     `number` fica para o que é quantidade — km, ano, parcelas, dia. */
   const valorDoCampo = (ref) => {
     const bruto = ref.input.value.trim();
+    if (ref.def.tipo === 'digitos') return bruto.replace(/\D/g, '');
     return (ref.def.tipo === 'dinheiro' || ref.def.tipo === 'number') ? parseNum(bruto) : bruto;
   };
 

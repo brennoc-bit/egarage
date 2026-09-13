@@ -1458,7 +1458,7 @@ Screens.veiculo = (atual) => {
         'A foto vai para o Gemini e não fica guardada. Nome, CPF e endereço do '
         + 'proprietário não são lidos — o app não guarda dado pessoal.'),
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
-            { name: 'renavam', label: 'Renavam', tipo: 'number', placeholder: '000000000' }),
+            { name: 'renavam', label: 'Renavam', tipo: 'digitos', digitos: 11, placeholder: '00000000000' }),
       campo({ name: 'chassi', label: 'Chassi', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
 
     grupo('Uso',
