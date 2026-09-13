@@ -824,10 +824,16 @@ As decisões já fechadas, para não reabrir:
 | Custo | Começa no plano grátis, **com rotina de backup própria** |
 | Preço | R$ 30/ano depois — mas **v1 sai de graça**, para descobrir quem volta |
 
-**Os 7 passos:** 1) esquema e RLS · 2) login com Google · 3) `Store` lendo e
-escrevendo no Supabase, ainda só online · 4) sincronização offline ·
+**Os 7 passos até a loja:** 1) esquema e RLS · 2) login com Google · 3) `Store`
+lendo e escrevendo no Supabase, ainda só online · 4) sincronização offline ·
 5) boas-vindas sem dado de demonstração · 6) política de privacidade e
 Segurança de Dados · 7) TWA, assetlinks e publicação.
+
+**Depois da loja, já pedido:** manutenção mais sofisticada e **manual do veículo
+com assistente** — a pessoa envia o manual e pergunta ("qual a calibragem do
+pneu?"). Isso resolve por outro caminho o projeto de especificações por modelo,
+que segue pausado: a fonte passa a ser o manual do modelo e ano exatos dela.
+Detalhes e números medidos em `autolog/ESQUEMA.md`.
 
 **Onde parou:** `autolog/ESQUEMA.md` tem a proposta completa das 6 tabelas,
 levantada do que o `store.js` guarda hoje. **Nada foi criado no Supabase.**

@@ -190,8 +190,6 @@ o erro clássico, a linha grava e a foto não sobe.
 
 ---
 
----
-
 ## Planejado, não agora: manual do veículo com assistente
 
 Pedido em 2026-09-13. **Não entra na primeira versão**, mas está aqui porque
