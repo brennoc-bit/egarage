@@ -19,6 +19,8 @@
 html, body { height: 100%; }
 body {
   background: var(--color-neutral-200);
+  /* Não basta aqui: quem rola é o `.screen` por dentro, e o gesto dele
+     encadeia para o documento. A regra que importa está no `.screen`. */
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -77,11 +79,22 @@ body {
 }
 .hd-btn:active { background: color-mix(in srgb, #fff 18%, transparent); }
 
+/* ATENÇÃO AO `overscroll-behavior-y` ABAIXO
+   Puxar para baixo no topo da lista fazia o gesto encadear para o documento e
+   disparar o "puxar para atualizar" do Chrome. A página recarregava, e no
+   instante do recarregamento a barra inferior ia parar embaixo dos botões de
+   navegação do celular — porque, com `viewport-fit=cover`, o app desenha sob a
+   barra do sistema e a área segura nem sempre é reportada logo de cara.
+
+   `contain` prende o gesto aqui dentro: o app não recarrega sozinho e a barra
+   não some. Atualizar continua acontecendo pelo service worker, ao reabrir o
+   app, e há um botão explícito em Perfil → Dados. */
 .screen {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;

@@ -650,6 +650,33 @@ const Acoes = {
     });
   },
 
+  /* Substitui o "puxar para atualizar", que foi desligado porque o gesto
+     encadeava para o documento e jogava a barra inferior para baixo dos botões
+     do celular. O app continua se atualizando sozinho ao ser reaberto; isto é
+     para quem quer conferir na hora. */
+  async buscarAtualizacao() {
+    if (!('serviceWorker' in navigator)) {
+      UI.toast('Atualização automática só existe no app instalado');
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        UI.toast('App não instalado neste aparelho — abra pelo endereço e instale');
+        return;
+      }
+      UI.toast('Procurando atualização…');
+      await reg.update();
+      // Havendo versão nova, ela instala e o `controllerchange` recarrega
+      // sozinho. Então só resta avisar quando NÃO havia nada.
+      setTimeout(() => {
+        if (!reg.installing && !reg.waiting) UI.toast('Já está na versão mais recente');
+      }, 2500);
+    } catch (e) {
+      UI.toast('Não consegui verificar agora');
+    }
+  },
+
   resetar() {
     UI.confirmar({
       titulo: 'Restaurar demonstração',

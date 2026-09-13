@@ -1709,6 +1709,9 @@ Screens.perfil = () => {
       { label: 'Importar', icone: '↑', onClick: () => Acoes.importar() },
     ]),
     UI.cta([
+      { label: 'Buscar atualização do app', icone: '↓', onClick: () => Acoes.buscarAtualizacao() },
+    ]),
+    UI.cta([
       { label: 'Restaurar dados de demonstração', icone: '↻', onClick: () => Acoes.resetar() },
     ]),
     UI.cta([

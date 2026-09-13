@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 2 (login de verdade), 5xx do Gemini e o CEP com zero à esquerda
+**Última atualização:** 2026-09-13 — login de verdade, 5xx do Gemini, CEP com zero e o puxar-para-atualizar que quebrava a barra
 
 ---
 
@@ -856,6 +856,38 @@ Três coisas dessa etapa que custam tempo se esquecidas:
   e com escopo básico não abre revisão do Google.
 - **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
   dispara verificação que leva dias.
+
+### Puxar para atualizar jogava a barra inferior para baixo dos botões ⚠️ correção não reproduzida
+
+O usuário puxava a tela para baixo, o app recarregava, e a barra de navegação do
+Autolog ia parar embaixo dos botões do sistema do celular.
+
+**A regra estava no elemento errado.** O `body` já tinha
+`overscroll-behavior-y: none` — mas **quem rola não é o `body`**, é o `.screen`
+por dentro. O gesto nascia nele, **encadeava** para o documento, e o Chrome
+disparava o puxar-para-atualizar. Por isso a regra existia e não servia para
+nada.
+
+A recarga acontecia com `viewport-fit=cover` ativo — o app desenha sob a barra
+do sistema de propósito, para o cabeçalho vermelho ir até a borda — e no
+instante do recarregamento a área segura nem sempre é reportada de cara. A
+barra ficava sem o respiro de baixo.
+
+**Correção:** `overscroll-behavior-y: contain` no `.screen`, que prende o gesto
+ali dentro.
+
+**O que isso tira, e o que devolve:** o puxar-para-atualizar deixa de existir. O
+app já se atualiza sozinho ao ser reaberto (service worker, desde a v16), e
+entrou um botão **Buscar atualização do app** em Perfil → Dados para quem quiser
+conferir na hora.
+
+**Não reproduzido.** Não tenho celular aqui, e a correção vem do mecanismo, não
+de ter visto o bug. Verificado só que `overscroll-behavior-y` passou a valer
+`contain` no elemento que de fato rola, e que o botão novo aparece.
+
+**Se a barra continuar sob os botões do sistema mesmo sem puxar a tela**, a
+causa é outra — área segura não reportada pelo Android — e aí precisa de uma
+captura de tela para resolver.
 
 ### CEP começando com zero era recusado ✅ e o mesmo erro estava no Renavam
 
