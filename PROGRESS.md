@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 2 feito: login de verdade no lugar da senha `2047`, com Google, e-mail e trava por digital
+**Última atualização:** 2026-09-13 — passo 2 (login de verdade) e conserto do 5xx do Gemini
 
 ---
 
@@ -856,6 +856,39 @@ Três coisas dessa etapa que custam tempo se esquecidas:
   e com escopo básico não abre revisão do Google.
 - **Só escopos básicos** (`openid`, `email`, `profile`). Qualquer escopo sensível
   dispara verificação que leva dias.
+
+### Gemini: 5xx passou a repetir, e a mensagem parou de mentir ✅
+
+O usuário tentou ler um comprovante no celular e recebeu **"O Gemini está fora
+do ar agora"**.
+
+Investiguei antes de mexer, e **as duas primeiras hipóteses estavam erradas**:
+
+- `gemini-2.5-flash`, o modelo padrão, **não foi aposentado** — a página de
+  deprecações diz "no shutdown date announced". (Os que morreram em 01/06/2026
+  foram os da série 2.0.)
+- **Não havia incidente** aberto no Gemini, Vertex ou AI Studio.
+
+Ou seja: o app afirmava uma queda que não existia. A mensagem vinha de
+`status >= 500`, e 500 significa que **aquela requisição** falhou do lado do
+Google, não que o serviço caiu. Afirmar queda manda a pessoa esperar quando
+muitas vezes o caminho era outro, e esconde o detalhe que resolveria.
+
+Dois consertos:
+
+1. **Repetição em 5xx**, com esperas de 0, 800 e 2400 ms. Falha passageira do
+   lado do Google costuma passar na segunda. **4xx não repete** — é
+   determinístico, e insistir só gastaria a cota da pessoa.
+2. **Mensagem honesta**, dizendo o código, quantas tentativas houve e para onde
+   ir. O detalhe guardado em `detalheDoErro` agora inclui a contagem.
+
+Verificado com respostas simuladas, sem usar chave real: 500 dá 3 tentativas e a
+mensagem nova; 400 dá 1 tentativa e preserva a mensagem original.
+
+**A causa raiz segue desconhecida.** Não era modelo nem queda; pode ter sido
+falha pontual do Google. Se repetir, o detalhe em **Perfil → Leitura por foto**
+agora mostra status, modo de autenticação, modelo, tentativas e a mensagem do
+Google — é por aí que se descobre.
 
 ### Passo 2 ✅ a senha `2047` morreu
 

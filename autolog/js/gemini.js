@@ -61,8 +61,8 @@ const Gemini = (() => {
   let ultimoErro = null;
   const detalheDoErro = () => ultimoErro;
 
-  /** Envia o corpo, tentando as duas formas de autenticação. */
-  async function chamar(payload) {
+  /** Uma ida à API, tentando as duas formas de autenticação. */
+  async function umaTentativa(payload) {
     let ultimo = null;
     for (let i = 0; i < CABECALHOS.length; i++) {
       let resp;
@@ -71,19 +71,45 @@ const Gemini = (() => {
           method: 'POST', headers: CABECALHOS[i](chave()), body: JSON.stringify(payload),
         });
       } catch (e) {
-        ultimoErro = 'Falha de rede ao chamar ' + endpoint();
-        throw new Error('Sem conexão com o Gemini.');
+        return { rede: true };
       }
       let corpo = null;
       try { corpo = await resp.json(); } catch (e) { /* resposta não-JSON */ }
-      if (resp.ok) { ultimoErro = null; return corpo; }
+      if (resp.ok) return { ok: true, corpo };
       ultimo = { status: resp.status, corpo, modo: i === 0 ? 'x-goog-api-key' : 'Bearer' };
       if (!recusaDeCredencial(resp.status, corpo)) break; // erro de outra natureza
     }
+    return ultimo;
+  }
+
+  /* Espera antes de cada tentativa. A primeira sai na hora; as outras só
+     existem por causa de 5xx, que é falha do lado do Google e costuma passar
+     sozinha. Erro 4xx não se repete: ele é determinístico, e insistir só
+     gastaria a cota da pessoa. */
+  const ESPERAS = [0, 800, 2400];
+
+  async function chamar(payload) {
+    let ultimo = null;
+    let tentativas = 0;
+
+    for (let t = 0; t < ESPERAS.length; t++) {
+      if (ESPERAS[t]) await new Promise((r) => setTimeout(r, ESPERAS[t]));
+      tentativas += 1;
+      ultimo = await umaTentativa(payload);
+
+      if (ultimo && ultimo.ok) { ultimoErro = null; return ultimo.corpo; }
+      if (ultimo && ultimo.rede) {
+        ultimoErro = 'Falha de rede ao chamar ' + endpoint();
+        throw new Error('Sem conexão com o Gemini.');
+      }
+      if (!ultimo || ultimo.status < 500) break;
+    }
+
     const msg = (ultimo.corpo && ultimo.corpo.error && ultimo.corpo.error.message) || '(sem mensagem)';
     ultimoErro = `HTTP ${ultimo.status} · ${ultimo.modo} · ${versao()}/${modelo()}
+${tentativas} tentativa(s)
 ${msg}`;
-    throw new Error(erroLegivel(ultimo.status, ultimo.corpo));
+    throw new Error(erroLegivel(ultimo.status, ultimo.corpo, tentativas));
   }
 
   /* ── Instruções por tipo de foto ────────────────────────────────────────
@@ -179,7 +205,7 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
 
   /* ── Chamada ────────────────────────────────────────────────────────── */
 
-  function erroLegivel(status, corpo) {
+  function erroLegivel(status, corpo, tentativas) {
     const msg = (corpo && corpo.error && corpo.error.message) || '';
     if (/ACCESS_TOKEN_TYPE_UNSUPPORTED/i.test(msg)) {
       return 'A API recusou o tipo desta credencial. Veja os detalhes no fim da tela.';
@@ -200,7 +226,15 @@ Devolva: {"data":..., "valor":..., "titulo":..., "local":..., "categoria":..., "
       }
       return `Cota esgotada: ${msg.slice(0, 120)}`;
     }
-    if (status >= 500) return 'O Gemini está fora do ar agora.';
+    /* 500 significa que a requisição falhou do lado do Google — não que o
+       serviço caiu. Afirmar queda manda a pessoa esperar quando muitas vezes
+       o problema é a imagem, e esconde o detalhe que resolveria. */
+    if (status >= 500) {
+      return `O Gemini falhou ao processar esta imagem (erro ${status}`
+        + `${tentativas > 1 ? `, ${tentativas} tentativas` : ''}). `
+        + 'Costuma ser passageiro. Se insistir, tente outra foto ou veja '
+        + 'Perfil → Leitura por foto.';
+    }
     return msg ? msg.slice(0, 140) : `Erro ${status}.`;
   }
 
