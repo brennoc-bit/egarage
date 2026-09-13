@@ -723,14 +723,27 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') UI.fecha
    assíncrono. Sem isso o app piscaria o login antes de descobrir que já havia
    sessão — e quem volta do Google veria a tela de entrada por um instante. */
 App.render({ topo: true });
-Conta.iniciar().then(() => App.render({ topo: true }));
+Conta.iniciar()
+  .then(() => { App.render({ topo: true }); return Sincronia.aoEntrar(); })
+  .then(() => App.render());
 
 // Entrar, sair ou a sessão expirar redesenha sozinho, venha de onde vier —
 // inclusive de outra aba do mesmo navegador.
 Conta.aoMudar((evento) => {
-  if (evento === 'SIGNED_OUT') Trava.esquecerLiberacao();
+  if (evento === 'SIGNED_OUT') { Trava.esquecerLiberacao(); Sincronia.aoSair(); }
   App.render({ topo: true });
+  // Entrar pelo Google devolve a pessoa de volta ao app já logada, e é aqui
+  // que a garagem da conta chega — o `iniciar()` acima já terminou faz tempo.
+  if (evento === 'SIGNED_IN') Sincronia.aoEntrar().then(() => App.render({ topo: true }));
 });
+
+// Toda gravação local avisa a nuvem. Registrado uma vez, no arranque.
+Store.aoGravar((state) => Nuvem.aoSalvar(state));
+
+// O Perfil mostra em que pé está a sincronização, então precisa ser redesenhado
+// quando ela muda. Só o Perfil: redesenhar qualquer tela a cada envio faria a
+// lista piscar no meio de uma rolagem.
+Nuvem.aoMudar(() => { if (App.rota === 'perfil') App.render(); });
 
 // Catálogo de marcas e modelos: carrega em segundo plano e redesenha se a
 // tela de cadastro já estiver aberta esperando por ele.

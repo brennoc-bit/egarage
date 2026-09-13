@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passada de design: movimento, traço mais leve, ícones desenhados e o botão flutuante que tapava as ações
+**Última atualização:** 2026-09-13 — passo 3 de 7: a garagem passou a viver na conta
 
 ---
 
@@ -806,6 +806,101 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
+### Passo 3 de 7 ✅ o `Store` lendo e escrevendo no Supabase
+
+O app deixou de ser só-local. O estado na memória continua sendo a verdade
+enquanto ele está aberto, o `localStorage` continua sendo a cópia imediata, e o
+Supabase recebe logo depois **só o que mudou**.
+
+Arquivo novo: `js/nuvem.js`, em duas camadas — `Nuvem` traduz e transporta,
+`Sincronia` decide. Nenhuma tela fala com o Supabase.
+
+#### O `Store` não conhece a nuvem
+
+`salvar()` grava no `localStorage` e avisa um ouvinte registrado de fora
+(`Store.aoGravar`). A dependência fica numa direção só: a sincronização sabe do
+estado, o estado não sabe que existe sincronização. Isso é o que mantém o app
+funcionando idêntico para quem não entrou em conta nenhuma — **medido: zero
+chamadas de rede com a sessão fechada.**
+
+#### Ids derivados, porque `ipva` se repete
+
+Documento, item de manutenção e parcela não têm id próprio no aparelho — são
+`ipva`, `oleo`, `1` —, e esses nomes se repetem entre veículos. O id no banco é
+derivado do pai (`cb300f:ipva`, `cb300f:ipva#3`), o que torna o envio
+**repetível**: subir duas vezes a mesma garagem escreve nas mesmas linhas em vez
+de duplicar tudo.
+
+#### Só o que mudou sobe
+
+`salvar()` reescreve o estado inteiro a cada toque; mandar tudo junto seriam 67
+linhas por parcela paga. Um espelho no `localStorage` guarda como cada linha foi
+enviada da última vez. Medido: registrar um lançamento manda **uma linha**, e
+quando nada muda não há requisição nenhuma.
+
+**O espelho só avança quando o envio dá certo** — é isso que faz a próxima
+gravação tentar de novo sozinha depois de uma falha de rede.
+
+#### A conta manda, mas nada é descartado
+
+| Situação | O que acontece |
+|---|---|
+| Conta vazia | Sobe o que existe no aparelho — **sem tentar adivinhar** o que é dado de demonstração. Quem editou a moto de exemplo até virar a moto dele não pode perdê-la. |
+| Conta com garagem | A conta vence, e o estado local inteiro é copiado para `autolog-antes-da-nuvem` **antes** da substituição. |
+
+Fusão de verdade é o passo 4; até lá alguém tem de ganhar, e escolher o
+servidor é o que faz o segundo aparelho mostrar a mesma garagem do primeiro.
+
+#### Dois defeitos encontrados e corrigidos pelo caminho
+
+**1. `atualizado_em` nunca era atualizada.** A coluna tinha `default now()`, que
+só vale no `insert` — depois de um `update` a data ficava parada na criação. É
+justamente ela que o passo 4 vai usar para saber o que mudou. Entrou gatilho
+`before update` nas sete tabelas, carimbando com a hora **do banco**: deixar o
+cliente mandar a data resolveria pela metade, porque relógio de celular erra.
+
+**2. Ordem de array é invisível no banco e visível na tela.** O `select` devolve
+linhas na ordem que o Postgres quiser. Para quase tudo dá na mesma, mas a aba
+Documentos **desenha os cartões na ordem do array**: sem regra, a mesma garagem
+apareceria com IPVA em cima numa abertura e Seguro na outra. A ordem é reposta
+na reconstrução — documentos na ordem em que o app os cria, manutenção na ordem
+do plano do tipo de veículo, lançamentos por data e, no empate, por id.
+
+#### Também entrou
+
+- **Paginação na leitura.** O PostgREST tem teto por resposta (padrão do painel:
+  1.000 linhas). O teto pode ser baixado a qualquer momento e a garagem voltaria
+  cortada **sem erro nenhum**. Testado com 2.350 linhas: 3 faixas, sem duplicata
+  e sem buraco.
+- **Estado da sincronização no Perfil.** Gravação silenciosa é confortável
+  enquanto funciona; no primeiro celular sem sinal, a pessoa precisa saber. E o
+  texto diz que nada se perdeu, porque é verdade.
+
+#### Verificado
+
+| O quê | Como |
+|---|---|
+| Mapeamento é reversível | Ida e volta do estado completo: **zero perdas** em todos os campos de 2 veículos, 8 documentos, 6 parcelas, 25 itens e 25 lançamentos |
+| As linhas servem ao banco real | `insert` nas 5 tabelas **com o papel `authenticated` e as claims do usuário** — passou pelos NOT NULL, tipos, chaves estrangeiras e pelo `with check` do RLS. Rodado dentro de transação com `rollback`: a conta ficou com 0 linhas |
+| Requisições certas | Rede interceptada: 6 `POST` na ordem da chave estrangeira, `on_conflict=user_id,id` (e `user_id` no perfil) |
+| Remoção vira lápide | `PATCH ... removido_em`, filtrado por `user_id` **e** `id`, nunca `DELETE` |
+| Falha de rede não perde nada | Lançamento continua no aparelho, espelho não avança, recado honesto na tela |
+| Deslogado não muda nada | Zero chamadas de rede |
+
+**Não verificado:** o caminho autenticado de ponta a ponta contra o servidor de
+verdade. Tentei criar um usuário descartável para isso e **a permissão foi
+negada** (mexe em recurso compartilhado) — não insisti. O que falta provar no
+aparelho do usuário: entrar com o Google, ver a garagem subir, e abrir num
+segundo aparelho.
+
+**O que este passo ainda não faz:** a **foto** continua só no aparelho (a coluna
+`foto_path` e o bucket estão prontos, esperando); não há **fila offline**, só
+nova tentativa na gravação seguinte; e a tabela `servicos` ficou de fora porque
+o app ainda não registra serviço sem custo — sincronizar uma lista sempre vazia
+apagaria o que outro aparelho tivesse gravado.
+
+`sw.js` em `autolog-v27`.
+
 ### Autolog vira produto — passos 1 e 2 de 7 ✅ banco e login
 
 Decidido em 2026-09-13: o app vai para a Play Store com conta de usuário real.
@@ -824,7 +919,7 @@ As decisões já fechadas, para não reabrir:
 | Custo | Começa no plano grátis, **com rotina de backup própria** |
 | Preço | R$ 30/ano depois — mas **v1 sai de graça**, para descobrir quem volta |
 
-**Os 7 passos até a loja:** 1) esquema e RLS · 2) login com Google · 3) `Store`
+**Os 7 passos até a loja:** 1) ✅ esquema e RLS · 2) ✅ login com Google · 3) ✅ `Store`
 lendo e escrevendo no Supabase, ainda só online · 4) sincronização offline ·
 5) boas-vindas sem dado de demonstração · 6) política de privacidade e
 Segurança de Dados · 7) TWA, assetlinks e publicação.

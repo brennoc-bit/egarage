@@ -122,9 +122,30 @@ const Store = (() => {
     return dados;
   }
 
+  /* Quem grava fora daqui se inscreve, em vez de o `Store` conhecer a nuvem.
+     A dependência fica numa direção só: a sincronização sabe do estado, o
+     estado não sabe que existe sincronização. */
+  let ouvinteGravacao = null;
+  function aoGravar(fn) { ouvinteGravacao = fn; }
+
   function salvar() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
     catch (e) { console.warn('Não foi possível salvar (armazenamento cheio?)', e); }
+    // O aparelho já tem o dado salvo antes de a rede entrar na história —
+    // se o envio falhar, nada se perde.
+    if (ouvinteGravacao) {
+      try { ouvinteGravacao(state); } catch (e) { console.warn('[store] ouvinte de gravação falhou', e); }
+    }
+  }
+
+  /* Troca o estado inteiro pelo que veio da conta. Grava direto no
+     `localStorage` **sem passar pelo `salvar()`**: o que acabou de chegar do
+     servidor não precisa voltar para ele. */
+  function substituirEstado(novo) {
+    state = migrar(novo);
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { console.warn('Não foi possível salvar (armazenamento cheio?)', e); }
+    return state;
   }
 
   /* ── Dados de demonstração ──────────────────────────────────────────── */
@@ -838,5 +859,6 @@ const Store = (() => {
     dadosDoFormulario, atualizarDocsEFinanciamento, pagarParcelaFinanciamento,
     atualizarApolice, apoliceDe,
     resetar, importar, exportar, normalizarPlaca,
+    aoGravar, substituirEstado,
   };
 })();

@@ -186,8 +186,15 @@ const Conta = (() => {
     return 'Não consegui completar agora. Tente de novo em instantes.';
   }
 
+  /* Só a `nuvem.js` usa isto. Fica exposto porque o cliente do Supabase é um
+     só — abrir um segundo em outro arquivo criaria duas sessões paralelas,
+     com dois temporizadores de renovação de token brigando pelo mesmo
+     `localStorage`. Nenhuma tela deve chamar esta função. */
+  const cliente_ = () => cliente;
+
   return {
     iniciar, disponivel, carregado, sessao, logado, usuario, email, nome, aoMudar,
     entrarComGoogle, entrar, cadastrar, recuperarSenha, sair,
+    cliente: cliente_,
   };
 })();

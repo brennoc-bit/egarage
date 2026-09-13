@@ -5,8 +5,9 @@
 > URL: `https://zhknfipxjvkthkbzgguf.supabase.co`
 >
 > Sete tabelas, RLS ligado em todas, trigger de perfil, bucket de fotos.
-> **Nenhuma linha de dado ainda** — o app continua em `localStorage`. A
-> ligação é o passo 3.
+>
+> **Passo 3 aplicado em 2026-09-13:** o `js/nuvem.js` lê e escreve nessas
+> tabelas. Falta a foto (Storage) e a fila offline.
 >
 > **O projeto antigo da conta (`dfkpjwrqbmuvbxcsvity`) não foi tocado.** Ele é
 > de outro produto, com `caixas`, `portas` e `notificacoes` dentro.
@@ -14,6 +15,46 @@
 Levantado a partir do que o `js/store.js` guarda hoje, não de imaginação. As 25
 funções que o `Store` expõe continuam sendo a única porta de entrada dos dados —
 nenhuma tela vai falar com o Supabase direto.
+
+---
+
+## Corrigido ao ligar o app (2026-09-13)
+
+**`atualizado_em` não estava sendo atualizada.** A coluna tinha `default now()`,
+o que só vale no `insert`: depois de qualquer `update` a data ficava congelada
+na criação. É exatamente essa coluna que a sincronização do passo 4 vai usar
+para responder "o que mudou desde a última vez que puxei?" — com a data parada,
+uma linha editada no celular pareceria intocada para o outro aparelho.
+
+Entrou a função `public.marcar_atualizacao()` e um gatilho `before update` nas
+sete tabelas. Quem carimba é o banco, de propósito: deixar o cliente mandar a
+data resolveria pela metade, porque relógio de celular erra e um aparelho
+adiantado venceria disputas que não deveria.
+
+A função é `security definer` com `search_path` vazio e `execute` revogado de
+`public`, `anon` e `authenticated` — o mesmo cuidado que o advisor cobrou da
+trigger de perfil.
+
+---
+
+## Ids derivados, decididos ao escrever o mapeamento
+
+Documento, item de manutenção e parcela **não têm id próprio no aparelho**: o
+documento é `ipva`, o item é `oleo`, a parcela é o número 1. Esses nomes se
+repetem entre veículos, e a tabela exige id único por usuário.
+
+A regra ficou sendo derivar do pai, e não sortear:
+
+| Tabela | `id` |
+|---|---|
+| `documentos` | `{veiculo_id}:{doc_id}` — ex. `cb300f:ipva` |
+| `manutencao` | `{veiculo_id}:{item_id}` — ex. `cb300f:oleo` |
+| `parcelas` | `{documento_id}#{n}` — ex. `cb300f:ipva#3` |
+
+**Por que derivar:** torna o envio repetível. Subir duas vezes a mesma garagem
+escreve nas mesmas linhas em vez de duplicar tudo, e não exige guardar tabela
+de-para nenhuma no aparelho. `veiculos` e `lancamentos` seguem com o `uid()`
+que o app já gerava.
 
 ---
 

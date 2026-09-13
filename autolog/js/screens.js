@@ -1663,12 +1663,50 @@ function blocoTrava() {
   return caixa;
 }
 
+/* O ESTADO DA SINCRONIZAÇÃO PRECISA SER VISÍVEL
+
+   Gravação silenciosa é confortável enquanto funciona. No primeiro celular sem
+   sinal, a pessoa registra um abastecimento, vê a tela atualizar e acha que
+   está tudo guardado na conta — quando só está guardado ali. Este bloco existe
+   para essa hora: diz quando foi a última vez que a conta recebeu alguma
+   coisa, e diz sem rodeio quando não recebeu.
+
+   O tom importa: falha de envio **não é perda**. O dado está no aparelho, e a
+   próxima gravação tenta de novo. A frase tem que passar isso, senão assusta à
+   toa. */
+function blocoSincronia() {
+  const s = Nuvem.estado();
+  const hora = s.quando
+    ? new Date(s.quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  const RECADOS = {
+    parado: { v: 'Só neste aparelho', sub: 'entre na conta para sincronizar', cor: null },
+    baixando: { v: 'Carregando…', sub: 'buscando a garagem da conta', cor: null },
+    enviando: { v: 'Salvando…', sub: 'mandando as mudanças', cor: null },
+    salvo: { v: 'Em dia', sub: hora ? `última vez às ${hora}` : 'tudo enviado', cor: 'var(--c-ok)' },
+    erro: { v: 'Só neste aparelho', sub: s.recado || 'tentarei de novo na próxima gravação', cor: 'var(--color-accent)' },
+  };
+  const r = RECADOS[s.fase] || RECADOS.parado;
+
+  return h('div', null,
+    UI.sectHd('Sua garagem na conta'),
+    UI.row(UI.kv({ k: 'Sincronização', v: r.v, sub: r.sub, cor: r.cor })),
+    s.fase === 'erro'
+      ? h('div', { class: 'note', style: { paddingTop: 0 } },
+          'Nada foi perdido: o que você registrou está salvo neste aparelho e sobe '
+          + 'assim que a conexão voltar.')
+      : null);
+}
+
 Screens.perfil = () => {
   const st = Store.get();
   const corpo = h('div', null,
     UI.row(
       UI.kv({ k: 'Nome', v: st.perfil.nome || '—', sub: 'toque para editar', onClick: () => Acoes.editarPerfil() }),
       UI.kv({ k: 'Conta', v: Conta.email() || '—', sub: 'onde sua garagem fica salva' })),
+
+    blocoSincronia(),
 
     UI.sectHd('Bloqueio do app'),
     blocoTrava(),
