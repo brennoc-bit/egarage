@@ -41,10 +41,40 @@ Configurar no projeto errado é o erro mais comum daqui em diante.
 
 <https://console.cloud.google.com/auth/branding>
 
-- Nome do app: `Autolog`
-- E-mail de suporte e e-mail do desenvolvedor: o seu.
+- **Nome do app:** `Autolog` — limpo, **sem "beta"**.
+- **E-mail de suporte ao usuário:** um Grupo do Google (veja abaixo).
+- **E-mail de contato do desenvolvedor:** o seu pessoal.
+- **Logo:** em branco por enquanto — enviar logo dispara verificação de dias.
 
-Logo em branco por enquanto — enviar logo dispara verificação de dias.
+#### Por que sem "beta" no nome
+
+É permitido, mas ruim por três motivos:
+
+1. A tela de consentimento é onde a pessoa entrega a identidade Google dela.
+   "Autolog Beta" ali se lê como "coisa inacabada querendo minha conta".
+2. **Mudar o nome do app dispara reverificação** quando ele é Externo e está em
+   produção. Tirar o "beta" depois viraria problema exatamente no momento de
+   sair do beta.
+3. A Play Store tem trilha formal de teste aberto, com a linguagem que o
+   usuário reconhece. Sinalize lá, não aqui.
+
+#### O e-mail de suporte é visível para o cliente
+
+Ele aparece na tela de consentimento, então não use o pessoal.
+
+**E o campo é um seletor, não campo livre.** Só aceita o e-mail da conta Google
+logada ou um **Grupo do Google que essa conta administra** — endereço de
+redirecionamento criado no registrador **não aparece na lista**.
+
+O caminho, de graça e em dois minutos:
+
+1. <https://groups.google.com> → **Criar grupo**
+2. `Suporte Autolog` · `suporte-autolog@googlegroups.com`
+3. Adicione seu e-mail pessoal como membro — a mensagem cai na caixa de sempre
+4. Volte ao Branding e selecione o grupo
+
+Com o domínio de pé, `suporte@autolog.com.br` pode encaminhar para esse grupo: o
+cliente escreve para o endereço bonito e você recebe no mesmo lugar.
 
 ### 1.3 Audience — quem pode entrar
 
