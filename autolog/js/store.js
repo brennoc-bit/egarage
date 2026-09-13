@@ -98,8 +98,8 @@ const Store = (() => {
           return convertido;
         }
       }
-    } catch (e) { /* dados corrompidos — recomeça do seed */ }
-    return seed();
+    } catch (e) { /* dados corrompidos — recomeça do zero */ }
+    return vazia();
   }
 
   // Preenche o que versões anteriores do app não guardavam.
@@ -148,202 +148,25 @@ const Store = (() => {
     return state;
   }
 
-  /* ── Dados de demonstração ──────────────────────────────────────────── */
-  // Gerados sempre relativos a hoje, para o app nunca parecer congelado.
-  // Uma moto e um carro, para os dois fluxos ficarem visíveis de cara.
+  /* ── Garagem vazia ───────────────────────────────────────
 
-  function seed() {
-    const hoje = new Date();
-    const moto = seedMoto(hoje);
-    const carro = seedCarro(hoje);
-    return {
-      versao: 2,
-      perfil: { nome: 'Brenno' },
-      selecionado: moto.id,
-      veiculos: [moto, carro],
-    };
-  }
+     Até aqui o app nascia com uma moto e um carro de mentira, com seis meses de
+     abastecimentos inventados. Isso servia enquanto ele era protótipo de uma
+     pessoa só: dava o que olhar antes de existir dado real.
 
-  function seedMoto(hoje) {
-    const ano = hoje.getFullYear();
-    const lanc = [];
-    const kmMes = [512, 690, 480, 812, 654, 412]; // do mais antigo ao mês corrente
-    let odo = 18420 - kmMes.reduce((a, b) => a + b, 0);
-    const precoComb = 5.89, consumo = 31;
-    let kmOleo = null, kmPneuT = null, kmPastilha = null;
+     Como produto, atrapalha. Quem baixa da loja abre e vê a garagem de outra
+     pessoa — e a primeira tarefa vira **apagar** coisa, em vez de cadastrar a
+     sua. Pior: dado de exemplo misturado com dado real é o comeco de um número
+     errado, e agora ele ainda subiria para a conta e desceria no outro
+     aparelho.
 
-    const extras = {
-      0: [[12, 'pneus', 'Pneu traseiro', 'MotoCenter', 420]],
-      1: [[8, 'manutencao', 'Revisão + troca de óleo', 'Honda Motos', 312]],
-      3: [[21, 'documentacao', 'IPVA · 1ª parcela', 'Detran', 148.2]],
-      4: [[18, 'documentacao', 'IPVA · 2ª parcela', 'Detran', 148.2],
-          [28, 'manutencao', 'Pastilha de freio dianteira', 'MotoCenter', 220]],
-      5: [[9, 'transmissao', 'Lubrificação e regulagem da corrente', 'MotoCenter', 60]],
-    };
+     Garagem nova nasce vazia, e a tela de boas-vindas convida a cadastrar.
 
-    for (let i = 0; i < 6; i++) {
-      const mesRef = addMonths(hoje, i - 5);
-      const ultimoDia = i === 5 ? hoje.getDate() : new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 0).getDate();
-      const dias = [2, 14].filter((d) => d <= ultimoDia);
-      const kmPorAbastecimento = kmMes[i] / (dias.length || 1);
-
-      const doMes = [];
-      dias.forEach((dia) => doMes.push({ dia, tipo: 'combustivel' }));
-      (extras[i] || []).forEach(([dia, tipo, titulo, local, valor]) => {
-        if (dia <= ultimoDia) doMes.push({ dia, tipo, titulo, local, valor, extra: true });
-      });
-      doMes.sort((a, b) => a.dia - b.dia);
-
-      for (const ev of doMes) {
-        const data = toISO(new Date(mesRef.getFullYear(), mesRef.getMonth(), ev.dia));
-        if (ev.extra) {
-          lanc.push({ id: uid(), data, tipo: ev.tipo, titulo: ev.titulo, local: ev.local, valor: ev.valor, odometro: Math.round(odo) });
-          if (ev.titulo.includes('óleo')) kmOleo = Math.round(odo);
-          if (ev.titulo.includes('Pneu traseiro')) kmPneuT = Math.round(odo);
-          if (ev.titulo.includes('Pastilha')) kmPastilha = Math.round(odo);
-        } else {
-          odo += kmPorAbastecimento;
-          const litros = kmPorAbastecimento / consumo;
-          lanc.push({
-            id: uid(), data, tipo: 'combustivel', titulo: 'Abastecimento',
-            local: ev.dia < 10 ? 'Posto Ipiranga' : 'Posto Shell',
-            valor: Math.round(litros * precoComb * 100) / 100,
-            litros: Math.round(litros * 100) / 100,
-            odometro: Math.round(odo),
-          });
-        }
-      }
-    }
-
-    const odometro = Math.round(odo);
-    const mesesAtras = (n) => toISO(addMonths(hoje, -n));
-    const manutencao = manutencaoPadrao('moto', odometro, mesesAtras(0));
-    const ajustes = {
-      oleo: { ultimoKm: kmOleo, ultimaData: mesesAtras(4) },
-      'filtro-ar': { ultimoKm: 7000, ultimaData: mesesAtras(20) },
-      velas: { ultimoKm: 10000, ultimaData: mesesAtras(14) },
-      'fluido-freio': { ultimaData: mesesAtras(21) },
-      pastilhas: { ultimoKm: kmPastilha, ultimaData: mesesAtras(1) },
-      'pneu-d': { ultimoKm: 11400, ultimaData: mesesAtras(18) },
-      'pneu-t': { ultimoKm: kmPneuT, ultimaData: mesesAtras(5) },
-      corrente: { ultimoKm: 0, ultimaData: `${ano - 4}-03-15` },
-      bateria: { ultimaData: mesesAtras(30) },
-      revisao: { ultimoKm: 14000, ultimaData: mesesAtras(7), oficina: 'Honda · concessionária vinculada' },
-    };
-    manutencao.forEach((m) => Object.assign(m, ajustes[m.id] || {}));
-
-    return {
-      id: 'cb300f', tipo: 'moto',
-      marca: 'Honda', modelo: 'CB 300F Twister ABS', apelido: 'CB 300F',
-      ano: 2022, cor: 'Vermelha', placa: 'ABC1D23', motor: '292cc',
-      renavam: '012345678', chassi: '', combustivel: 'Gasolina',
-      fipe: 22140, foto: null,
-      compra: `${ano - 4}-03-15`,
-      odometro, consumo, precoComb,
-      manutencao,
-      docs: seedDocs(hoje, ano, 20000),  // seguro quitado
-      financiamento: { quitado: true },
-      lancamentos: lanc,
-    };
-  }
-
-  function seedCarro(hoje) {
-    const ano = hoje.getFullYear();
-    const lanc = [];
-    let odo = 52180 - 4 * 620;
-    const consumo = 11.8, precoComb = 6.19;
-
-    for (let i = 0; i < 4; i++) {
-      const mesRef = addMonths(hoje, i - 3);
-      const ultimoDia = i === 3 ? hoje.getDate() : 28;
-      [5, 19].filter((d) => d <= ultimoDia).forEach((dia) => {
-        odo += 310;
-        const litros = 310 / consumo;
-        lanc.push({
-          id: uid(), data: toISO(new Date(mesRef.getFullYear(), mesRef.getMonth(), dia)),
-          tipo: 'combustivel', titulo: 'Abastecimento',
-          local: dia < 10 ? 'Posto BR' : 'Posto Shell',
-          valor: Math.round(litros * precoComb * 100) / 100,
-          litros: Math.round(litros * 100) / 100,
-          odometro: Math.round(odo),
-        });
-      });
-    }
-    lanc.push({
-      id: uid(), data: toISO(addMonths(hoje, -2)), tipo: 'manutencao',
-      titulo: 'Revisão dos 50.000 km', local: 'Chevrolet · concessionária',
-      valor: 890, odometro: 50120,
-    });
-
-    const odometro = Math.round(odo);
-    const mesesAtras = (n) => toISO(addMonths(hoje, -n));
-    const manutencao = manutencaoPadrao('carro', odometro, mesesAtras(0));
-    const ajustes = {
-      oleo: { ultimoKm: 50120, ultimaData: mesesAtras(2) },
-      'filtro-oleo': { ultimoKm: 50120, ultimaData: mesesAtras(2) },
-      'filtro-ar': { ultimoKm: 42000, ultimaData: mesesAtras(14) },
-      'filtro-combustivel': { ultimoKm: 40000, ultimaData: mesesAtras(18) },
-      'filtro-cabine': { ultimoKm: 50120, ultimaData: mesesAtras(2) },
-      velas: { ultimoKm: 30000, ultimaData: mesesAtras(30) },
-      'fluido-freio': { ultimaData: mesesAtras(23) },
-      'pastilhas-d': { ultimoKm: 38000, ultimaData: mesesAtras(20) },
-      'pastilhas-t': { ultimoKm: 20000, ultimaData: mesesAtras(38) },
-      pneus: { ultimoKm: 28000, ultimaData: mesesAtras(30) },
-      alinhamento: { ultimoKm: 50120, ultimaData: mesesAtras(2) },
-      correia: { ultimoKm: 0, ultimaData: `${ano - 5}-04-10` },
-      arrefecimento: { ultimoKm: 20000, ultimaData: mesesAtras(40) },
-      bateria: { ultimaData: mesesAtras(26) },
-      revisao: { ultimoKm: 50120, ultimaData: mesesAtras(2), oficina: 'Chevrolet · concessionária' },
-    };
-    manutencao.forEach((m) => Object.assign(m, ajustes[m.id] || {}));
-
-    return {
-      id: 'onix', tipo: 'carro',
-      marca: 'Chevrolet', modelo: 'Onix 1.0 Turbo LT', apelido: 'Onix',
-      ano: 2021, cor: 'Prata', placa: 'DEF4G56', motor: '1.0 turbo',
-      renavam: '987654321', chassi: '', combustivel: 'Flex',
-      fipe: 78400, foto: null,
-      compra: `${ano - 5}-04-10`,
-      odometro, consumo, precoComb,
-      manutencao,
-      docs: seedDocs(hoje, ano, 60000, 2, 2),  // apólice de 2 meses, em 3x, faltam 2
-      // Exemplo com financiamento em aberto, para o custo fixo aparecer.
-      financiamento: { quitado: false, parcela: 1180, restantes: 22, dia: 10 },
-      lancamentos: lanc,
-    };
-  }
-
-  function seedDocs(hoje, ano, alvoRevisao, seguroRestantes, mesesDeApolice) {
-    const parcela = (n, offMes) => {
-      const d = addMonths(new Date(hoje.getFullYear(), hoje.getMonth(), 22), offMes);
-      return { n, valor: 148.2, venc: toISO(d), pago: offMes < 0 };
-    };
-    const licAno = hoje.getMonth() > 10 ? ano + 1 : ano;
-    const seguroInicio = addMonths(new Date(hoje.getFullYear(), hoje.getMonth(), 18), -(mesesDeApolice == null ? 11 : mesesDeApolice));
-
-    return [
-      {
-        id: 'ipva', tag: 'IPVA', titulo: `IPVA ${ano} · 3 parcelas`, sub: 'Detran · cota parcelada',
-        tipo: 'parcelas', parcelas: [parcela(1, -2), parcela(2, -1), parcela(3, 0)],
-      },
-      {
-        id: 'licenciamento', tag: 'LICENC.', titulo: 'Licenciamento anual', sub: 'Aguardando emissão',
-        tipo: 'unico', valor: 128.5, venc: `${licAno}-11-30`, pago: false,
-      },
-      {
-        id: 'seguro', tag: 'SEGURO', titulo: 'Cobertura total', sub: 'Apólice #77-4021',
-        tipo: 'seguro', valor: 1240,
-        inicio: toISO(seguroInicio), venc: toISO(addMonths(seguroInicio, 12)),
-        pagamento: seguroRestantes
-          ? { quitado: false, parcela: 413.33, restantes: seguroRestantes }
-          : { quitado: true, parcela: 0, restantes: 0 },
-      },
-      {
-        id: 'revisao', tag: 'REVISÃO', titulo: 'Revisão programada', sub: 'Concessionária vinculada',
-        tipo: 'km', alvoKm: alvoRevisao, valor: 0, pago: false, agendada: null,
-      },
-    ];
-  }
+     **Nada foi apagado de quem já usa o app.** Quem tinha a CB 300F e o Onix de
+     demonstração continua com eles — inclusive porque pode tê-los editado até
+     virarem o veículo de verdade, que foi sempre o caminho mais provavel. Sair
+     deles é decisão de quem usa, pelo Perfil. */
+  const vazia = () => ({ versao: 2, perfil: {}, selecionado: null, veiculos: [] });
 
   /* ── Leitura ────────────────────────────────────────────────────────── */
 
@@ -352,6 +175,10 @@ const Store = (() => {
   const get = () => state;
   const veiculos = () => state.veiculos;
   const veiculo = (id) => state.veiculos.find((v) => v.id === id) || null;
+  /* Sem o `|| state.veiculos[0]`, apagar o veículo selecionado deixaria o app
+     sem nada na tela mesmo com outros na garagem. Com a garagem podendo estar
+     vazia de verdade agora, devolver `null` aqui é um caso normal — quem trata
+     é o `renderSemVeiculo`. */
   const atual = () => veiculo(state.selecionado) || state.veiculos[0] || null;
 
   /* ── Mutações ───────────────────────────────────────────────────────── */
@@ -739,7 +566,6 @@ const Store = (() => {
   }
 
 
-  function resetar() { state = seed(); salvar(); }
 
   function importar(json) {
     const dados = JSON.parse(json);
@@ -858,7 +684,7 @@ const Store = (() => {
     pagarDocumento, agendarRevisao,
     dadosDoFormulario, atualizarDocsEFinanciamento, pagarParcelaFinanciamento,
     atualizarApolice, apoliceDe,
-    resetar, importar, exportar, normalizarPlaca,
+    importar, exportar, normalizarPlaca,
     aoGravar, substituirEstado,
   };
 })();

@@ -91,8 +91,8 @@ propósito que os números não batem mês a mês:
 | **Previsão dos 6 meses** | Início, logo abaixo · tela cheia em "mês a mês" | Cada um no mês em que vence — responde *"em qual mês vai doer"* |
 
 No ano as duas fecham parecido. O que muda é onde o dinheiro aparece, e é essa
-diferença que a média esconde: na moto de demonstração o custo médio é R$ 274
-por mês, mas outubro custa R$ 1.363 porque a apólice vence inteira nele.
+diferença que a média esconde: uma moto pode custar R$ 274 por mês em média e
+R$ 1.363 em outubro, porque a apólice vence inteira nele.
 
 A previsão empilha três faixas por mês — parcela e seguro, combustível, e o que
 vence naquele mês — então a altura diz *quanto* e a cor diz *por quê*. A linha
@@ -522,10 +522,16 @@ amarrar o ícone a nenhuma letra ou nome.
 
 ## Estado dos dados
 
-Tudo fica em `localStorage` (`autolog-v1`), por navegador. Garagens criadas na
-versão anterior (`motoreiro-v1`) são migradas na primeira abertura, e os
-veículos que existiam entram como moto. “Restaurar dados de demonstração”, no
-Perfil, recria o exemplo — uma moto e um carro, sempre relativos à data de hoje.
+Os dados ficam em `localStorage` (`autolog-v1`) **e na conta da pessoa**, no
+Supabase — o aparelho responde na hora, a conta guarda e leva para o outro
+celular. Garagens criadas na versão anterior (`motoreiro-v1`) são migradas na
+primeira abertura, e os veículos que existiam entram como moto.
+
+**Garagem nova nasce vazia.** Até a v30 o app vinha com uma moto e um carro de
+demonstração, com seis meses de abastecimentos inventados — útil enquanto era
+protótipo de uma pessoa só, atrapalhado como produto: quem baixa da loja abriria
+o app na garagem de outra pessoa, e a primeira tarefa seria apagar coisa. No
+lugar entrou a tela de boas-vindas, com um caminho só: *Adicionar meu veículo*.
 
 ## Desvios conscientes do canvas
 

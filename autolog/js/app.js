@@ -134,8 +134,18 @@ const App = {
     $('#app').classList.toggle('login-ativo', semSessao);
     if (semSessao) { tela.append(Auth.tela()); return; }
 
+    /* GARAGEM VAZIA DESVIA TUDO — MENOS O CADASTRO
+
+       Enquanto o app nascia com dados de demonstração, este `if` nunca era
+       alcançado e o furo passou despercebido: com a garagem vazia ele mandava
+       **toda** rota para as boas-vindas, inclusive a do próprio cadastro. Ou
+       seja, o botão "Adicionar meu veículo" trocava a rota e a tela continuava
+       a mesma — quem baixasse o app não teria como sair do lugar.
+
+       O cadastro é a única tela que faz sentido sem veículo nenhum, e ele não
+       usa o veículo atual para nada. */
     const v = Store.atual();
-    if (!v) { renderSemVeiculo(hd, tela, nav); return; }
+    if (!v && this.rota !== 'veiculo') { renderSemVeiculo(hd, tela, nav); return; }
 
     const conteudo = (Screens[this.rota] || Screens.inicio)(v);
 
@@ -170,14 +180,67 @@ const App = {
   },
 };
 
+/* ══ A PRIMEIRA TELA DE QUEM ACABOU DE BAIXAR O APP ══════════════════
+
+   Antes existia um "Nenhum veículo cadastrado ainda" centralizado — texto de
+   estado vazio, do tipo que se escreve para um caso que quase nunca acontece.
+   Agora ele acontece com **todo mundo**, uma vez, e é a primeira impressão do
+   produto: não pode parecer que faltou carregar alguma coisa.
+
+   As três linhas não são enfeite. Elas respondem "por que eu daria trabalho de
+   cadastrar meu carro aqui?" antes de pedir o trabalho — e são exatamente as
+   três contas que o app sabe fazer, na ordem em que ele as entrega.
+
+   ESPERAR A SINCRONIZAÇÃO ANTES DE CONVIDAR
+   Quem entra na conta num aparelho novo passa alguns segundos com a garagem
+   vazia enquanto ela é baixada. Convidar a cadastrar nessa janela e trocar a
+   tela por uma garagem cheia logo depois seria a pior sequência possível: a
+   pessoa pensa que perdeu tudo, ou começa a cadastrar um veículo que já existe.
+   Enquanto a nuvem estiver trabalhando, a tela diz que está buscando. */
 function renderSemVeiculo(hd, tela, nav) {
-  hd.append(h('div', { class: 'hd-text' },
-    h('div', { class: 'kick' }, 'Garagem vazia'),
+  const fase = (typeof Nuvem !== 'undefined' && Conta.logado()) ? Nuvem.estado().fase : 'parado';
+  const buscando = fase === 'baixando' || fase === 'sincronizando';
+
+  hd.append(h('div', { class: 'hd-text entra' },
+    h('div', { class: 'kick' }, buscando ? 'Um instante' : 'Bem-vindo'),
     h('h2', null, 'Autolog')));
-  tela.append(
-    h('div', { class: 'empty', style: { paddingTop: 80 } },
-      'Nenhum veículo cadastrado ainda.', h('br'), 'Carro ou moto — comece pelo modelo e pelo km atual.'),
-    UI.cta([{ label: 'Cadastrar primeiro veículo', icone: '+', pri: true, onClick: () => Acoes.novoVeiculo() }]));
+
+  if (buscando) {
+    tela.append(h('div', { class: 'boas-vindas' },
+      h('div', { class: 'bv-titulo' }, 'Buscando sua garagem…'),
+      h('p', { class: 'bv-texto' },
+        'Se você já usou o Autolog em outro aparelho, seus veículos aparecem aqui '
+        + 'em instantes.')));
+    nav.append(h('div', { style: { padding: 8 } }));
+    return;
+  }
+
+  const linha = (titulo, texto) => h('div', { class: 'bv-item' },
+    h('div', { class: 'bv-item-t' }, titulo),
+    h('div', { class: 'bv-item-s' }, texto));
+
+  const botao = h('button', { class: 'bv-botao', onClick: () => Acoes.novoVeiculo() },
+    h('span', null, 'Adicionar meu veículo'), h('span', null, '+'));
+
+  tela.append(h('div', { class: 'boas-vindas entra' },
+    h('div', { class: 'bv-titulo' }, 'Sua garagem começa aqui'),
+    h('p', { class: 'bv-texto' },
+      'Carro ou moto. O app cuida do resto — e o resto é saber para onde vai o '
+      + 'seu dinheiro.'),
+
+    h('div', { class: 'bv-lista' },
+      linha('Quanto custa por mês',
+        'parcela, seguro, documentos e a média real de combustível'),
+      linha('Em qual mês vai doer',
+        'os próximos seis meses, com o motivo de cada pico'),
+      linha('O que vence, e quando',
+        'IPVA, licenciamento, seguro e revisão — antes de virar multa')),
+
+    botao,
+    h('div', { class: 'bv-nota' },
+      'Leva um minuto: modelo e quilometragem atual já bastam para começar. '
+      + 'O resto dá para completar depois.')));
+
   nav.append(h('div', { style: { padding: 8 } }));
 }
 
@@ -789,14 +852,6 @@ const Acoes = {
     });
   },
 
-  resetar() {
-    UI.confirmar({
-      titulo: 'Restaurar demonstração',
-      texto: 'Seus veículos e lançamentos deste aparelho serão substituídos pelos dados de exemplo.',
-      acao: 'Restaurar',
-      onOk: () => { Store.resetar(); App.ir('inicio'); UI.toast('Dados de demonstração restaurados'); },
-    });
-  },
 };
 
 /* ── Bootstrap ─────────────────────────────────────────────────────────── */
@@ -809,7 +864,7 @@ document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') UI.fecha
 App.render({ topo: true });
 Conta.iniciar()
   .then(() => { App.render({ topo: true }); return Sincronia.aoEntrar(); })
-  .then(() => App.render());
+  .then(() => { nomearPeloLogin(); App.render(); });
 
 // Entrar, sair ou a sessão expirar redesenha sozinho, venha de onde vier —
 // inclusive de outra aba do mesmo navegador.
@@ -818,8 +873,24 @@ Conta.aoMudar((evento) => {
   App.render({ topo: true });
   // Entrar pelo Google devolve a pessoa de volta ao app já logada, e é aqui
   // que a garagem da conta chega — o `iniciar()` acima já terminou faz tempo.
-  if (evento === 'SIGNED_IN') Sincronia.aoEntrar().then(() => App.render({ topo: true }));
+  if (evento === 'SIGNED_IN') {
+    Sincronia.aoEntrar().then(() => { nomearPeloLogin(); App.render({ topo: true }); });
+  }
 });
+
+/* O nome vinha do dado de demonstração ("Brenno", escrito no código). Sem ele,
+   o cabeçalho do Início passou a dizer "Sua garagem" para todo mundo — correto e
+   sem graça, com o nome parado na conta do Google logo ao lado.
+
+   Só preenche o que está vazio: quem editou o próprio nome no Perfil não pode
+   vê-lo trocado de volta a cada abertura do app. */
+function nomearPeloLogin() {
+  if (!Conta.logado()) return;
+  const perfil = Store.get().perfil || {};
+  if (perfil.nome) return;
+  const daConta = (Conta.nome() || '').trim().split(/\s+/)[0];
+  if (daConta) Store.atualizarPerfil({ nome: daConta });
+}
 
 // Toda gravação local avisa a nuvem. Registrado uma vez, no arranque.
 Store.aoGravar((state) => Nuvem.aoSalvar(state));

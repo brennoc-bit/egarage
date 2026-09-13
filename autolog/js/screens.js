@@ -208,6 +208,25 @@ function blocoPrevisao(v) {
     h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 17, letterSpacing: '-.01em' } }, texto),
     UI.mono(sub, { marginTop: 4, color: 'var(--muted)' }));
 
+  /* VEÍCULO RECÉM-CADASTRADO NÃO TEM O QUE PREVER
+
+     Sem abastecimento, sem parcela e sem vencimento dentro da janela, os seis
+     meses somam zero — e o gráfico virava um retângulo de 124px em branco com
+     rótulos de mês embaixo. Num app recém-instalado isso não se lê como "não há
+     custo previsto", se lê como "faltou carregar".
+
+     Trocar por uma frase custa o mesmo espaço e diz o que fazer para a previsão
+     existir. */
+  const semNada = p.meses.every((m) => m.total <= 0);
+  if (semNada) {
+    return h('div', null,
+      UI.sectHd('Próximos 6 meses'),
+      h('div', { class: 'note', style: { paddingTop: 0 } },
+        'Ainda não há o que prever. Registre abastecimentos e informe parcela, '
+        + 'seguro e IPVA na ficha — aí o app mostra quanto cada mês deve custar e '
+        + 'em qual deles vai doer.'));
+  }
+
   return h('div', null,
     UI.sectHd('Próximos 6 meses', 'mês a mês ›', () => App.ir('previsao')),
     temPico
@@ -1803,9 +1822,6 @@ Screens.perfil = () => {
     ]),
     UI.cta([
       { label: 'Buscar atualização do app', icone: '↓', onClick: () => Acoes.buscarAtualizacao() },
-    ]),
-    UI.cta([
-      { label: 'Restaurar dados de demonstração', icone: '↻', onClick: () => Acoes.resetar() },
     ]),
     UI.cta([
       { label: 'Sair da conta', icone: '⏻', onClick: () => Acoes.sair() },

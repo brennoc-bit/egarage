@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — a sincronização estava 100% quebrada por uma coluna que não existe
+**Última atualização:** 2026-09-13 — passo 5 de 7: garagem nasce vazia, com tela de boas-vindas
 
 ---
 
@@ -806,6 +806,95 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
+### Passo 5 de 7 ✅ a garagem nasce vazia, e a primeira tela convida
+
+O app nascia com uma moto e um carro de mentira, com seis meses de
+abastecimentos inventados. Isso servia enquanto ele era protótipo de uma pessoa
+só — dava o que olhar antes de existir dado real. Como produto, atrapalha: quem
+baixa da loja abriria o app **na garagem de outra pessoa**, e a primeira tarefa
+seria apagar coisa em vez de cadastrar a sua. Pior, agora esse dado de exemplo
+subiria para a conta e desceria no outro aparelho.
+
+Saíram 197 linhas: `seed`, `seedMoto`, `seedCarro` e `seedDocs`.
+
+**Nada foi apagado de quem já usa o app.** Quem tem a CB 300F e o Onix continua
+com eles — inclusive porque pode tê-los editado até virarem o veículo de verdade,
+que sempre foi o caminho mais provável. Sair deles é decisão de quem usa.
+
+#### A tela de boas-vindas
+
+Antes existia um "Nenhum veículo cadastrado ainda" centralizado — texto de
+estado vazio, do tipo que se escreve para um caso que quase nunca acontece.
+Agora ele acontece com todo mundo, uma vez, e é a primeira impressão do produto.
+
+Três linhas respondem *"por que eu daria trabalho de cadastrar meu carro aqui?"*
+antes de pedir o trabalho — e são as três contas que o app sabe fazer, na ordem
+em que ele as entrega: quanto custa por mês, em qual mês vai doer, o que vence e
+quando. Um botão só.
+
+**Esperar a sincronização antes de convidar.** Quem entra na conta num aparelho
+novo passa alguns segundos com a garagem vazia enquanto ela é baixada. Convidar
+a cadastrar nessa janela e trocar a tela por uma garagem cheia logo depois seria
+a pior sequência possível — a pessoa pensa que perdeu tudo, ou começa a cadastrar
+um veículo que já existe. Enquanto a nuvem trabalha, a tela diz *"Buscando sua
+garagem…"*.
+
+#### Três defeitos que só apareceram com a garagem vazia
+
+**1. O botão "Adicionar meu veículo" não abria nada.** O `App.render` desviava
+**toda** rota para a tela de garagem vazia — inclusive a do próprio cadastro. O
+furo existia desde sempre e era inalcançável, porque a garagem nunca ficava
+vazia. Sem o conserto, **ninguém que baixasse o app sairia do lugar**.
+
+**2. A previsão desenhava um retângulo em branco.** Veículo recém-cadastrado não
+tem abastecimento, parcela nem vencimento dentro da janela, então os seis meses
+somam zero — e o gráfico virava 124px vazios com rótulos de mês embaixo. Num app
+recém-instalado isso não se lê como "não há custo previsto", se lê como "faltou
+carregar". Trocado por uma frase que diz o que fazer para a previsão existir.
+
+**3. O cabeçalho perdeu o nome.** Ele vinha do dado de demonstração ("Brenno",
+escrito no código) e passou a dizer "Sua garagem" para todo mundo, com o nome
+parado na conta do Google ao lado. Agora o primeiro nome da conta preenche o
+perfil — **só quando está vazio**, para quem editou o próprio nome não vê-lo
+trocado de volta a cada abertura.
+
+#### Saíram junto
+
+- **"Restaurar dados de demonstração"**, do Perfil. Sem demonstração, ele só
+  esvaziaria a garagem — e agora isso subiria para a conta e apagaria tudo no
+  outro aparelho também. Quem quiser recomeçar apaga veículo por veículo, com
+  confirmação, no próprio Perfil.
+
+#### Um susto no caminho, que vale registrar
+
+Removi o bloco de demonstração por intervalo de texto e levei junto `get`,
+`veiculos`, `atual`, `selecionar`, `atualizarPerfil`, `atualizarVeiculo` e
+`replanejar` — que moravam no meio dele. O app quebrou inteiro (`Store is not
+defined`). Recuperadas do git.
+
+**A lição prática:** depois de remoção grande, comparar a lista de funções antes
+e depois (`grep -oP "^  (function|const) \K\w+"` dos dois lados) mostra em uma
+linha o que sumiu sem querer. Foi assim que achei as quatro que ainda faltavam
+depois do primeiro conserto.
+
+#### Verificado
+
+- Fluxo completo de quem baixa o app: boas-vindas → cadastro → Início com o
+  veículo real, selecionado, com plano de manutenção e documentos criados.
+- As **doze** rotas com um veículo sem histórico nenhum: sem erro de console,
+  sem estouro horizontal, nenhuma tela vazia.
+- Os três estados da tela inicial: buscando (sem convite), vazia (com convite),
+  deslogado (sem falar em buscar garagem).
+- Veículo cadastrado por usuário novo sobe para a conta — contra o servidor
+  rigoroso, zero recusas.
+- Diferença da API do `Store` conferida linha a linha: só saíram `seed*` e
+  `resetar`.
+
+**Não verificado:** o aparelho. Em especial, o instante entre entrar na conta e
+a garagem chegar — aqui eu simulo a fase, lá ela depende da rede real.
+
+`sw.js` em `autolog-v31`.
+
 ### Sincronização 100% quebrada desde a v28 ✅ `order=id` numa tabela sem `id`
 
 O usuário reabriu o app, com internet, tocou em "Sincronizar agora" e recebeu
@@ -876,8 +965,8 @@ inerte; só-local, lápide e **perfil** (a tabela que quebrava tudo) sincronizan
 espelho velho sem gerar conflito falso; e os dois tipos de erro com título
 distinto. Dez rotas sem estouro horizontal.
 
-**Não verificado:** o aparelho do usuário. A causa foi provada contra o
-PostgREST de produção, mas quem confirma que voltou a sincronizar é ele.
+**Confirmado no aparelho em 2026-09-13:** voltou a sincronizar. Isso fecha os
+dois defeitos da sequência — a escada que desistia e a coluna inexistente.
 
 `sw.js` em `autolog-v30`.
 
@@ -1184,7 +1273,7 @@ As decisões já fechadas, para não reabrir:
 
 **Os 7 passos até a loja:** 1) ✅ esquema e RLS · 2) ✅ login com Google · 3) ✅ `Store`
 lendo e escrevendo no Supabase · 4) ✅ sincronização offline ·
-5) boas-vindas sem dado de demonstração · 6) política de privacidade e
+5) ✅ boas-vindas sem dado de demonstração · 6) política de privacidade e
 Segurança de Dados · 7) TWA, assetlinks e publicação.
 
 **Depois da loja, já pedido:** manutenção mais sofisticada e **manual do veículo
