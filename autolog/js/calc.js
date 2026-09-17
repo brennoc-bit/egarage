@@ -42,12 +42,17 @@ const Calc = (() => {
     return { valor: km / litros, real: true };
   }
 
+  /* Mesmo formato de retorno de consumoMedio — {valor, real} — para a Início
+     poder distinguir "média do que você pagou de verdade" de "o preço que
+     você informou no cadastro (ou o padrão da região)". Antes devolvia só o
+     número, e a tela mostrava "por litro" para os dois casos: quem nunca
+     abasteceu via o app via um preço que parecia medido e não era. */
   function precoMedioLitro(v) {
     const fuel = v.lancamentos.filter((l) => l.tipo === 'combustivel' && l.litros > 0);
-    if (!fuel.length) return v.precoComb;
+    if (!fuel.length) return { valor: v.precoComb, real: false };
     const gasto = fuel.reduce((s, l) => s + l.valor, 0);
     const litros = fuel.reduce((s, l) => s + l.litros, 0);
-    return litros > 0 ? gasto / litros : v.precoComb;
+    return litros > 0 ? { valor: gasto / litros, real: true } : { valor: v.precoComb, real: false };
   }
 
   /* ── Custo por km ───────────────────────────────────────────────────── */
@@ -249,6 +254,23 @@ const Calc = (() => {
   }
 
   const docsStatus = (v) => v.docs.map((d) => statusDoc(v, d));
+
+  /* Ordena por urgência: vencido primeiro (o mais atrasado antes), depois o
+     que vence em breve (o mais próximo antes), por último o que está em dia
+     — mesmo espírito de tiers que proximosVencimentos já usa. Existe porque
+     a lista de cartões em Documentos vinha na ordem em que docsInformados os
+     cria (IPVA, Licenciamento, Seguro, Revisão sempre por último) mesmo
+     quando um vencido está no fim da lista e algo tranquilo no topo. */
+  function ordemUrgenciaDoc(s) {
+    const dias = s.venc ? daysUntil(s.venc) : null;
+    if (s.status === 'bad') return dias != null ? dias : -9999;
+    if (s.status === 'warn') return (dias != null ? dias : 0) + 10000;
+    // "Em dia" sem data (revisão por km, ainda longe) não é "vence agora" —
+    // é o oposto, o mais tranquilo de todos. Sem isto, uma revisão a 10.000 km
+    // de distância ordenava antes de um licenciamento tranquilo a 45 dias,
+    // só porque "sem data" virava "0 dias" por padrão.
+    return (dias != null ? dias : 999999) + 100000;
+  }
 
   // Agenda unificada: documentos + manutenção vencendo, ordenada por urgência.
   function proximosVencimentos(v, limite = 4) {
@@ -521,7 +543,7 @@ const Calc = (() => {
     ordenados, noPeriodo, odometroEm, kmNoPeriodo, gastoNoPeriodo,
     inicioDoMes, diasAtras, consumoMedio, precoMedioLitro,
     custoPorKm, composicao, resumoMensal,
-    statusItem, diagnostico, statusDoc, docsStatus, proximosVencimentos, compromissosAnuais,
+    statusItem, diagnostico, statusDoc, docsStatus, ordemUrgenciaDoc, proximosVencimentos, compromissosAnuais,
     mediaMensalCombustivel, custoMensal, financiamentoStatus,
     ritmoMensal, custoTipico, previsao,
     panorama,

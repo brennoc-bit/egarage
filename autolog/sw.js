@@ -18,7 +18,7 @@
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'autolog-v35';
+const VERSAO = 'autolog-v36';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [

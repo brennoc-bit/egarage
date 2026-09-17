@@ -47,7 +47,18 @@ const Avisos = (() => {
     return toISO(d);
   }
 
-  /** Compromissos com data, de todos os veículos, dentro da janela. */
+  /* Compromissos com data, de todos os veículos, dentro da janela — E TUDO
+     QUE JÁ VENCEU, sem limite de quão vencido.
+
+     Antes, o filtro era `faltam >= 0 && faltam <= janela`, e isso excluía
+     todo item já vencido de **toda** forma de lembrete: nem a notificação ao
+     abrir o app, nem o .ics exportado avisavam de algo que passou do prazo.
+     Justo o momento em que o risco de multa é maior, o app parava de falar
+     sobre ele — o oposto exato da promessa da boas-vindas ("o que vence,
+     antes de virar multa"). `faltam` negativo só precisa continuar menor ou
+     igual à janela, o que já é sempre verdade (a janela nunca é negativa) —
+     não precisa de um piso separado: vencido continua vencido para sempre,
+     até a pessoa pagar, e é isso que o app deve dizer todo santo dia. */
   function proximos(dias) {
     const janela = dias != null ? dias : config().dias;
     const itens = [];
@@ -88,7 +99,7 @@ const Avisos = (() => {
 
     return itens
       .map((i) => Object.assign(i, { faltam: daysUntil(i.data) }))
-      .filter((i) => i.faltam >= 0 && i.faltam <= janela)
+      .filter((i) => i.faltam <= janela)
       .sort((a, b) => a.faltam - b.faltam);
   }
 
@@ -106,9 +117,14 @@ const Avisos = (() => {
 
     const pendentes = proximos(cfg.dias).filter((i) => !vistos[i.id]);
     for (const i of pendentes) {
-      const quando = i.faltam === 0 ? 'vence hoje'
-        : i.faltam === 1 ? 'vence amanhã'
-          : `vence em ${i.faltam} dias`;
+      // Vencido renotifica todo dia de propósito: a marca em `vistos` sempre
+      // se limpa (linha acima), porque a data do item é sempre "passada" —
+      // e é assim que deveria ser para algo que ainda não foi pago.
+      const quando = i.faltam < 0
+        ? (i.faltam === -1 ? 'venceu ontem' : `venceu há ${-i.faltam} dias`)
+        : i.faltam === 0 ? 'vence hoje'
+          : i.faltam === 1 ? 'vence amanhã'
+            : `vence em ${i.faltam} dias`;
       try {
         new Notification(`${i.titulo} ${quando}`, {
           body: `${i.sub}${i.valor ? ' · ' + brl(i.valor) : ''}`,
@@ -139,18 +155,27 @@ const Avisos = (() => {
     ];
     itens.forEach((i, n) => {
       const fim = semTraco(toISO(addDays(fromISO(i.data), 1)));
+      /* Item já vencido: o alarme calculado (N dias antes de uma data que já
+         passou) também já passou, então nenhum celular vai disparar nada por
+         ele — limitação do formato, um alarme não "atrasa a ativação" para
+         o instante da importação. O evento em si continua entrando no
+         calendário (é registro melhor que nada), mas o texto precisa deixar
+         claro que já venceu, senão parece um vencimento normal de uma data
+         estranha no passado. */
+      const venceu = daysUntil(i.data) < 0;
+      const titulo = venceu ? `${i.titulo} (venceu)` : i.titulo;
       linhas.push(
         'BEGIN:VEVENT',
         `UID:${semTraco(i.data)}-${n}-autolog@brennoc-bit.github.io`,
         `DTSTAMP:${agora}`,
         `DTSTART;VALUE=DATE:${semTraco(i.data)}`,
         `DTEND;VALUE=DATE:${fim}`,
-        `SUMMARY:${escapar(`${i.titulo} — ${i.sub}`)}`,
-        `DESCRIPTION:${escapar(i.valor ? `Valor previsto: ${brl(i.valor)}` : 'Registrado no Autolog')}`,
+        `SUMMARY:${escapar(`${titulo} — ${i.sub}`)}`,
+        `DESCRIPTION:${escapar((venceu ? 'Venceu e ainda não foi pago. ' : '') + (i.valor ? `Valor previsto: ${brl(i.valor)}` : 'Registrado no Autolog'))}`,
         'BEGIN:VALARM',
         `TRIGGER:-P${Math.max(0, Math.round(diasAntes))}D`,
         'ACTION:DISPLAY',
-        `DESCRIPTION:${escapar(i.titulo)}`,
+        `DESCRIPTION:${escapar(titulo)}`,
         'END:VALARM',
         'END:VEVENT');
     });

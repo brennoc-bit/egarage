@@ -11,15 +11,20 @@ const UI = (() => {
 
   const mono = (txt, style) => h('div', { class: 'mono', style: Object.assign({ fontSize: 11 }, style || {}) }, txt);
 
-  function kv({ k, v, sub, cor, onClick }) {
+  function kv({ k, v, sub, cor, destaque, onClick }) {
     // Estas células foram desenhadas para número curto ("18.420", "R$ 1,38").
     // Quando cai texto longo — o e-mail da conta, no Perfil —, 20px de Archivo
     // 700 não cabem em meia tela e o valor saía cortado no meio da palavra.
     // Acima de 14 caracteres o corpo diminui e o valor passa a caber inteiro.
     const longo = String(v == null ? '' : v).length > 14;
+    // `destaque`: a célula que deveria fazer a pessoa reagir (hoje só "Gasto
+    // do mês"), numa grade onde todo número tem o mesmo peso por padrão.
+    // Maior, não colorida — a cor de ênfase já é usada demais no app
+    // (marca, ação, alerta) para virar também "isto é importante".
+    const classe = 'v' + (longo ? ' longo' : '') + (destaque ? ' destaque' : '');
     const conteudo = [
       h('div', { class: 'k' }, k),
-      h('div', { class: 'v' + (longo ? ' longo' : ''), style: cor ? { color: cor } : null }, v),
+      h('div', { class: classe, style: cor ? { color: cor } : null }, v),
       sub ? h('div', { class: 'sub' }, sub) : null,
     ];
     return onClick

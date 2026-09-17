@@ -12,7 +12,13 @@
   --mono: "Archivo Mono", "JetBrains Mono", ui-monospace, monospace;
   --c-ok: #2d8a4a;
   --c-warn: #e0a91b;
-  --c-bad: var(--color-accent);
+  /* Era `var(--color-accent)` — o mesmo vermelho do cabeçalho, do FAB, de
+     todo botão primário do app. Quando a pessoa finalmente chegava no item
+     que realmente importa (uma pendência vencida), a cor já tinha perdido o
+     significado de tanto aparecer em coisa que não é alarme nenhum. Este é
+     mais escuro e mais fechado — lido como "atenção", não como "marca" —
+     mesmo ao lado do accent em telas onde os dois convivem (Perfil, Docs). */
+  --c-bad: #b3261e;
   --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
 
   /* DUAS ESPESSURAS DE TRAÇO, E O MOTIVO DE SEREM DUAS
@@ -236,6 +242,9 @@ button, .contato, .chip, .list-item, .maint-row, .kv, .headline-lockup {
 }
 /* Marcado pelo `UI.kv` quando o valor é longo demais para o corpo grande. */
 .kv .v.longo { font-size: 14px; font-weight: 600; line-height: 1.35; }
+/* Marcado pelo `UI.kv` na célula que deveria puxar o olho primeiro numa
+   grade onde, por padrão, todo número pesa igual. */
+.kv .v.destaque { font-size: 24px; }
 .kv .sub { font-size: 11px; margin-top: 4px; color: var(--muted); }
 button.kv { text-align: left; background: none; border-top: 0; border-bottom: 0; border-left: 0; font: inherit; color: inherit; cursor: pointer; }
 

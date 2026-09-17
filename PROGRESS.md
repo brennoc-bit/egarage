@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-17 — passo 7 de 7: o app preparado para a loja (falta a conta e o domínio)
+**Última atualização:** 2026-09-17 — auditoria de design/produto e as 5 correções de maior alavancagem
 
 ---
 
@@ -805,6 +805,95 @@ Kickpush saiu do repositório e vive em pasta própria.
 ---
 
 ## Em andamento
+
+### Auditoria de design/produto ✅ as 5 correções de maior alavancagem
+
+Pedido do próprio dono, sem estar em nenhum dos 7 passos: um pente-fino
+honesto no app inteiro, buscando não "está quebrado" mas "alguém pagaria por
+isto?". Rodou uma auditoria de 8 lentes independentes (acabamento visual,
+interação, confiança, hierarquia, emoção, tom de voz, onboarding, benchmark
+contra apps pagos) sobre um dossiê visual medido de verdade no app rodando,
+seguida de síntese em 20 temas e três personas de julgamento (dono cético,
+designer de craft, PM com orçamento apertado) repriorizando de forma
+independente. Onde as três convergiram, virou prioridade.
+
+**Os cinco primeiros — implementados e testados, um a um:**
+
+**1. O sistema de avisos apagava sozinho a pendência que mais importa.**
+`js/avisos.js`, função `proximos(dias)`, filtrava `faltam >= 0` — e `faltam`
+é negativo para item vencido. Um boleto que passasse da data sumia de **toda**
+forma de lembrete: nem a notificação ao abrir o app, nem o `.ics` exportado
+avisavam dele. Era o oposto exato da promessa da boas-vindas ("o que vence,
+antes de virar multa"). Removido o `>= 0`; vencido agora renotifica todo dia
+(de propósito — a marca em `vistos` se limpa sozinha porque a data do item é
+sempre "passada") e o `.ics` marca `(venceu)` no título e na descrição do
+evento, já que um alarme calculado para uma data que já passou não dispara em
+nenhum celular. Testado: item vencido há 9 dias aparece em `proximos()`,
+notifica com "venceu há 9 dias" (não "vence em -9 dias"), e o `.ics` real
+gerado carrega a marca. A janela de "avisar X dias antes" continua valendo só
+para o futuro — testado com janela de 3 dias e um item vencido há 9.
+
+**2. A tela de Seguradora mentia sobre onde os dados vão.** Dizia "Tudo isso
+fica salvo apenas neste aparelho. Nada é enviado para lugar nenhum" — falso:
+`apolice` é a 17ª coluna sincronizada em `nuvem.js` (`COLUNAS.documentos`), e
+a própria `privacidade.html` já lista seguro como dado que vai para o
+servidor. Corrigido para "Isso vai para a sua conta, como o resto da
+garagem...". No caminho, achei **duas mentiras iguais que não estavam na
+auditoria**: Perfil › Dados dizia "Tudo fica salvo apenas neste navegador
+(localStorage)" — duas seções abaixo do próprio painel de sincronização da
+mesma tela — e o cadastro dizia "Nome, CPF e endereço do proprietário não são
+lidos" quando na verdade a foto inteira vai para o Gemini e só a devolução
+desses campos é bloqueada. As três corrigidas e testadas na tela real.
+
+**3. A grade de métricas da Início tratava tudo com o mesmo peso.** Duas
+coisas verificadas e uma descartada por não reproduzir: (a) "Preço médio"
+nunca distinguia "média do que você realmente pagou" de "nosso palpite" —
+diferente de "Consumo médio", ao lado, que já fazia essa distinção.
+`Calc.precoMedioLitro` passou a devolver `{valor, real}` como `consumoMedio`
+já fazia, e a Início ganhou o mesmo sub-texto condicional para os dois. (b)
+"Gasto do mês" — o número que devia fazer reagir — tinha a mesma tipografia
+de "Preço médio", um dado de contexto; `UI.kv` ganhou um parâmetro `destaque`
+(maior, sem cor nova — a cor de ênfase já é usada demais) aplicado só a ele.
+A alegação original de que os dois caíam em "0,0"/"R$ 0,00" **não se
+confirmou**: testado com cadastro mínimo (só modelo + odômetro, a promessa
+"leva um minuto"), ambos caem no padrão sensato (11 km/L, R$ 5,89-ish
+regional), nunca zero — o valor real é a falta de rótulo "estimado", já
+corrigida no item (a).
+
+**4. A ordem não seguia urgência, embora o app já soubesse fazer isso em
+outro lugar.** Documentos listava os cartões na ordem fixa em que
+`docsInformados` os cria (IPVA, Licenciamento, Seguro, Revisão sempre por
+último), não por quão urgente cada um é. Novo `Calc.ordemUrgenciaDoc(s)`
+(vencido primeiro, por quão vencido; depois "vence em breve", por
+proximidade; por último "em dia" — testado nos três níveis com dados reais)
+ordena só a lista de cartões, sem mexer nas abas de filtro nem em
+`docsStatus`. Na Início, "Próximos vencimentos" — antes sempre penúltimo
+bloco, atrás de seis números passivos — sobe para logo abaixo do cabeçalho
+quando existe algo com status "bad" de verdade; "vence em breve" continua no
+lugar de sempre, não fura fila por qualquer coisa. Testado nos dois estados,
+sem duplicar o bloco.
+
+**5. O vermelho de alarme era o vermelho da marca, em toda tela.** `--c-bad`
+era literalmente `var(--color-accent)` — o mesmo do cabeçalho, do FAB, de
+todo botão primário. Virou `#b3261e`, um vermelho mais fechado e
+dissociado, perceptível ao lado do accent nas telas onde os dois convivem
+(confirmado nas capturas). Dois usos que só ganham a nova cor por já lerem
+`COR.bad`/`--c-bad` simbolicamente, sem nenhum código extra tocado. Mais dois
+ajustes pontuais: o texto "Vencido há 9 d" nos cartões de Documentos ganhou
+negrito + a cor de alarme (antes tinha o mesmo peso de "Vence em 45 d", só o
+pontinho de 8px mudava); e "editar"/"excluir" na lista de veículos do Perfil
+— antes pixel a pixel idênticos — viraram cinza neutro e vermelho de alarme,
+respectivamente.
+
+**O que a auditoria completa recomendou e que ainda não entrou:** os outros
+15 temas do backlog (streak de constância, comparação de números com
+histórico/região, marcos emocionais com reconhecimento real, `tabular-nums`
+para os dígitos não "dançarem" ao atualizar, entre outros) e o que ficou
+deliberadamente fora por exigir infraestrutura nova (Web Push real, proxy
+para a leitura por foto não depender da chave do usuário) — ambos
+contradizem a restrição de projeto de zero backend próprio.
+
+`sw.js` em `autolog-v36`. Ainda não testado no aparelho.
 
 ### Passo 7 de 7 ◐ o app preparado para a loja
 
@@ -1960,6 +2049,35 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
   e não existe.
 - ~~**Trocar a senha do protótipo.**~~ Decidido em 2026-09-10: `2047` é número
   inventado só para o protótipo, não usado em lugar nenhum. Fica como está.
+
+### Do pente-fino de design (2026-09-17) — os 5 primeiros já entraram
+
+A auditoria completa (8 lentes + 3 personas de julgamento) chegou a 20 temas;
+os 5 de maior convergência estão na seção acima. O resto do backlog, na ordem
+que o julgamento sugeriu:
+
+- **Reconhecer marcos reais** (primeiro veículo, quitar financiamento,
+  abastecimento fora do padrão) em vez do mesmo toast neutro de qualquer
+  edição de campo — o app já calcula os números que faltam para isso.
+- **Comparar números com alguma referência**: Custo/km e o toast de
+  abastecimento nunca dizem "acima/abaixo de quê" — nem do seu próprio
+  histórico (já calculado para o Histórico), nem do preço regional da ANP (já
+  consultado, hoje só usado para preencher campo).
+- **`UI.botaoLeitura`** (desabilita, pulsa, reverte no `finally`) já existe e
+  funciona bem — só falta estendê-lo a `consultarFipe`, `regiaoPorGPS/porCEP`
+  e aos estados de `blocoSincronia`, que hoje só têm texto estático.
+- **Campo vazio na Ficha do veículo** usa o mesmo peso do dado real
+  (`v.renavam || '—'`); a Seguradora já resolve isso certo com o componente
+  `dado()` que esconde a linha em vez de mostrar travessão.
+- **`font-variant-numeric: tabular-nums`** nos números que mudam (odômetro,
+  R$ do mês, R$/km) — hoje ausente em todo o CSS, então os dígitos podem
+  "dançar" um pixel a cada atualização.
+- **Sheet fecha em corte seco** (sem transição de saída, ao contrário da
+  entrada) e a abertura do app é HTML vazio até o JS carregar, sem esqueleto.
+- **Streak/indicador de constância** — proposta nova, não conserto; entra
+  depois do resto, se entrar.
+- **Export em CSV/PDF** para mostrar a terceiro (comprador, contador,
+  seguro) — hoje só existe o `.json` de backup/migração.
 
 ### Médios
 

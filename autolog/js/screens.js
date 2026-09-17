@@ -17,6 +17,7 @@ Screens.inicio = (v) => {
   const p = Calc.panorama(v);
   const cpk = p.custoKm;
   const consumo = Calc.consumoMedio(v);
+  const preco = Calc.precoMedioLitro(v);
 
   const seletor = h('div', { class: 'segrow' },
     Store.veiculos().map((x) => h('button', {
@@ -26,45 +27,13 @@ Screens.inicio = (v) => {
     h('button', { onClick: () => Acoes.novoVeiculo() }, '+ Novo'));
 
   const vencimentos = Calc.proximosVencimentos(v, 4);
-
-  const corpo = h('div', null,
-    seletor,
-    UI.foto(v, { onTrocar: () => Acoes.trocarFoto(v) }),
-
-    // O cabeçalho é a porta da ficha completa: o nome do veículo é onde a mão
-    // vai quando se quer "ver os dados dele", então não precisa de outro botão.
-    h('button', { class: 'headline-lockup', onClick: () => App.ir('ficha') },
-      UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
-      h('h3', null, v.modelo),
-      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' }),
-      h('div', { class: 'lockup-pe' }, UI.mono('ver ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
-
-    UI.row(
-      UI.kv({
-        k: 'Odômetro', v: num(p.odometro), sub: `+ ${num(p.kmMes)} km este mês`,
-        onClick: () => Acoes.atualizarOdometro(v),
-      }),
-      UI.kv({
-        k: 'Custo/km', v: cpk.valor ? brl(cpk.valor) : '—', sub: 'média 30 dias',
-        onClick: () => App.ir('custos', { custos: 'km' }),
-      })),
-    UI.row(
-      UI.kv({ k: 'Gasto do mês', v: brl0(p.gastoMes), sub: 'todos os lançamentos' }),
-      UI.kv({
-        k: 'Saúde geral', v: p.diag.rotulo, cor: p.diag.cor,
-        sub: resumoDiag(p.diag),
-        onClick: () => App.ir('manutencao'),
-      })),
-    UI.row(
-      UI.kv({
-        k: 'Consumo médio', v: `${num(consumo.valor, 1)} km/L`,
-        sub: consumo.real ? 'medido nos abastecimentos' : 'estimado · sem histórico',
-      }),
-      UI.kv({ k: 'Preço médio', v: brl(Calc.precoMedioLitro(v)), sub: 'por litro' })),
-
-    blocoCustoMensal(v),
-    blocoPrevisao(v),
-
+  // Urgente de verdade (vencido, ou item "bad" de manutenção) sobe para logo
+  // abaixo do cabeçalho — quem abre o app rápido, o uso mais comum, pode
+  // nunca rolar até o penúltimo bloco da tela para ver o que precisa de ação
+  // agora. Vencer em breve (o "warn" comum) continua no lugar de sempre: não
+  // é toda vez que algo se aproxima que merece furar a fila.
+  const urgente = vencimentos.some((it) => it.cor === COR.bad);
+  const blocoVencimentos = h('div', null,
     UI.sectHd('Próximos vencimentos', 'ver todos ›', () => App.ir('docs')),
     vencimentos.length ? vencimentos.map((it) => h('button', {
       class: 'list-item',
@@ -78,7 +47,52 @@ Screens.inicio = (v) => {
         h('div', { style: { fontSize: 13, fontWeight: 600 } }, it.titulo),
         UI.mono(it.valor, { marginTop: 2, color: 'var(--muted)' })),
       UI.dot(it.cor),
-    )) : UI.vazio('Nada vencendo por aqui. Bom sinal.'),
+    )) : UI.vazio('Nada vencendo por aqui. Bom sinal.'));
+
+  const corpo = h('div', null,
+    seletor,
+    UI.foto(v, { onTrocar: () => Acoes.trocarFoto(v) }),
+
+    // O cabeçalho é a porta da ficha completa: o nome do veículo é onde a mão
+    // vai quando se quer "ver os dados dele", então não precisa de outro botão.
+    h('button', { class: 'headline-lockup', onClick: () => App.ir('ficha') },
+      UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
+      h('h3', null, v.modelo),
+      UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' }),
+      h('div', { class: 'lockup-pe' }, UI.mono('ver ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
+
+    urgente ? blocoVencimentos : null,
+
+    UI.row(
+      UI.kv({
+        k: 'Odômetro', v: num(p.odometro), sub: `+ ${num(p.kmMes)} km este mês`,
+        onClick: () => Acoes.atualizarOdometro(v),
+      }),
+      UI.kv({
+        k: 'Custo/km', v: cpk.valor ? brl(cpk.valor) : '—', sub: 'média 30 dias',
+        onClick: () => App.ir('custos', { custos: 'km' }),
+      })),
+    UI.row(
+      UI.kv({ k: 'Gasto do mês', v: brl0(p.gastoMes), sub: 'todos os lançamentos', destaque: true }),
+      UI.kv({
+        k: 'Saúde geral', v: p.diag.rotulo, cor: p.diag.cor,
+        sub: resumoDiag(p.diag),
+        onClick: () => App.ir('manutencao'),
+      })),
+    UI.row(
+      UI.kv({
+        k: 'Consumo médio', v: `${num(consumo.valor, 1)} km/L`,
+        sub: consumo.real ? 'medido nos abastecimentos' : 'estimado · sem histórico',
+      }),
+      UI.kv({
+        k: 'Preço médio', v: brl(preco.valor),
+        sub: preco.real ? 'medido nos abastecimentos' : 'estimado · sem histórico',
+      })),
+
+    blocoCustoMensal(v),
+    blocoPrevisao(v),
+
+    urgente ? null : blocoVencimentos,
 
     UI.cta([
       { label: 'Novo lançamento', icone: '+', onClick: () => Acoes.registrarLancamento(v) },
@@ -491,7 +505,13 @@ Screens.docs = (v) => {
   const filtro = App.sub.docs || 'todos';
   const status = Calc.docsStatus(v);
   const todos = filtro === 'todos';
-  const visiveis = todos ? status : status.filter((s) => s.doc.id === filtro);
+  // A lista de cartões segue urgência, não a ordem em que docsInformados os
+  // criou (IPVA, Licenciamento, Seguro, Revisão sempre por último) — senão um
+  // documento vencido podia ficar depois de um em dia. As abas de filtro, o
+  // total do ciclo e o resto da tela continuam na ordem original: só a lista
+  // de cartões precisa mudar quando o que importa muda de lugar.
+  const visiveis = (todos ? status : status.filter((s) => s.doc.id === filtro))
+    .slice().sort((a, b) => Calc.ordemUrgenciaDoc(a) - Calc.ordemUrgenciaDoc(b));
   const anuais = Calc.compromissosAnuais(v, visiveis);
   // A revisão não se "paga" aqui — ela se agenda; entra como CTA alternativa.
   const pagaveis = visiveis.filter((s) => s.pendente > 0 && s.acao && s.doc.tipo !== 'km');
@@ -524,7 +544,14 @@ Screens.docs = (v) => {
     visiveis.map((s) => (s.doc.tipo === 'seguro' ? cartaoSeguro(v, s) : h('div', { style: { borderTop: '1px solid var(--linha)', padding: 16 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 10 } },
         h('span', { class: 'status-tag' }, UI.dot(s.cor, 8), s.tag),
-        UI.mono(s.prazo, { fontSize: 11, letterSpacing: '.08em', color: 'var(--muted)' })),
+        // "Vencido há 9 d" tinha o mesmo peso tipográfico de "Vence em 45 d"
+        // — só a cor do pontinho de 8px avisava a diferença. Vencido ganha
+        // negrito e a cor de alarme; o resto continua discreto, como sempre foi.
+        UI.mono(s.prazo, {
+          fontSize: 11, letterSpacing: '.08em',
+          color: s.status === 'bad' ? COR.bad : 'var(--muted)',
+          fontWeight: s.status === 'bad' ? 700 : 400,
+        })),
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 } },
         h('div', { style: { fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-.01em', flex: 1 } }, s.titulo),
         UI.mono(s.valorTexto, { fontSize: 13, fontWeight: 600 })),
@@ -775,8 +802,18 @@ Screens.seguro = (v) => {
     UI.cta([
       { label: 'Editar dados do seguro', icone: '✎', pri: true, onClick: () => App.ir('seguro-editar') },
     ]),
+    /* Aqui dizia "fica salvo apenas neste aparelho. Nada é enviado para
+       lugar nenhum" — falso desde que a sincronização (passo 4) passou a
+       levar a apólice inteira para a conta, junto com todo o resto de
+       `documentos` (nuvem.js, coluna `apolice`). A própria privacidade.html
+       já lista seguro como dado que "vai para o servidor"; só esta tela
+       dizia o contrário — e é a tela que a pessoa abre depois de um
+       acidente, o pior momento possível para descobrir que o app não fala a
+       verdade sobre onde os dados dela estão. */
     h('div', { class: 'note', style: { paddingBottom: 24 } },
-      'Tudo isso fica salvo apenas neste aparelho. Nada é enviado para lugar nenhum.'));
+      'Isso vai para a sua conta, como o resto da garagem — é o que garante '
+      + 'você conseguir ligar para a seguradora até de outro celular. '
+      + 'Não compartilhamos com ninguém além disso.'));
 
   return { kicker: a.seguradora || 'Seguro', titulo: 'Seguradora', corpo, voltar: 'docs' };
 };
@@ -1481,9 +1518,15 @@ Screens.veiculo = (atual) => {
         api: { preencher: preencherDoDocumento },
         mapear: (dd) => dd,
       }),
+      /* "Não são lidos" era mais forte que a realidade: a foto inteira vai
+         para o Gemini, e nome/CPF/endereço podem estar bem legíveis nela — o
+         que o pedido faz é proibir explicitamente que o modelo os devolva.
+         "Ignorados de propósito" descreve o comportamento de verdade, e é a
+         mesma frase que privacidade.html já usa. */
       h('div', { class: 'hint', style: { marginTop: 8, marginBottom: 14 } },
         'A foto vai para o Gemini e não fica guardada. Nome, CPF e endereço do '
-        + 'proprietário não são lidos — o app não guarda dado pessoal.'),
+        + 'proprietário são ignorados de propósito, mesmo legíveis na imagem — '
+        + 'o app não guarda dado pessoal.'),
       dupla({ name: 'placa', label: 'Placa', placeholder: 'ABC1D23', maiusculas: true },
             { name: 'renavam', label: 'Renavam', tipo: 'digitos', digitos: 11, placeholder: '00000000000' }),
       campo({ name: 'chassi', label: 'Chassi', maiusculas: true, hint: 'Opcional — útil para consulta em seguradora e concessionária.' })),
@@ -1796,13 +1839,18 @@ Screens.perfil = () => {
       },
         h('div', { style: { fontSize: 14, fontWeight: 600 } }, `${x.marca} ${x.modelo}`),
         UI.mono(`${x.ano} · ${x.placa || 'sem placa'} · ${num(x.odometro)} km`, { marginTop: 2, color: 'var(--muted)' })),
-      h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.editarVeiculo(x) }, 'editar'),
+      /* Antes os dois eram idênticos — mesma classe, mesma cor de marca,
+         lado a lado. "editar" é rotina (reversível, sem sheet de confirmação
+         depois); "excluir" é o único ponto desta lista que apaga histórico —
+         merece uma cor que a pessoa já aprendeu a associar a "isto pesa" em
+         vez da cor que ela vê em toda tela do app. */
+      h('button', { class: 'btn btn-ghost', style: { fontSize: 11, color: 'var(--muted)' }, onClick: () => Acoes.editarVeiculo(x) }, 'editar'),
       /* O "excluir" sumia quando restava um veículo só. Fazia sentido enquanto
          a tela de garagem vazia era um beco sem saída — e o botão de cadastrar
          que havia nela nem funcionava. Agora existe a tela de boas-vindas, com
          caminho de volta, então esconder o botão só impede quem vendeu o único
          carro de tirá-lo da garagem. */
-      h('button', { class: 'btn btn-ghost', style: { fontSize: 11 }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir'))),
+      h('button', { class: 'btn btn-ghost', style: { fontSize: 11, color: COR.bad }, onClick: () => Acoes.removerVeiculo(x) }, 'excluir'))),
 
     UI.sectHd('Onde você dirige'),
     blocoRegiao(),
@@ -1822,8 +1870,16 @@ Screens.perfil = () => {
       'Com a chave configurada, as telas de abastecimento, odômetro e lançamento ganham um botão para fotografar a nota, a bomba ou o painel — o Gemini lê e preenche os campos, e você confere antes de salvar. A chave fica só neste aparelho e não entra no arquivo de exportação.'),
 
     UI.sectHd('Dados'),
+    /* Mesma mentira da tela de Seguradora, achada ao consertar aquela: isto
+       aqui é texto de antes da conta existir (passo 3), e ninguém atualizou
+       quando a garagem passou a sincronizar. A prova está na própria tela,
+       duas seções acima — "SINCRONIZAÇÃO". Exportar continua tendo função
+       de verdade (backup antes de apagar a conta, levar para um aparelho
+       sem esperar a rede), só não é mais o único caminho. */
     h('div', { class: 'note' },
-      'Tudo fica salvo apenas neste navegador (localStorage). Exporte um arquivo .json para levar a garagem para outro aparelho.'),
+      'Com a conta, a garagem já vai para os seus outros aparelhos sozinha. '
+      + 'Exportar serve para guardar uma cópia local ou levar os dados para '
+      + 'fora do app — antes de apagar a conta, por exemplo.'),
     UI.cta([
       { label: 'Exportar', icone: '↓', onClick: () => Acoes.exportar() },
       { label: 'Importar', icone: '↑', onClick: () => Acoes.importar() },
