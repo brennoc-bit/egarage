@@ -122,6 +122,10 @@ const App = {
   },
 
   render({ topo = false } = {}) {
+    /* Uma chamada só, no topo, cobre as três saídas desta função: a leitura
+       da profundidade acontece num microtask, depois de o desenho terminar. */
+    if (typeof Voltar !== 'undefined') Voltar.sincronizar();
+
     const hd = $('#app-hd');
     const tela = $('#screen');
     const nav = $('#nav');

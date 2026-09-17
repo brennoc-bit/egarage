@@ -87,12 +87,18 @@ body {
   font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
   text-transform: uppercase; margin-bottom: 6px; opacity: .85;
 }
+/* O `min-height` é de acessibilidade, não de estética: este botão media 30px
+   de altura. Passou despercebido na varredura de alvos de toque porque aquela
+   regra mira `.screen .btn`, e ele mora no cabeçalho. Dentro do app instalado
+   ele pesa mais: o relatório de pré-lançamento da Play Store reclama de alvo
+   de toque abaixo de 48dp. */
 .hd-btn {
   flex: none; border: 1px solid color-mix(in srgb, #fff 45%, transparent);
   background: transparent; color: var(--color-bg);
   font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
-  text-transform: uppercase; padding: 8px 12px; border-radius: 100px;
+  text-transform: uppercase; padding: 8px 14px; border-radius: 100px;
   cursor: pointer;
+  display: inline-flex; align-items: center; min-height: 44px;
 }
 .hd-btn:active { background: color-mix(in srgb, #fff 18%, transparent); }
 

@@ -1,0 +1,8 @@
+# Arquivo de terceiro, guardado byte a byte: o SHA-256 anotado em
+# autolog/js/vendor/LEIA-ME.md precisa continuar valendo depois de um clone,
+# inclusive no outro computador. Sem isto o Git troca LF por CRLF na cópia de
+# trabalho e a conferência passa a acusar diferença que não existe.
+autolog/js/vendor/supabase.js -text
+
+# Fontes são binárias. O Git costuma detectar, mas aqui não é palpite.
+*.woff2 binary

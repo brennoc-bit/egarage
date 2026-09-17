@@ -21,6 +21,12 @@ const Conta = (() => {
   const URL_PROJETO = 'https://zhknfipxjvkthkbzgguf.supabase.co';
   const CHAVE_PUBLICA = 'sb_publishable_Nha_9zh8kX8GmuKWE1ppAQ__Yx1pG-l';
 
+  /* Onde o supabase-js guarda a sessão. O nome é derivado da URL do projeto
+     porque é assim que a biblioteca o monta — escrever à mão seria criar duas
+     verdades que um dia discordam. */
+  const REF_PROJETO = URL_PROJETO.replace(/^https?:\/\//, '').split('.')[0];
+  const CHAVE_SESSAO = `sb-${REF_PROJETO}-auth-token`;
+
   let cliente = null;
   let sessaoAtual = null;
   let pronto = false;
@@ -58,9 +64,12 @@ const Conta = (() => {
     } catch (e) {
       sessaoAtual = null;
     }
+    if (!sessaoAtual) sessaoAtual = sessaoGuardada();
 
     cliente.auth.onAuthStateChange((evento, sessao) => {
-      sessaoAtual = sessao || null;
+      // Mesmo raciocínio do arranque: sem rede, a biblioteca avisa "sem
+      // sessão" e não pode ser levada ao pé da letra.
+      sessaoAtual = sessao || sessaoGuardada();
       ouvintes.forEach((fn) => { try { fn(evento, sessao); } catch (e) { /* ignora */ } });
     });
 
@@ -72,6 +81,46 @@ const Conta = (() => {
     }
 
     pronto = true;
+  }
+
+  /* A SESSÃO QUE SOBREVIVE À FALTA DE SINAL
+
+     O token de acesso vale uma hora. Passada ela, `getSession()` tenta renovar
+     — e sem rede a renovação falha, a biblioteca devolve "sem sessão", e o app
+     mostrava a tela de login com a garagem inteira do outro lado do vidro.
+     Num app de carro isso acontece no lugar mais provável do mundo: o
+     subsolo do estacionamento.
+
+     Como saber se é falta de rede ou sessão realmente encerrada, sem depender
+     do nome da classe de erro (que a minificação troca a cada versão)? Pelo
+     que a própria biblioteca faz com o token guardado. Medido nas duas
+     situações, com `fetch` falsificado:
+
+       sem rede           → erro status 0   → o token CONTINUA no armazenamento
+       servidor recusou   → erro status 400 → o token É APAGADO
+
+     Ou seja: "não veio sessão, mas o token ainda está lá" só pode significar
+     falta de rede. Quando o servidor de fato encerra a sessão, não há o que
+     recuperar aqui — e é isso que queremos.
+
+     O token recuperado está vencido, então nada sobe para o servidor enquanto
+     não houver rede; a camada de sincronização já sabe esperar. Assim que a
+     rede voltar, a renovação acontece sozinha e este remendo sai de cena. */
+  function sessaoGuardada() {
+    try {
+      let bruto = localStorage.getItem(CHAVE_SESSAO);
+      if (!bruto) return null;
+      // Versões recentes guardam em base64 com este prefixo.
+      if (bruto.startsWith('base64-')) {
+        bruto = new TextDecoder().decode(
+          Uint8Array.from(atob(bruto.slice(7)), (c) => c.charCodeAt(0)));
+      }
+      const s = JSON.parse(bruto);
+      const sessao = s && s.currentSession ? s.currentSession : s;
+      return (sessao && sessao.access_token && sessao.user) ? sessao : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   const disponivel = () => !falhaAoCarregar;

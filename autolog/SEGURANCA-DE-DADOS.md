@@ -21,6 +21,11 @@ chamadas externas de `js/`.
 > Quando o domínio próprio estiver de pé, trocar os dois — e **não** apagar o
 > endereço antigo do GitHub Pages, que pode estar em cache da revisão do Google.
 
+> **Leia [`PUBLICAR-NA-PLAY.md`](PUBLICAR-NA-PLAY.md) antes de decidir o
+> domínio.** A origem do app entra no pacote da TWA e **não pode mudar depois**
+> sem apagar o que está guardado no aparelho de quem instalou. É a decisão de
+> maior efeito do passo 7, e ela vem antes de qualquer envio.
+
 O Google exige **dois caminhos** para excluir conta: dentro do app e por um
 endereço web, para quem desinstalou. Os dois existem:
 
@@ -130,6 +135,28 @@ antes de salvar — nunca grava sozinho.
 **"Vocês vendem ou usam os dados para publicidade?"**
 Não. Não há terceiro recebendo dados para fins comerciais, não há SDK de
 anúncio e não há rastreamento entre apps.
+
+---
+
+## Dois terceiros que sumiram (e por que isso não muda o formulário)
+
+Em setembro de 2026, ao preparar a publicação, apareceu que **toda abertura do
+app** buscava a fonte no Google Fonts e a biblioteca do Supabase no jsDelivr.
+Os dois recebiam o IP e o navegador da pessoa, e **nenhum dos dois estava na
+política de privacidade** — o levantamento do passo 6 varreu as chamadas de
+`js/`, e estes moravam no `<head>` do `index.html` e num `@import` de CSS.
+
+Os dois arquivos passaram a ser servidos pelo próprio app. Melhor que
+acrescentar duas linhas à política: agora não há o que declarar.
+
+**O formulário não muda por causa disso.** IP recebido por um CDN para entregar
+um arquivo estático não é um dos tipos que o Google pede para declarar, e
+"coletado" no vocabulário deles significa sair do aparelho e ser guardado. Se
+fosse para marcar alguma coisa, seria antes desta mudança, não depois.
+
+A lição fica registrada para a próxima revisão da política: **procurar também
+no HTML e no CSS**, não só no JavaScript. Um `<link>` e um `@import` são
+requisições de rede como qualquer outra.
 
 ---
 

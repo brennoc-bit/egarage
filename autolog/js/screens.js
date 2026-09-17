@@ -986,8 +986,13 @@ function mediaDaRegiao(r, refs) {
   return h('div', { class: 'hint', style: { marginTop: -6 } },
     `${Regiao.descricaoDoNivel(p)}: `,
     h('button', {
+      /* Link dentro de frase, não botão: não dá para engordá-lo sem estufar o
+         parágrafo. O padding cresce a área de toque de 23px para perto de 44,
+         e a margem negativa devolve o espaço ao layout — cresce o alvo sem
+         mexer no desenho. */
       style: {
-        background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer',
+        background: 'none', border: 0, font: 'inherit', cursor: 'pointer',
+        padding: '10px 4px', margin: '-10px -4px',
         color: 'var(--color-accent)', fontWeight: 700, textDecoration: 'underline',
       },
       onClick: () => {

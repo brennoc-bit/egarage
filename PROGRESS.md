@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-13 — passo 6 de 7: privacidade, exclusão de conta e limpeza das lápides
+**Última atualização:** 2026-09-17 — passo 7 de 7: o app preparado para a loja (falta a conta e o domínio)
 
 ---
 
@@ -806,6 +806,162 @@ Kickpush saiu do repositório e vive em pasta própria.
 
 ## Em andamento
 
+### Passo 7 de 7 ◐ o app preparado para a loja
+
+O que faltava para o Autolog virar app de loja não era embrulho: era o
+comportamento que só existe **fora** do navegador. Achei três defeitos, e os
+três eram invisíveis por aqui.
+
+O guia completo da publicação — decisões, ordem, textos da ficha e armadilhas
+— está em [`autolog/PUBLICAR-NA-PLAY.md`](autolog/PUBLICAR-NA-PLAY.md).
+
+#### 1. O botão Voltar fechava o app
+
+No navegador, o Voltar é do navegador: sai do site, e a barra de endereço
+segue ali. Numa TWA **não existe barra de endereço nem gesto alternativo**. O
+Voltar do sistema era a única saída e fechava o Autolog de qualquer tela —
+abrir a folha de abastecimento e tocar em Voltar por reflexo, em vez de
+"Cancelar", fechava o app.
+
+A saída óbvia — empilhar uma entrada de histórico por navegação — faz quem
+passeou pelas abas precisar de oito toques para sair. Em vez disso, o app
+mantém no máximo **uma** entrada extra, uma sentinela, que só existe enquanto
+houver para onde voltar; o passo atrás é decidido pelo app:
+
+    folha aberta          -> fecha a folha
+    tela filha (ficha, …) -> volta para a aba de origem
+    outra aba             -> volta para o Início
+    Início                -> aí sim, sai do app
+
+Novo `autolog/js/voltar.js`. A tecla Esc usa o mesmo caminho.
+
+**Verificado:** doze passos de ida e volta conferidos um a um; pilha parada em
+2 entradas depois de dez navegações; o "Cancelar" tira a sentinela sem
+navegar; e recarregar parado na sentinela **não** recarrega duas vezes — o
+`history.state` sobrevive ao reload, e voltar de verdade ali recarregaria a
+página na cara do usuário.
+
+#### 2. O app não abria sem rede — o defeito mais caro dos três
+
+A biblioteca do Supabase vinha de `cdn.jsdelivr.net`, e o service worker **não
+guarda pedido de outra origem** (está escrito no `sw.js`, por projeto). Sem
+rede ela não chegava; sem ela, `Conta.disponivel()` responde `false`; e o app
+parava na tela *"Sem conexão — não consegui carregar o serviço de contas"*.
+
+Com a garagem inteira no `localStorage`, do outro lado do vidro.
+
+Isso anulava, na prática, o passo 4 inteiro: só conseguia trabalhar offline
+quem **nunca tivesse fechado o app**. E num app de carro isso acontece no
+lugar mais provável do mundo: o subsolo do estacionamento.
+
+A biblioteca passou a ser servida por nós (`js/vendor/supabase.js`), em versão
+fixa — antes o endereço era `@2`, faixa aberta, ou seja: qualquer `2.x`
+publicada no npm entrava no app de todo mundo sem ninguém apertar nada.
+Conferido byte a byte: idêntica ao que o `@2` servia naquele dia. Mudou o
+endereço, não o código.
+
+#### 3. A sessão morria junto com o sinal
+
+Com a biblioteca no lugar, restava o segundo andar do mesmo problema: o token
+de acesso vale **uma hora**. Passada ela, `getSession()` tenta renovar; sem
+rede a renovação falha, a biblioteca responde "sem sessão", e o app cai na
+tela de login.
+
+Como distinguir "sem rede" de "sessão encerrada de verdade" sem depender do
+nome da classe de erro, que a minificação troca a cada versão? Pelo que a
+própria biblioteca faz com o token guardado. Medido, com `fetch` falsificado:
+
+| Situação | Erro | Token no armazenamento |
+|---|---|---|
+| Sem rede | status **0** | **continua lá** |
+| Servidor recusou | status **400** | **é apagado** |
+
+Ou seja: *"não veio sessão, mas o token ainda está lá"* só pode significar
+falta de rede. É esse o teste que entrou no `js/conta.js`, e ele se apoia em
+comportamento medido, não em texto de mensagem.
+
+**Verificado nas duas direções**, que era o essencial: sem rede + token
+vencido, o app abre na garagem; servidor recusando, tela de login e token
+apagado. Trocar um defeito por um pior seria deixar entrar quem foi deslogado
+de verdade.
+
+#### De quebra: dois terceiros que a política não listava
+
+Procurando o que mais vinha de fora, apareceu que **toda abertura do app**
+buscava também a fonte no Google Fonts — um `<link>` no `<head>` e um
+`@import` dentro do `ds/modernist.css`.
+
+O levantamento do passo 6 varreu as chamadas de `js/` e não pegou nenhum dos
+dois. **A lição prática: procurar também no HTML e no CSS.** Um `<link>` e um
+`@import` são requisições de rede como qualquer outra.
+
+Os dois recebiam o IP e o navegador de quem abria o app. Em vez de acrescentar
+duas linhas à política, os arquivos passaram a ser servidos por nós
+(`ds/fontes.css`, 67 KB em dois subconjuntos da Archivo variável). Agora não
+há o que declarar — e offline o app abre com a cara certa, que antes não abria.
+
+**Achado que ficou de fora, de propósito:** a família `Archivo Mono`, usada em
+`--mono` para todos os rótulos em maiúsculas do app, **não existe no Google
+Fonts** — a API devolve erro. Sempre caiu na fonte monoespaçada do sistema, o
+que significa Consolas no Windows, Roboto Mono no Android, SF Mono no iPhone.
+Não mexi: o app está bonito assim, e a escolha da tipografia é sua. Mas é bom
+saber que ela hoje muda de aparelho para aparelho.
+
+#### Alvos de toque
+
+A varredura das onze rotas achou dois abaixo do mínimo: o "voltar" do
+cabeçalho, com 30px — a regra de 44px do passo de design mira `.screen .btn`, e
+ele mora no cabeçalho —, e o link "usar este" do preço da ANP, com 23px. O
+primeiro virou uma pílula de 44px; o segundo ganhou área de toque por padding
+com margem negativa, que cresce o alvo **sem mexer no parágrafo** (conferido:
+a altura da linha continua 46,5px). O relatório de pré-lançamento da Play
+Store reclama de alvo abaixo de 48dp.
+
+#### O que já está no repositório, esperando
+
+- **`.well-known/assetlinks.json`** na raiz, hoje com a lista vazia. É o
+  arquivo que tira a barra de endereço de dentro do app.
+- **`index.html` na raiz**, mandando para `./autolog/` por caminho relativo,
+  para funcionar igual em `/egarage/` e na raiz de um domínio próprio.
+- **`.nojekyll`**, para o GitHub Pages servir o `.well-known/` em vez de passar
+  tudo pelo Jekyll.
+- **`ferramentas/gerar-assetlinks.py`** e **`conferir-assetlinks.py`**. O
+  segundo faz, de fora, as quatro perguntas que o Chrome faz: responde 200 na
+  raiz, sem redirecionamento, com `Content-Type: application/json`, e com o
+  par pacote + dedo digital certo. Testado contra um TWA real de terceiro
+  (`airhorner.com`): aprova o par certo e reprova o errado.
+
+#### As duas decisões que travam o resto, e são suas
+
+**1. O domínio.** A TWA é amarrada a uma origem, e trocar de origem depois de
+publicar **apaga o que está guardado no aparelho** de quem instalou: garagem
+local, preferência de aviso, chave do Gemini, credencial da digital. Além
+disso, o `assetlinks.json` precisa responder na **raiz** do domínio, e a raiz
+de `brennoc-bit.github.io` hoje não é sua — exigiria um repositório com esse
+nome. Medido: `https://brennoc-bit.github.io/.well-known/assetlinks.json`
+responde 404.
+
+**2. O nome do pacote**, que sai do domínio e nunca muda. Ele aparece até no
+endereço da ficha da loja.
+
+E, com prazo maior que as duas: **a conta de desenvolvedor** (US$ 25 uma vez,
+com verificação de identidade) e, se valer para conta pessoal, o **teste
+fechado com 12 pessoas por 14 dias seguidos** antes de pedir acesso à
+produção. É o item mais demorado do projeto inteiro.
+
+#### Não verificado
+
+- **Nada rodou num aparelho Android dentro de uma TWA de verdade.** O botão
+  Voltar foi testado pelo `popstate`, que é o mesmo evento, mas o aparelho tem
+  a palavra final.
+- **A sincronização offline com sessão de verdade.** Testei com sessão
+  falsificada e `fetch` falsificado, o que exercita o caminho de código certo,
+  mas não substitui um celular em modo avião com conta real.
+- O `assetlinks.json` ainda não foi conferido no ar: só existirá de verdade
+  quando houver pacote e dedo digital.
+
+`sw.js` em `autolog-v35`.
+
 ### Passo 6 de 7 ✅ privacidade, exclusão de conta e limpeza das lápides
 
 #### O levantamento veio antes do texto
@@ -1389,7 +1545,8 @@ As decisões já fechadas, para não reabrir:
 **Os 7 passos até a loja:** 1) ✅ esquema e RLS · 2) ✅ login com Google · 3) ✅ `Store`
 lendo e escrevendo no Supabase · 4) ✅ sincronização offline ·
 5) ✅ boas-vindas sem dado de demonstração · 6) ✅ política de privacidade e
-Segurança de Dados · 7) TWA, assetlinks e publicação.
+Segurança de Dados · 7) ◐ TWA, assetlinks e publicação — **o app está pronto;
+o que falta é conta de desenvolvedor e domínio, e é com o usuário**.
 
 **Depois da loja, já pedido:** manutenção mais sofisticada e **manual do veículo
 com assistente** — a pessoa envia o manual e pergunta ("qual a calibragem do
@@ -1793,6 +1950,14 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
   `"conferir": true`.
 - **Acrescentar Factor e Crosser** (Yamaha) ao `dados/veiculos.json` — faltam
   no catálogo e estão entre as motos mais vendidas do país.
+- **Decidir a fonte monoespaçada.** `--mono` pede `Archivo Mono`, que **não
+  existe no Google Fonts** — a API devolve erro. Todos os rótulos em
+  maiúsculas do app caem na fonte do sistema, e por isso mudam de aparência
+  entre Windows, Android e iPhone. Duas saídas: hospedar uma mono de verdade
+  (a JetBrains Mono já está citada na cadeia de reserva, e é OFL), ou assumir
+  a do sistema de propósito e escrever isso no CSS. Hoje está por acidente.
+- **Gráfico de destaque 1024×500** para a ficha da Play Store — é obrigatório
+  e não existe.
 - ~~**Trocar a senha do protótipo.**~~ Decidido em 2026-09-10: `2047` é número
   inventado só para o protótipo, não usado em lugar nenhum. Fica como está.
 

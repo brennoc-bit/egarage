@@ -41,7 +41,8 @@ segura. Para testar o comportamento de app instalado, use o endereço do Pages.
 | Arquivo | Papel |
 | --- | --- |
 | `index.html` | Casca: cabeçalho, área de tela, navegação inferior |
-| `ds/modernist.css` | Design system Modernist, cópia fiel do projeto de design (fonte da verdade dos tokens) |
+| `ds/modernist.css` | Design system Modernist, cópia do projeto de design (fonte da verdade dos tokens). **Um desvio:** o `@import` do Google Fonts saiu daqui — ver `ds/fontes.css` |
+| `ds/fontes.css` | A Archivo servida pelo próprio app, em vez de vir do Google. O porquê está no cabeçalho do arquivo |
 | `styles.css` | Classes do canvas portadas para o app + casca responsiva |
 | `js/util.js` | Helpers de DOM, datas ISO locais e formatação pt-BR |
 | `js/store.js` | Modelo de dados, planos de manutenção por tipo, seed, persistência e mutações |
@@ -52,10 +53,15 @@ segura. Para testar o comportamento de app instalado, use o endereço do Pages.
 | `js/fipe.js` | Consulta o valor do veículo na tabela FIPE, com cache mensal |
 | `js/screens.js` | As telas, incluindo o cadastro de veículo |
 | `js/app.js` | Roteador + ações |
+| `js/voltar.js` | O botão Voltar do Android e a tecla Esc. **Só importa fora do navegador**, onde não há outra saída |
+| `js/vendor/supabase.js` | A biblioteca do Supabase, servida por nós e em versão fixa — ver `js/vendor/LEIA-ME.md` |
 | `sw.js` | Service worker: rede primeiro, cache como reserva |
 | `ferramentas/gerar-icones.py` | Gera os ícones PWA em Python puro |
 | `ferramentas/gerar-veiculos.py` | Gera o catálogo de marcas e modelos a partir da FIPE |
 | `ferramentas/gerar-precos.py` | Gera o preço médio de combustível a partir da planilha da ANP |
+| `ferramentas/baixar-fontes.py` | Rebaixa a Archivo do Google Fonts para `ds/fontes/` |
+| `ferramentas/gerar-assetlinks.py` | Escreve o `assetlinks.json` que a TWA da Play Store exige |
+| `ferramentas/conferir-assetlinks.py` | Confere, de fora, se a verificação da TWA vai passar |
 | `dados/ipva.json` | Alíquotas de IPVA e taxa de licenciamento por estado — **mantido à mão** |
 
 ## Carro e moto

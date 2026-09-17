@@ -18,7 +18,7 @@
    ========================================================================== */
 'use strict';
 
-const VERSAO = 'autolog-v33';
+const VERSAO = 'autolog-v35';
 
 // Casca do app: o suficiente para abrir e funcionar sem rede.
 const ESSENCIAIS = [
@@ -27,6 +27,14 @@ const ESSENCIAIS = [
   './styles.css',
   './manifest.json',
   './privacidade.html',
+  './ds/fontes.css',
+  // A fonte e a biblioteca do Supabase vinham de CDN e por isso não entravam
+  // aqui — o `fetch` deste arquivo ignora outra origem. Resultado: sem rede o
+  // app abria com outra fonte e parava em "Sem conexão", de garagem cheia.
+  // Agora são arquivos nossos, e entram no pré-cache como qualquer outro.
+  './ds/fontes/archivo-latin.woff2',
+  './ds/fontes/archivo-latin-ext.woff2',
+  './js/vendor/supabase.js',
   './ds/modernist.css',
   './js/util.js',
   './js/store.js',
@@ -45,6 +53,7 @@ const ESSENCIAIS = [
   './js/nuvem.js',
   './js/trava.js',
   './js/auth.js',
+  './js/voltar.js',
   './js/screens.js',
   './js/app.js',
   './icones/icone-192.png',

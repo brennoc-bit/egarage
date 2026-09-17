@@ -209,6 +209,8 @@ const UI = (() => {
   function fecharSheet() {
     const s = $('.sheet-backdrop');
     if (s) s.remove();
+    // A folha aberta é um degrau para o Voltar do Android recuar.
+    if (typeof Voltar !== 'undefined') Voltar.sincronizar();
   }
 
   /**
@@ -284,6 +286,7 @@ const UI = (() => {
 
     const primeiro = corpo.querySelector('input, select, textarea');
     if (primeiro && primeiro.type !== 'date') setTimeout(() => primeiro.focus(), 60);
+    if (typeof Voltar !== 'undefined') Voltar.sincronizar();
     return api;
   }
 
