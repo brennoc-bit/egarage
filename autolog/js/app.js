@@ -258,7 +258,7 @@ function renderSemVeiculo(hd, tela, nav) {
    inteira ("CB 300F Twister Flex", "CB 300F Twister S"), e cada versão tem
    preço diferente. Adivinhar qual é seria errar o IPVA de alguém, então
    quando há mais de uma o app pergunta — uma vez só, e guarda os códigos. */
-async function consultaFipe(tipo, dados, aoAchar) {
+async function consultaFipe(tipo, dados, aoAchar, botao) {
   const marca = String(dados.marca || '').trim();
   const modelo = String(dados.modelo || '').trim();
   const ano = Number(dados.ano) || 0;
@@ -294,22 +294,28 @@ async function consultaFipe(tipo, dados, aoAchar) {
     escolherAno(v, lista);
   };
 
-  UI.toast('Consultando a tabela FIPE…');
-  let versoes;
-  try { versoes = await Fipe.versoes(tipo, marca, modelo); }
-  catch (e) { UI.toast(e.message || 'A FIPE não respondeu'); return; }
+  /* O botão fica ocupado do primeiro fetch até o último — inclusive quando
+     a cadeia passa por "seguir" (que tem seu próprio fetch de anos). Ele se
+     libera sozinho assim que uma folha aparece (versão ou ano a escolher):
+     nesse ponto a espera passou a ser da pessoa, não da rede, e o toast
+     fixo de antes continuava "consultando" mesmo com a folha já na tela. */
+  await UI.comEspera(botao, 'Consultando…', async () => {
+    let versoes;
+    try { versoes = await Fipe.versoes(tipo, marca, modelo); }
+    catch (e) { UI.toast(e.message || 'A FIPE não respondeu'); return; }
 
-  if (versoes.length === 1) return seguir(versoes[0]);
+    if (versoes.length === 1) return seguir(versoes[0]);
 
-  UI.sheet({
-    titulo: 'Qual versão?',
-    sub: `A FIPE tem ${versoes.length} versões de ${modelo}. Cada uma vale um valor diferente.`,
-    campos: [{
-      name: 'i', label: 'Versão', tipo: 'select',
-      opcoes: versoes.map((v, i) => ({ value: String(i), label: v.nome })),
-    }],
-    acao: 'Continuar',
-    onSubmit: (d) => seguir(versoes[Number(d.i) || 0]),
+    UI.sheet({
+      titulo: 'Qual versão?',
+      sub: `A FIPE tem ${versoes.length} versões de ${modelo}. Cada uma vale um valor diferente.`,
+      campos: [{
+        name: 'i', label: 'Versão', tipo: 'select',
+        opcoes: versoes.map((v, i) => ({ value: String(i), label: v.nome })),
+      }],
+      acao: 'Continuar',
+      onSubmit: (d) => seguir(versoes[Number(d.i) || 0]),
+    });
   });
 }
 
@@ -398,15 +404,26 @@ const Acoes = {
       ],
       acao: 'Registrar',
       onSubmit: (d) => {
+        // Média de antes de somar este tanque — comparar com um número que já
+        // inclui o próprio tanque seria comparar o dado com ele mesmo.
+        const mediaAntes = Calc.consumoMedio(v);
         Store.addLancamento(v.id, {
           data: d.data, tipo: 'combustivel', titulo: 'Abastecimento',
           local: d.local, valor: d.valor, litros: d.litros, odometro: d.odometro,
         });
         App.render();
         const km = ultimo ? Math.round(d.odometro) - ultimo.odometro : 0;
-        UI.toast(km > 0 && d.litros > 0
-          ? `${num(km / d.litros, 1)} km/L neste tanque`
-          : 'Abastecimento registrado');
+        const consumoTanque = km > 0 && d.litros > 0 ? km / d.litros : null;
+        if (consumoTanque == null) { UI.toast('Abastecimento registrado'); return; }
+        // ±8%: variação normal de trânsito/estrada não deveria soar como
+        // "mudou o costume" a cada tanque — só quando destoa de verdade.
+        let comparativo = '';
+        if (mediaAntes.real) {
+          const dif = (consumoTanque - mediaAntes.valor) / mediaAntes.valor;
+          comparativo = Math.abs(dif) < 0.08 ? ' — dentro do seu costume'
+            : dif > 0 ? ' — acima do seu costume' : ' — abaixo do seu costume';
+        }
+        UI.toast(`${num(consumoTanque, 1)} km/L neste tanque${comparativo}`);
       },
     });
   },
@@ -529,12 +546,16 @@ const Acoes = {
 
   /* — região: GPS, CEP ou lista — */
 
-  async regiaoPorGPS() {
-    UI.toast('Procurando sua localização…');
+  async regiaoPorGPS(botao) {
+    // O toast fixo de 2,6s se apagava sozinho enquanto o navegador ainda
+    // esperava a permissão de localização — que pode levar bem mais que
+    // isso. O botão agora fica visivelmente ocupado até o fim de verdade.
     try {
-      const onde = await Regiao.porGPS();
-      App.render();
-      UI.toast(`${onde.municipio || onde.uf} · ${onde.uf}`);
+      await UI.comEspera(botao, 'Buscando…', async () => {
+        const onde = await Regiao.porGPS();
+        App.render();
+        UI.toast(`${onde.municipio || onde.uf} · ${onde.uf}`);
+      });
     } catch (e) {
       UI.toast(e.message || 'Não foi possível usar o GPS');
     }
@@ -549,6 +570,10 @@ const Acoes = {
       campos: [{ name: 'cep', label: 'CEP', tipo: 'digitos', digitos: 8, placeholder: '00000000', obrigatorio: true }],
       acao: 'Buscar',
       onSubmit: async (d) => {
+        // A folha já fechou antes deste ponto (é assim que UI.sheet
+        // funciona) — não há mais botão para deixar ocupado. Um toast
+        // próprio preenche o vazio entre "fechei a folha" e "o CEP voltou".
+        UI.toast('Buscando o CEP…');
         try {
           const onde = await Regiao.porCEP(d.cep);
           App.render();
@@ -616,23 +641,23 @@ const Acoes = {
   /* — tabela FIPE — */
 
   /* Do formulário de cadastro: preenche o campo de valor. */
-  consultarFipe(r, refs) {
+  consultarFipe(r, refs, botao) {
     consultaFipe(r.tipo, r, (resultado) => {
       r.fipe = num(resultado.valor, 2);
       r.fipeRef = resultado;
       if (refs.fipe) refs.fipe.input.value = r.fipe;
       App.render();
       UI.toast(`FIPE ${resultado.referencia}: ${brl(resultado.valor)}`);
-    });
+    }, botao);
   },
 
   /* Da tela de documentos: grava direto no veículo. */
-  consultarFipeDoVeiculo(v) {
+  consultarFipeDoVeiculo(v, botao) {
     consultaFipe(v.tipo, v, (resultado) => {
       Store.atualizarVeiculo(v.id, { fipe: resultado.valor, fipeRef: resultado });
       App.render();
       UI.toast(`FIPE ${resultado.referencia}: ${brl(resultado.valor)}`);
-    });
+    }, botao);
   },
 
   /* — leitura por foto — */
@@ -664,7 +689,26 @@ const Acoes = {
       onOk: () => {
         const msg = Store.pagarParcelaFinanciamento(v.id);
         App.render();
-        UI.toast(msg || 'Nada a pagar');
+        /* Quitar um financiamento é o maior marco financeiro que o app vai
+           testemunhar num veículo — e recebia o mesmo toast de 2,6s que
+           qualquer parcela comum. O total é real, não estimado: soma dos
+           lançamentos tipo "financiamento" que passaram pelo próprio app
+           (não inclui o que foi pago antes de existir o Autolog — e é
+           por isso que a frase diz "por aqui", não "no total"). */
+        if (msg === 'Financiamento quitado') {
+          const pago = v.lancamentos
+            .filter((l) => l.tipo === 'financiamento')
+            .reduce((s, l) => s + l.valor, 0);
+          UI.confirmar({
+            titulo: 'Financiamento quitado 🎉',
+            texto: `O ${v.apelido || v.modelo} é todo seu. Você registrou `
+              + `${brl(pago)} em parcelas por aqui.`,
+            acao: 'Boa!',
+            onOk: () => {},
+          });
+        } else {
+          UI.toast(msg || 'Nada a pagar');
+        }
       },
     });
   },

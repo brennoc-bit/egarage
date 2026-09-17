@@ -363,16 +363,23 @@ Screens.ficha = (v) => ({
   corpo: abaFicha(v),
 });
 
+// A Seguradora já resolve isto certo: campo vazio não vira dado — a função
+// `dado()`, mais abaixo, some com a linha inteira. Aqui os campos vivem numa
+// grade fixa de 2 colunas (tipo/marca, placa/renavam...), onde sumir com um
+// lado quebraria o alinhamento do outro; em vez de esconder, o travessão
+// perde o peso de dado real — cor e peso de texto de apoio, não de valor.
+const naoInformado = () => h('span', { style: { color: 'var(--muted)', fontWeight: 400 } }, '—');
+
 function abaFicha(v) {
   const linha = (a, b) => UI.row(UI.kv(a), UI.kv(b));
   const consumo = Calc.consumoMedio(v);
   return h('div', null,
-    linha({ k: 'Tipo', v: labelTipo(v.tipo) }, { k: 'Marca', v: v.marca || '—' }),
-    linha({ k: 'Ano', v: String(v.ano) }, { k: 'Cor', v: v.cor || '—' }),
-    linha({ k: 'Combustível', v: v.combustivel || '—' },
+    linha({ k: 'Tipo', v: labelTipo(v.tipo) }, { k: 'Marca', v: v.marca || naoInformado() }),
+    linha({ k: 'Ano', v: String(v.ano) }, { k: 'Cor', v: v.cor || naoInformado() }),
+    linha({ k: 'Combustível', v: v.combustivel || naoInformado() },
       { k: 'Consumo ref.', v: `${num(v.consumo, 0)} km/L`, sub: consumo.real ? `real ${num(consumo.valor, 1)}` : 'sem medição' }),
-    linha({ k: 'Placa', v: v.placa || '—' }, { k: 'Renavam', v: v.renavam || '—' }),
-    linha({ k: 'Chassi', v: v.chassi || '—' }, { k: 'Compra', v: fmtMesAno(v.compra) }),
+    linha({ k: 'Placa', v: v.placa || naoInformado() }, { k: 'Renavam', v: v.renavam || naoInformado() }),
+    linha({ k: 'Chassi', v: v.chassi || naoInformado() }, { k: 'Compra', v: fmtMesAno(v.compra) }),
     (() => {
       const f = Calc.financiamentoStatus(v);
       return f.quitado
@@ -671,6 +678,25 @@ function abaCustoKm(v) {
   const c = Calc.composicao(v, dias);
   const custoKm = c.km > 0 ? c.gasto / c.km : 0;
 
+  /* O número grande sempre ficou sozinho: R$ 0,56/km não diz se é bom ou
+     ruim, nem para o próprio veículo. Comparar com a média dos últimos 12
+     meses do MESMO carro — não com concorrente, não com número de fora —
+     porque é a única referência que o app pode dar sem chutar. Só aparece
+     quando a janela escolhida é mais curta que a referência (comparar 12
+     meses consigo mesmo não diz nada) e quando os dois períodos têm km
+     rodado de verdade (senão a divisão não significa nada). */
+  let comparativo = null;
+  if (dias < 365) {
+    const ref = Calc.composicao(v, 365);
+    const custoKmRef = ref.km > 0 ? ref.gasto / ref.km : 0;
+    if (custoKm > 0 && custoKmRef > 0) {
+      const dif = (custoKm - custoKmRef) / custoKmRef;
+      comparativo = Math.abs(dif) < 0.05
+        ? 'dentro da sua média de 12 meses'
+        : `${Math.round(Math.abs(dif) * 100)}% ${dif > 0 ? 'acima' : 'abaixo'} da sua média de 12 meses`;
+    }
+  }
+
   return h('div', null,
     UI.seg([{ id: 30, label: '30 dias' }, { id: 90, label: '90 dias' }, { id: 365, label: '12 meses' }],
       dias, (id) => App.ir('custos', { custos: 'km', periodo: id }), { sub: true }),
@@ -678,7 +704,8 @@ function abaCustoKm(v) {
     h('div', { style: { padding: '24px 20px 8px' } },
       UI.mono('Custo médio por km', { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }),
       h('div', { class: 'bignum', style: { color: 'var(--color-accent)' } }, custoKm ? brl(custoKm) : '—', h('small', null, '/ km')),
-      UI.mono(`${num(c.km)} km rodados · ${brl(c.gasto)} gastos`, { marginTop: 6, color: 'var(--muted)' })),
+      UI.mono(`${num(c.km)} km rodados · ${brl(c.gasto)} gastos`, { marginTop: 6, color: 'var(--muted)' }),
+      comparativo ? UI.mono(comparativo, { marginTop: 2, color: 'var(--muted)' }) : null),
 
     c.linhas.length ? h('div', { style: { margin: '8px 20px 4px', display: 'flex', height: 12, borderRadius: 100, overflow: 'hidden', background: 'var(--color-neutral-200)' } },
       c.linhas.map((l, i) => h('div', { style: { width: l.pct + '%', background: CORES_FATIA[i % CORES_FATIA.length] }, title: `${l.label} · ${brl(l.valor)}` }))) : null,
@@ -1062,7 +1089,7 @@ function blocoRegiao() {
     })),
 
     UI.cta([
-      { label: 'Usar GPS', icone: '⌖', pri: !onde, onClick: () => Acoes.regiaoPorGPS() },
+      { label: 'Usar GPS', icone: '⌖', pri: !onde, onClick: (ev) => Acoes.regiaoPorGPS(ev.currentTarget) },
       { label: 'Usar CEP', icone: '⌗', onClick: () => Acoes.regiaoPorCEP() },
     ]),
     UI.cta([
@@ -1112,7 +1139,7 @@ function blocoImpostos(v) {
       UI.kv({
         k: 'Valor FIPE', v: v.fipe > 0 ? brl0(v.fipe) : '—',
         sub: v.fipeRef ? `${v.fipeRef.referencia} · ${v.fipeRef.codigoFipe}` : 'toque para consultar',
-        onClick: () => Acoes.consultarFipeDoVeiculo(v),
+        onClick: (ev) => Acoes.consultarFipeDoVeiculo(v, ev.currentTarget),
       }),
       UI.kv({
         k: `IPVA ${regra.vigencia}`, v: est ? brl0(est.valor) : '—',
@@ -1505,7 +1532,7 @@ Screens.veiculo = (atual) => {
           : 'Preencha marca, modelo e ano acima e consulte — é com este valor que o app estima o IPVA.'),
       UI.cta([{
         label: 'Consultar tabela FIPE', icone: '↯',
-        onClick: () => Acoes.consultarFipe(r, refs),
+        onClick: (ev) => Acoes.consultarFipe(r, refs, ev.currentTarget),
       }])),
 
     grupo('Documentos',
@@ -1663,10 +1690,16 @@ function salvarVeiculo(editando, r, refs, erroGeral) {
     return;
   }
 
+  // O primeiro veículo é o único momento de ativação garantido do app — quem
+  // chegou até aqui já passou pela boas-vindas e pelo formulário inteiro.
+  // Antes recebia o mesmo toast neutro de qualquer outra edição de campo.
+  const primeiro = Store.veiculos().length === 0;
   const novo = Store.addVeiculo(dados);
   App.limparRascunho();
   App.ir('inicio');
-  UI.toast(`${novo.apelido} na garagem`);
+  UI.toast(primeiro
+    ? `${novo.apelido} na garagem — hora de ver quanto ele custa por mês`
+    : `${novo.apelido} na garagem`);
 }
 
 /* ── Perfil (fora do canvas — necessário para o app funcionar) ─────────── */
@@ -1779,7 +1812,12 @@ function blocoSincronia() {
 
   return h('div', null,
     UI.sectHd('Sua garagem na conta'),
-    UI.row(UI.kv({ k: 'Sincronização', v: r.v, sub: r.sub, cor: r.cor })),
+    UI.row(UI.kv({
+      k: 'Sincronização', v: r.v, sub: r.sub, cor: r.cor,
+      // O texto já trocava sozinho a cada fase — só não tinha nada que se
+      // mexesse enquanto isso, e "Sincronizando…" parado lê como travado.
+      ocupado: s.fase === 'baixando' || s.fase === 'sincronizando' || s.fase === 'enviando',
+    })),
     s.fase === 'erro'
       ? h('div', { class: 'note', style: { paddingTop: 0 } },
           'Nada foi perdido: o que você registrou está salvo neste aparelho. O app '

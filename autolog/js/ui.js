@@ -11,17 +11,24 @@ const UI = (() => {
 
   const mono = (txt, style) => h('div', { class: 'mono', style: Object.assign({ fontSize: 11 }, style || {}) }, txt);
 
-  function kv({ k, v, sub, cor, destaque, onClick }) {
+  function kv({ k, v, sub, cor, destaque, ocupado, onClick }) {
     // Estas células foram desenhadas para número curto ("18.420", "R$ 1,38").
     // Quando cai texto longo — o e-mail da conta, no Perfil —, 20px de Archivo
     // 700 não cabem em meia tela e o valor saía cortado no meio da palavra.
     // Acima de 14 caracteres o corpo diminui e o valor passa a caber inteiro.
-    const longo = String(v == null ? '' : v).length > 14;
+    // `v` às vezes é um nó pronto (ex.: um "—" com cor própria) em vez de
+    // texto — `String(nó)` viraria "[object HTMLSpanElement]", 26
+    // caracteres, e disparava "longo" por engano. Só mede o que é string de
+    // verdade; nó pronto nunca encolhe o corpo.
+    const longo = typeof v === 'string' && v.length > 14;
     // `destaque`: a célula que deveria fazer a pessoa reagir (hoje só "Gasto
     // do mês"), numa grade onde todo número tem o mesmo peso por padrão.
     // Maior, não colorida — a cor de ênfase já é usada demais no app
     // (marca, ação, alerta) para virar também "isto é importante".
-    const classe = 'v' + (longo ? ' longo' : '') + (destaque ? ' destaque' : '');
+    // `ocupado`: rede de verdade em andamento (hoje só a sincronização) —
+    // um texto estático que troca ("Sincronizando…") sem nada se mexer lê
+    // como travado, não como "trabalhando".
+    const classe = 'v' + (longo ? ' longo' : '') + (destaque ? ' destaque' : '') + (ocupado ? ' ocupado' : '');
     const conteudo = [
       h('div', { class: 'k' }, k),
       h('div', { class: classe, style: cor ? { color: cor } : null }, v),
@@ -213,9 +220,45 @@ const UI = (() => {
 
   function fecharSheet() {
     const s = $('.sheet-backdrop');
-    if (s) s.remove();
-    // A folha aberta é um degrau para o Voltar do Android recuar.
-    if (typeof Voltar !== 'undefined') Voltar.sincronizar();
+    if (!s) {
+      // Nada para fechar — ainda assim sincroniza, como sempre fez: quem
+      // chama isto às vezes só quer garantir que nenhuma folha ficou presa.
+      if (typeof Voltar !== 'undefined') Voltar.sincronizar();
+      return;
+    }
+    /* Abrir sobe com transição cuidada (`rise`); fechar sumia num corte
+       seco — exatamente o instante em que a pessoa confere se o toque
+       "pegou". `.saindo` toca as mesmas animações de entrada ao contrário
+       (mesmo keyframe, `direction: reverse` no CSS — não duplica nada), e só
+       remove o nó — e só aí sincroniza o Voltar — depois. Sincronizar antes
+       disso contaria a folha como "ainda aberta" pelos ~260ms da saída,
+       porque ela ainda está no DOM: a sentinela do histórico ficaria presa
+       até o próximo redesenho por acaso limpar.
+
+       Quem pediu menos movimento não pode ganhar 260ms de espera à toa: o
+       CSS zera a animação para essas pessoas (a mesma regra que já existia
+       para a entrada), e sem `animationend` para disparar o `remover`, só o
+       `setTimeout` restaria — então aqui ele fecha na hora, como sempre fez. */
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      s.remove();
+      if (typeof Voltar !== 'undefined') Voltar.sincronizar();
+      return;
+    }
+
+    /* O `setTimeout` é rede de segurança: se a aba estiver em segundo plano
+       o `animationend` pode nunca chegar, e o nó não pode ficar preso na
+       tela para sempre. `feito` evita rodar a limpeza duas vezes se os dois
+       gatilhos dispararem perto um do outro. */
+    let feito = false;
+    const remover = () => {
+      if (feito) return;
+      feito = true;
+      s.remove();
+      if (typeof Voltar !== 'undefined') Voltar.sincronizar();
+    };
+    s.classList.add('saindo');
+    s.addEventListener('animationend', remover, { once: true });
+    setTimeout(remover, 260);
   }
 
   /**
@@ -293,6 +336,36 @@ const UI = (() => {
     if (primeiro && primeiro.type !== 'date') setTimeout(() => primeiro.focus(), 60);
     if (typeof Voltar !== 'undefined') Voltar.sincronizar();
     return api;
+  }
+
+  /* ── Espera de rede num botão comum ─────────────────────────────────── */
+
+  /* O mesmo padrão que `botaoLeitura`, abaixo, já usa bem: desabilita o
+     botão, pulsa o ícone (a `pulsa` de styles.css) e troca o texto do rótulo
+     enquanto uma promessa de verdade está pendente — desfazendo tudo no
+     `finally`, resolvida ou não. Antes, FIPE, GPS e a sincronização só
+     tinham um toast de texto que se apagava sozinho em 2,6s, sem relação
+     nenhuma com o tempo real da rede.
+
+     `botao` precisa ser o elemento com dois `<span>` que `UI.cta` sempre
+     gera (rótulo, depois ícone) — sem isso, ainda desabilita, só não pulsa
+     nem troca texto. Chamar sem `botao` (ex.: veio de um fluxo sem clique
+     direto) simplesmente roda `fn` sem enfeite nenhum. */
+  async function comEspera(botao, textoEspera, fn) {
+    if (!botao) return fn();
+    const spans = botao.querySelectorAll('span');
+    const rotulo = spans[0] || null;
+    const textoOriginal = rotulo ? rotulo.textContent : null;
+    botao.disabled = true;
+    botao.classList.add('ocupado');
+    if (rotulo && textoEspera) rotulo.textContent = textoEspera;
+    try {
+      return await fn();
+    } finally {
+      botao.disabled = false;
+      botao.classList.remove('ocupado');
+      if (rotulo && textoOriginal != null) rotulo.textContent = textoOriginal;
+    }
   }
 
   /* ── Leitura por foto (Gemini) ──────────────────────────────────────── */
@@ -429,6 +502,6 @@ const UI = (() => {
   return {
     dot, mono, kv, row, sectHd, seg, meter, cta, vazio, barras, fab,
     campo, campoSugerido, valorDoCampo, toast, sheet, fecharSheet, confirmar, pedirFoto, foto,
-    botaoLeitura,
+    botaoLeitura, comEspera,
   };
 })();

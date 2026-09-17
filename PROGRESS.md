@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-17 — auditoria de design/produto e as 5 correções de maior alavancagem
+**Última atualização:** 2026-09-17 — pente-fino de design: 11 dos 20 temas já corrigidos e testados
 
 ---
 
@@ -805,6 +805,99 @@ Kickpush saiu do repositório e vive em pasta própria.
 ---
 
 ## Em andamento
+
+### Pente-fino de design ✅ os 6 seguintes
+
+Continuação da auditoria (seção logo abaixo). Testado um a um, mesmo padrão
+da rodada anterior — inclusive um caso onde a implementação óbvia introduziu
+um bug novo, pego só porque testei o cenário certo.
+
+**Marcos emocionais reconhecidos.** Três momentos que antes passavam pelo
+mesmo toast neutro de qualquer edição de campo:
+- **Primeiro veículo** (único momento de ativação garantido): o toast agora
+  aponta para a tela que a pessoa acabou de abrir — "T-Cross na garagem —
+  hora de ver quanto ele custa por mês". Só no primeiro; do segundo em
+  diante continua neutro, porque aí é rotina.
+- **Quitar o financiamento**: em vez do mesmo "Parcela paga · faltam N",
+  uma folha com o total real pago **pelo app** (soma dos lançamentos
+  `tipo: 'financiamento'` daquele veículo — não inclui o que foi pago antes
+  do Autolog existir, e o texto diz "por aqui" de propósito, para não
+  fingir saber o que não sabe).
+- **Abastecimento fora do padrão**: o toast agora compara com a própria
+  média histórica do veículo (medida antes de somar o tanque novo, para não
+  comparar o dado com ele mesmo) — "9,7 km/L — dentro do seu costume" /
+  "acima" / "abaixo", com banda de ±8% para não soar como mudança de hábito
+  a cada variação normal de trânsito. Testado nos três sentidos com dados
+  reais.
+
+**Números comparados a alguma referência.** Custo/km (30 e 90 dias) agora
+mostra "13% abaixo da sua média de 12 meses" — comparado ao próprio
+histórico do veículo, nunca a um concorrente ou número de fora. Não aparece
+na janela de 12 meses (comparar consigo mesma não diz nada). Testado nos
+dois casos.
+
+**`UI.comEspera` — o padrão de espera de `botaoLeitura` generalizado.**
+Novo helper em `js/ui.js`: desabilita o botão, pulsa o ícone (a `pulsa` que
+já existia), troca o texto do rótulo, desfaz tudo no `finally`. Aplicado a:
+- **GPS** (`Acoes.regiaoPorGPS`) — testado com um atraso artificial (a
+  permissão real resolve rápido demais no navegador de teste para pegar o
+  meio do caminho), confirmando que desabilita/pulsa/reverte certinho.
+- **FIPE** (`consultaFipe`, os dois pontos que a chamam) — testado de ponta
+  a ponta contra a API real: botão fica ocupado nos três fetches em
+  sequência e se libera sozinho assim que uma folha aparece pedindo para
+  escolher versão ou ano (a partir daí a espera é da pessoa, não da rede).
+- **CEP**: a folha fecha antes do fetch começar (é como `UI.sheet` funciona
+  — não haveria botão para deixar ocupado), então ganhou só um toast
+  "Buscando o CEP…" para preencher o vazio.
+- **Sincronização**: `UI.kv` ganhou um parâmetro `ocupado` que pulsa o
+  próprio texto do status ("Sincronizando…") — antes ele já trocava
+  sozinho a cada fase, só não tinha nada que se mexesse enquanto isso.
+
+**Campo vazio na Ficha do veículo** não compete mais visualmente com o dado
+real. A Seguradora já escondia a linha inteira quando vazia; a Ficha vive
+numa grade fixa de 2 colunas onde sumir com um lado quebraria o
+alinhamento, então o travessão ganhou cor `--muted` e peso normal em vez do
+peso de dado de verdade. **Bug pego no caminho:** `UI.kv` media
+`String(v).length` para decidir se o valor era "longo" (fonte menor) — um
+nó DOM em vez de texto virava `"[object HTMLSpanElement]"`, 26 caracteres,
+e disparava a fonte pequena por engano. Corrigido para só medir string de
+verdade.
+
+**Dígitos travados em coluna.** `font-variant-numeric: tabular-nums` na
+base do app (`body`) — sem efeito em texto que não é número, então entrou
+uma vez só em vez de em cada classe. **Provado, não só declarado:** medi a
+largura de cada algarismo 0-9 da Archivo em canvas — sem a regra, variam de
+11,90px a 11,94px; com ela (testado via elemento real), os dez ficam em
+exatamente 11,96875px.
+
+**A sheet fecha com a mesma transição da abertura, ao contrário.** Antes
+abria com `rise` (sobe + aparece) e fechava com `.remove()` instantâneo —
+exatamente o instante em que a pessoa confere se o toque "pegou". Uma
+classe `.saindo` toca as mesmas animações em `direction: reverse` (mesmo
+keyframe, não duplica nada), e só remove o nó — e só aí sincroniza o
+`Voltar` — quando a animação termina. **Dois bugs pegos testando, não só
+implementando:**
+- Sincronizar o `Voltar` **antes** de remover o nó contava a folha como
+  "ainda aberta" pelos ~260ms da saída, porque ela ainda estava no DOM — a
+  sentinela do histórico ficava presa até o próximo redesenho por acaso
+  limpar. Corrigido: sincroniza só depois de remover de verdade.
+- `.sheet-backdrop.saindo` tem mais especificidade CSS que `.sheet-backdrop`
+  sozinho — sem repetir a classe dentro de `@media (prefers-reduced-motion:
+  reduce)`, a animação de saída ganhava justo de quem pediu menos
+  movimento. E, sem `animationend` para disparar nesse caso, restaria só o
+  `setTimeout` de segurança — 260ms de espera à toa para quem pediu
+  movimento zero. Corrigido com uma saída síncrona antes de tudo quando
+  `matchMedia('(prefers-reduced-motion: reduce)')` é verdadeiro.
+
+Testado: fechamento normal (nó some só depois da animação, confirmado via
+`getAnimations()` — `fade`, `reverse`, 160ms, `running`), folhas encadeadas
+(a segunda abre por cima enquanto a primeira ainda está saindo, sem
+travar), e o modo sem movimento fechando na hora, sem atraso.
+
+Onze rotas sem estouro, console limpo numa aba nova, garagem de teste
+limpa ao final.
+
+`sw.js` em `autolog-v40`. Ainda não testado no aparelho.
 
 ### Auditoria de design/produto ✅ as 5 correções de maior alavancagem
 
@@ -2050,34 +2143,19 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 - ~~**Trocar a senha do protótipo.**~~ Decidido em 2026-09-10: `2047` é número
   inventado só para o protótipo, não usado em lugar nenhum. Fica como está.
 
-### Do pente-fino de design (2026-09-17) — os 5 primeiros já entraram
+### Do pente-fino de design (2026-09-17) — 11 dos 20 temas já entraram
 
 A auditoria completa (8 lentes + 3 personas de julgamento) chegou a 20 temas;
-os 5 de maior convergência estão na seção acima. O resto do backlog, na ordem
-que o julgamento sugeriu:
+os 11 de maior convergência/alavancagem estão nas duas seções acima. Restam:
 
-- **Reconhecer marcos reais** (primeiro veículo, quitar financiamento,
-  abastecimento fora do padrão) em vez do mesmo toast neutro de qualquer
-  edição de campo — o app já calcula os números que faltam para isso.
-- **Comparar números com alguma referência**: Custo/km e o toast de
-  abastecimento nunca dizem "acima/abaixo de quê" — nem do seu próprio
-  histórico (já calculado para o Histórico), nem do preço regional da ANP (já
-  consultado, hoje só usado para preencher campo).
-- **`UI.botaoLeitura`** (desabilita, pulsa, reverte no `finally`) já existe e
-  funciona bem — só falta estendê-lo a `consultarFipe`, `regiaoPorGPS/porCEP`
-  e aos estados de `blocoSincronia`, que hoje só têm texto estático.
-- **Campo vazio na Ficha do veículo** usa o mesmo peso do dado real
-  (`v.renavam || '—'`); a Seguradora já resolve isso certo com o componente
-  `dado()` que esconde a linha em vez de mostrar travessão.
-- **`font-variant-numeric: tabular-nums`** nos números que mudam (odômetro,
-  R$ do mês, R$/km) — hoje ausente em todo o CSS, então os dígitos podem
-  "dançar" um pixel a cada atualização.
-- **Sheet fecha em corte seco** (sem transição de saída, ao contrário da
-  entrada) e a abertura do app é HTML vazio até o JS carregar, sem esqueleto.
+- **Abertura do app é HTML vazio até o JS carregar**, sem esqueleto — a
+  transição de *saída* da sheet já foi resolvida; isto é sobre a primeira
+  tela antes de qualquer script rodar.
 - **Streak/indicador de constância** — proposta nova, não conserto; entra
-  depois do resto, se entrar.
+  depois do resto, se entrar. Foi a que as personas mais cortaram.
 - **Export em CSV/PDF** para mostrar a terceiro (comprador, contador,
-  seguro) — hoje só existe o `.json` de backup/migração.
+  seguro) — hoje só existe o `.json` de backup/migração. Gap de paridade
+  competitiva, não de acabamento do que já existe.
 
 ### Médios
 

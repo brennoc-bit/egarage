@@ -46,6 +46,12 @@ body {
      encadeia para o documento. A regra que importa está no `.screen`. */
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
+  /* Este app é, na prática, uma parede de números que mudam: odômetro,
+     R$ do mês, R$/km, parcelas. Sem isto, cada algarismo da Archivo tem
+     largura própria, e um número ao lado de outro (ou o mesmo número se
+     atualizando) faz o texto ao redor "dançar" um pixel. Sem efeito nenhum
+     no que não é dígito, então entra na base em vez de em cada classe. */
+  font-variant-numeric: tabular-nums;
 }
 .mono { font-family: var(--mono); letter-spacing: .02em; }
 
@@ -191,7 +197,11 @@ button, .contato, .chip, .list-item, .maint-row, .kv, .headline-lockup {
    `both` some junto, senão o estado inicial do keyframe congelaria a tela
    invisível. */
 @media (prefers-reduced-motion: reduce) {
-  .screen > .entra, .app-hd .entra, .sheet, .sheet-backdrop, .toast {
+  /* `.sheet-backdrop.saindo` tem mais especificidade que `.sheet-backdrop`
+     sozinho — sem repetir aqui, a animação de saída ganhava justo de quem
+     pediu menos movimento. */
+  .screen > .entra, .app-hd .entra, .sheet, .sheet-backdrop, .toast,
+  .sheet-backdrop.saindo, .sheet-backdrop.saindo .sheet {
     animation: none;
   }
   * { transition-duration: .01ms !important; }
@@ -245,6 +255,10 @@ button, .contato, .chip, .list-item, .maint-row, .kv, .headline-lockup {
 /* Marcado pelo `UI.kv` na célula que deveria puxar o olho primeiro numa
    grade onde, por padrão, todo número pesa igual. */
 .kv .v.destaque { font-size: 24px; }
+/* Marcado pelo `UI.kv` quando o valor reflete uma rede de verdade em
+   andamento (hoje só a sincronização). Reaproveita a `pulsa` de mais abaixo
+   neste arquivo. */
+.kv .v.ocupado { animation: pulsa 1s ease-in-out infinite; }
 .kv .sub { font-size: 11px; margin-top: 4px; color: var(--muted); }
 button.kv { text-align: left; background: none; border-top: 0; border-bottom: 0; border-left: 0; font: inherit; color: inherit; cursor: pointer; }
 
@@ -454,6 +468,10 @@ button.mini, .hero .photo-btn, .foto-acoes button { min-height: 36px; }
 }
 @keyframes fade { from { opacity: 0 } }
 @keyframes rise { from { transform: translateY(24px); opacity: .4 } }
+/* Mesmas animações da entrada, ao contrário — `direction: reverse` toca o
+   keyframe do fim para o começo, sem duplicar nada. Ver `UI.fecharSheet`. */
+.sheet-backdrop.saindo { animation: fade .16s ease-out reverse; }
+.sheet-backdrop.saindo .sheet { animation: rise .2s cubic-bezier(.2, .8, .3, 1) reverse; }
 .sheet h3 { font-size: 20px; text-transform: uppercase; letter-spacing: -.02em; margin: 0 0 2px; }
 .sheet .sheet-sub { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
 /* Campo de formulário — mesmo desenho na folha e na tela de cadastro. */
@@ -892,6 +910,11 @@ textarea.instrucao:focus-visible { border-color: var(--color-accent); outline: n
 }
 .ler-ic { display: grid; place-items: center; }
 .ler-foto.lendo .ler-ic { animation: pulsa 1s ease-in-out infinite; }
+/* Mesmo pulso, generalizado por `UI.comEspera` para qualquer botão comum
+   (FIPE, GPS) enquanto uma rede de verdade está pendente — só o ícone
+   (o último <span> que UI.cta gera) pulsa, o rótulo só troca de texto. */
+button.ocupado { cursor: wait; }
+button.ocupado span:last-child { animation: pulsa 1s ease-in-out infinite; }
 @keyframes pulsa { 50% { opacity: .35 } }
 
 /* Campo preenchido pela leitura: destaque leve, para a pessoa conferir. */
