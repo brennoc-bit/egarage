@@ -131,6 +131,12 @@ const App = {
     const nav = $('#nav');
     const scroll = tela.scrollTop;
 
+    // O esqueleto estático de index.html cobriu a tela até aqui — este é o
+    // primeiro instante em que existe algo de verdade para mostrar no lugar
+    // dele, seja a tela de login ou a garagem.
+    const esqueleto = $('#carregando');
+    if (esqueleto) esqueleto.remove();
+
     clear(hd); clear(tela); clear(nav);
 
     // Porteira do protótipo: sem sessão, só existe a tela de login.
@@ -317,6 +323,39 @@ async function consultaFipe(tipo, dados, aoAchar, botao) {
       onSubmit: (d) => seguir(versoes[Number(d.i) || 0]),
     });
   });
+}
+
+/* ── Relatório em CSV, para mostrar a terceiro ────────────────────────────
+
+   O único export que já existia é o `.json` de backup — pensado para
+   migração entre aparelhos, ninguém abre isso para ler. Um comprador, um
+   contador ou uma seguradora não vão querer o `.json` inteiro do app; vão
+   querer uma tabela simples.
+
+   Separador `;`, decimal com vírgula: é o padrão que o Excel em português
+   espera ao abrir um `.csv` direto, sem passar por um assistente de
+   importação — abrir e já estar certo é o ponto todo de gerar isto. */
+function gerarCSV(itens) {
+  // Campo entre aspas só quando precisa (contém o separador, aspas ou
+  // quebra de linha) — a maioria dos campos fica legível sem aspas em volta.
+  const campo = (valor) => {
+    const s = String(valor == null ? '' : valor);
+    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const numCsv = (n) => (n == null ? '' : String(n).replace('.', ','));
+
+  const linhas = [
+    ['Data', 'Categoria', 'Título', 'Local/Oficina', 'Valor (R$)', 'Litros', 'Odômetro'].join(';'),
+  ];
+  for (const l of itens) {
+    linhas.push([
+      fmtData(l.data), campo(labelCategoria(l.tipo)), campo(l.titulo || ''), campo(l.local || ''),
+      numCsv(l.valor), numCsv(l.litros), l.odometro != null ? String(l.odometro) : '',
+    ].join(';'));
+  }
+  // BOM no início: sem ele, o Excel do Windows abre um .csv UTF-8 com
+  // acentuação toda errada, porque assume Latin-1 na ausência de uma marca.
+  return '﻿' + linhas.join('\r\n');
 }
 
 const Acoes = {
@@ -764,6 +803,25 @@ const Acoes = {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     UI.toast('Arquivo gerado');
+  },
+
+  /* Relatório de um veículo, no período que já está selecionado no
+     Histórico — o que a pessoa está olhando na tela é o que sai no arquivo,
+     sem precisar escolher de novo. */
+  exportarRelatorio(v, meses) {
+    const desde = toISO(addMonths(new Date(), -meses));
+    const itens = Calc.ordenados(v).filter((l) => l.data >= desde);
+    if (!itens.length) { UI.toast('Nada para exportar neste período'); return; }
+
+    const blob = new Blob([gerarCSV(itens)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const nome = (v.apelido || v.modelo || 'veiculo').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const a = h('a', { href: url, download: `autolog-${nome}-${meses}m-${today()}.csv` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    UI.toast(`Relatório gerado · ${itens.length} ${itens.length === 1 ? 'lançamento' : 'lançamentos'}`);
   },
 
   importar() {

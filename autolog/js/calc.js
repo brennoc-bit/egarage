@@ -31,6 +31,43 @@ const Calc = (() => {
   const inicioDoMes = () => { const d = new Date(); return toISO(new Date(d.getFullYear(), d.getMonth(), 1)); };
   const diasAtras = (n) => toISO(addDays(new Date(), -n));
 
+  /* ── Constância de uso ───────────────────────────────────────────────
+
+     Proposta nova, não conserto de nada — a auditoria de design levantou
+     que o único motivo de voltar ao app hoje é obrigação (vencimento,
+     abastecer), nunca reconhecimento por manter o hábito.
+
+     Conta meses seguidos (terminando no mais recente que já tem
+     lançamento) em que o veículo teve ao menos um lançamento — qualquer
+     tipo, não só combustível. É sobre USAR o app com regularidade, não
+     sobre ser um bom pagador; misturar as duas coisas seria fingir que sabe
+     algo que não sabe (ex.: alguém pode não abastecer num mês por não ter
+     rodado, e isso não é "quebrar a sequência" de cuidar do carro).
+
+     O mês corrente não conta contra a sequência enquanto ainda não tiver
+     lançamento — é dia 3 e a pessoa não tomou vergonha na cara ainda; só
+     conta a favor quando ganhar um lançamento de verdade. */
+  function mesesConsecutivos(v) {
+    const temNoMes = (ano, mes) => v.lancamentos.some((l) => {
+      const d = fromISO(l.data);
+      return d.getFullYear() === ano && d.getMonth() === mes;
+    });
+    const hoje = new Date();
+    let ano = hoje.getFullYear();
+    let mes = hoje.getMonth();
+    if (!temNoMes(ano, mes)) { mes -= 1; if (mes < 0) { mes = 11; ano -= 1; } }
+
+    let contagem = 0;
+    // Trava de segurança: nada no domínio do app justifica mais que 20 anos
+    // de sequência, e sem isto um dado corrompido giraria para sempre.
+    while (contagem < 240 && temNoMes(ano, mes)) {
+      contagem += 1;
+      mes -= 1;
+      if (mes < 0) { mes = 11; ano -= 1; }
+    }
+    return contagem;
+  }
+
   /* ── Consumo real (km/L entre abastecimentos) ───────────────────────── */
 
   function consumoMedio(v) {
@@ -541,7 +578,7 @@ const Calc = (() => {
 
   return {
     ordenados, noPeriodo, odometroEm, kmNoPeriodo, gastoNoPeriodo,
-    inicioDoMes, diasAtras, consumoMedio, precoMedioLitro,
+    inicioDoMes, diasAtras, consumoMedio, precoMedioLitro, mesesConsecutivos,
     custoPorKm, composicao, resumoMensal,
     statusItem, diagnostico, statusDoc, docsStatus, ordemUrgenciaDoc, proximosVencimentos, compromissosAnuais,
     mediaMensalCombustivel, custoMensal, financiamentoStatus,

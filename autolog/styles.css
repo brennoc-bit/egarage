@@ -671,6 +671,20 @@ span.chip { cursor: default; }
 }
 .ajuste-acoes button.pri { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
 
+/* ── Esqueleto de abertura (puro HTML/CSS, ver index.html) ──────────────── */
+.carregando {
+  position: fixed; inset: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-bg);
+  padding: 28px;
+}
+/* Mesma marca do login (`.login-marca`, mais abaixo), sozinha e centralizada
+   — antes de qualquer script rodar não existe `Auth.tela()` para desenhar a
+   coisa real, mas a marca sendo idêntica faz a troca (quando ela chegar)
+   parecer continuidade, não uma segunda tela por cima da primeira. */
+.carregando .login-marca { text-align: center; }
+.carregando .login-risco { margin-inline: auto; }
+
 /* ── Login (porteira do protótipo) ─────────────────────────────────────── */
 .app.login-ativo > .app-hd,
 .app.login-ativo > .footer-nav { display: none; }

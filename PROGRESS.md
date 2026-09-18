@@ -7,7 +7,7 @@ Estado do workspace `Claude codando da silva` — repositório
 > retomar qualquer trabalho. Ele é atualizado ao fim de cada sessão, antes do
 > commit e do push.
 
-**Última atualização:** 2026-09-17 — pente-fino de design: 11 dos 20 temas já corrigidos e testados
+**Última atualização:** 2026-09-17 — pente-fino de design encerrado: 17 dos 20 temas corrigidos e testados
 
 ---
 
@@ -805,6 +805,78 @@ Kickpush saiu do repositório e vive em pasta própria.
 ---
 
 ## Em andamento
+
+### Pente-fino de design ✅ os 3 últimos — backlog encerrado
+
+Fecha os 20 temas da auditoria (17 corrigidos, 3 conscientemente fora — ver
+final desta seção). Como das outras vezes, dois bugs só apareceram testando,
+não implementando.
+
+**Esqueleto de abertura, puro HTML/CSS.** O app tinha 16 arquivos de `js/`
+carregados em sequência antes de `App.render()` desenhar qualquer coisa —
+até lá, `#app-hd`/`#screen`/`#nav` ficavam vazios. Novo bloco `#carregando`
+em `index.html`, com a mesma marca do login (kicker + "AUTOLOG" + traço),
+sem depender de nenhum script — confirmado presente no HTML cru via
+`fetch()`. `App.render()` o remove na primeira vez que roda, não importa
+qual tela vem a seguir (login ou garagem) — testado que ele some depois do
+boot.
+
+**Constância de uso — a única proposta nova dos 20 temas, não conserto.**
+`Calc.mesesConsecutivos(v)` conta meses seguidos (terminando no mais recente
+que já tem lançamento) com pelo menos um lançamento de qualquer tipo — é
+sobre USAR o app com regularidade, não sobre ser bom pagador, para não
+repetir o problema já achado de "Saúde geral" misturando dois sentidos
+diferentes na mesma palavra. Aparece como uma linha discreta no cabeçalho da
+Início ("constância: 3 meses seguidos"), só a partir de 2 — "1 mês seguido"
+não é constância, é só ter usado uma vez.
+
+Testado em 5 cenários com dados reais: zero lançamentos (0), só o mês atual
+(1, não aparece na tela), três meses seguidos (3), mês atual ainda vazio mas
+os dois anteriores com lançamento (não zera, continua 2), e uma lacuna no
+meio da sequência (para no primeiro buraco, não conta o que vem antes dele).
+
+**Relatório em CSV — para mostrar a terceiro.** O único export até aqui era
+o `.json` de backup, pensado para migrar de aparelho; ninguém abre isso para
+mostrar a um comprador, contador ou seguradora. Botão "Gerar relatório" em
+Custos › Histórico, exportando o mesmo período (6/12/24 meses) que já está
+selecionado na tela — o que a pessoa está olhando é o que sai no arquivo.
+Separador `;` e decimal com vírgula, porque é o que o Excel em português
+espera sem passar por assistente de importação; BOM UTF-8 no início, senão
+o Excel do Windows lê acentuação errada.
+
+Testado lendo o Blob gerado de volta (sem clicar o link de verdade — só
+capturando a URL): título com aspas internas escapa certo
+(`"Troca de óleo ""sintético"""`), local com `;` embutido vira campo entre
+aspas, números saem com vírgula, BOM confirmado byte a byte (`EF BB BF`),
+item de 8 meses atrás corretamente fora de uma janela de 6, e o caso de
+veículo sem lançamento nenhum no período avisa em vez de baixar arquivo
+vazio.
+
+**Sobre PDF, que estava junto no achado original:** não entrou. Gerar PDF
+sem biblioteca é impraticável (é outro formato binário inteiro para
+implementar à mão), e adicionar uma biblioteca só para isso contradiria a
+regra do projeto de zero dependência. CSV abre em qualquer planilha e
+resolve o mesmo problema — mostrar o histórico a alguém de fora —, então
+ficou por esse caminho em vez de bloquear ou perguntar.
+
+Onze rotas sem estouro, console limpo numa aba nova, garagem de teste limpa
+ao final.
+
+`sw.js` em `autolog-v43`. Ainda não testado no aparelho.
+
+#### Os 20 temas da auditoria, fechamento
+
+17 corrigidos e testados (14 nas duas rodadas anteriores + estes 3). Ficam
+de fora por decisão, não por falta de tempo:
+
+- **Streak/constância** deixou de ser exceção — é o item acima.
+- **Financiamento com avanço automático de parcela + Web Push real** —
+  exige infraestrutura de servidor que contradiz "zero dependência, uma
+  pessoa só". Fica para quando (se) houver decisão de investir em backend.
+- **Proxy para a leitura por foto** não precisar da chave do usuário —
+  mesmo motivo: exige backend novo.
+- **Tokenizar letter-spacing** dos rótulos mono (10 valores soltos) — débito
+  de CSS invisível no uso real, nunca custou nada perceptível.
 
 ### Pente-fino de design ✅ os 6 seguintes
 
@@ -2143,19 +2215,15 @@ Nada começado. Ordem sugerida por relação entre esforço e retorno.
 - ~~**Trocar a senha do protótipo.**~~ Decidido em 2026-09-10: `2047` é número
   inventado só para o protótipo, não usado em lugar nenhum. Fica como está.
 
-### Do pente-fino de design (2026-09-17) — 11 dos 20 temas já entraram
+### Pente-fino de design — encerrado
 
-A auditoria completa (8 lentes + 3 personas de julgamento) chegou a 20 temas;
-os 11 de maior convergência/alavancagem estão nas duas seções acima. Restam:
-
-- **Abertura do app é HTML vazio até o JS carregar**, sem esqueleto — a
-  transição de *saída* da sheet já foi resolvida; isto é sobre a primeira
-  tela antes de qualquer script rodar.
-- **Streak/indicador de constância** — proposta nova, não conserto; entra
-  depois do resto, se entrar. Foi a que as personas mais cortaram.
-- **Export em CSV/PDF** para mostrar a terceiro (comprador, contador,
-  seguro) — hoje só existe o `.json` de backup/migração. Gap de paridade
-  competitiva, não de acabamento do que já existe.
+Os 20 temas da auditoria (8 lentes + 3 personas de julgamento) estão
+resolvidos: 17 corrigidos e testados nas três rodadas acima, e 3 fora por
+decisão (financiamento com avanço automático + Web Push real, proxy para a
+leitura por foto, tokenizar letter-spacing) — os dois primeiros exigem
+servidor próprio, o que contradiz "zero dependência, uma pessoa só"; o
+terceiro é débito de CSS invisível no uso real. Ver o fechamento completo na
+seção "os 3 últimos" acima.
 
 ### Médios
 

@@ -18,6 +18,7 @@ Screens.inicio = (v) => {
   const cpk = p.custoKm;
   const consumo = Calc.consumoMedio(v);
   const preco = Calc.precoMedioLitro(v);
+  const meses = Calc.mesesConsecutivos(v);
 
   const seletor = h('div', { class: 'segrow' },
     Store.veiculos().map((x) => h('button', {
@@ -59,6 +60,11 @@ Screens.inicio = (v) => {
       UI.mono(v.marca, { fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }),
       h('h3', null, v.modelo),
       UI.mono(`${v.ano}  ·  ${v.placa || 'sem placa'}  ·  ${v.combustivel || labelTipo(v.tipo)}`, { marginTop: 6, letterSpacing: '.06em' }),
+      // Só a partir de 2: "1 mês seguido" não é constância nenhuma, é só
+      // "usei uma vez". Discreto de propósito — reconhecimento de hábito,
+      // não medalha; e não usa "em dia" (isso já é da saúde de manutenção,
+      // significar duas coisas diferentes é o problema achado no pente-fino).
+      meses >= 2 ? UI.mono(`constância: ${meses} meses seguidos`, { marginTop: 4, color: 'var(--muted)' }) : null,
       h('div', { class: 'lockup-pe' }, UI.mono('ver ficha ›', { color: 'var(--color-accent)', fontWeight: 600 }))),
 
     urgente ? blocoVencimentos : null,
@@ -442,7 +448,14 @@ function abaHistorico(v) {
         UI.mono(`${labelCategoria(l.tipo)}${l.local ? ' · ' + l.local : ''}${l.litros ? ' · ' + num(l.litros, 1) + ' L' : ''}`,
           { marginTop: 2, color: 'var(--muted)' })),
       UI.mono('- ' + brl(l.valor), { fontSize: 12, fontWeight: 600 })))
-      : UI.vazio('Nenhum lançamento ainda.'));
+      : UI.vazio('Nenhum lançamento ainda.'),
+
+    // Único export até aqui era o .json de backup, pensado para migrar de
+    // aparelho — ninguém abre isso para mostrar a um comprador, contador ou
+    // seguradora. Exporta o mesmo período que já está selecionado acima.
+    UI.cta([
+      { label: 'Gerar relatório', icone: '↓', onClick: () => Acoes.exportarRelatorio(v, janela) },
+    ]));
 }
 
 const legenda = (cor, txt) => h('span', null,
